@@ -1,0 +1,112 @@
+<?php
+
+namespace App\Http\Requests;
+
+use App\Models\Client;
+use App\Models\Operation;
+use App\Models\Safe;
+use App\Models\Vendor;
+use App\Services\AccountingService;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
+
+class StoreVoucherRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()?->canPerform('create_voucher') ?? false;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'type' => ['required', Rule::in(['receipt', 'payment'])],
+            'party_type' => ['nullable', Rule::in(['client', 'vendor', 'general'])],
+            'party_id' => [
+                Rule::requiredIf(fn () => in_array($this->input('party_type'), ['client', 'vendor'], true)),
+                'nullable',
+                'integer',
+            ],
+            'amount' => ['required', 'numeric', 'decimal:0,3', 'gt:0', 'min:1', 'max:99999.999'],
+            'currency' => ['nullable', 'string', 'size:3'],
+            'method' => ['nullable', Rule::in(['cash', 'bank', 'knet', 'check'])],
+            'safe_id' => ['required', 'exists:safes,id'],
+            'operation_id' => ['nullable', 'exists:operations,id'],
+            'ref' => ['nullable', 'string', 'max:50', 'unique:vouchers,ref'],
+            'reference_number' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'date' => ['nullable', 'date', 'before_or_equal:today'],
+        ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            $partyType = $this->input('party_type', 'general');
+            $partyId = $this->input('party_id');
+            $amount = (float) $this->input('amount');
+            $type = $this->input('type');
+            $accounting = app(AccountingService::class);
+
+            if ($type === 'payment' && $this->filled('safe_id') && Safe::whereKey($this->input('safe_id'))->exists()) {
+                $safeBalance = $accounting->safeBalance((int) $this->input('safe_id'));
+                if ($amount > $safeBalance + 0.001) {
+                    $validator->errors()->add('amount', 'المبلغ يتجاوز رصيد الصندوق/البنك المتاح ('.number_format($safeBalance, 3).' د.ك)');
+                }
+            }
+
+            if ($partyType === 'client' && ! Client::whereKey($partyId)->exists()) {
+                $validator->errors()->add('party_id', 'العميل المحدد غير موجود');
+            }
+
+            if ($partyType === 'vendor' && ! Vendor::whereKey($partyId)->exists()) {
+                $validator->errors()->add('party_id', 'المورد المحدد غير موجود');
+            }
+
+            if ($this->filled('operation_id')) {
+                $operation = Operation::find($this->input('operation_id'));
+                if ($operation?->status === 'cancelled') {
+                    $validator->errors()->add('operation_id', 'لا يمكن ربط سند بعملية ملغاة');
+                } elseif ($operation && $partyType === 'client' && (int) $partyId !== (int) $operation->client_id) {
+                    $validator->errors()->add('operation_id', 'العملية لا تتبع هذا العميل');
+                } elseif ($operation && $partyType === 'vendor' && (int) $partyId !== (int) $operation->vendor_id) {
+                    $validator->errors()->add('operation_id', 'العملية لا تتبع هذا المورد');
+                }
+            }
+
+            if ($type === 'receipt' && $partyType === 'client' && $partyId) {
+                $outstanding = $this->filled('operation_id')
+                    ? $accounting->operationClientOutstanding((int) $this->input('operation_id'))
+                    : $accounting->clientBalance((int) $partyId);
+
+                if ($outstanding <= 0) {
+                    $validator->errors()->add('amount', 'لا يوجد رصيد مستحق على هذا العميل');
+                } elseif ($amount > $outstanding + 0.001) {
+                    $validator->errors()->add('amount', 'المبلغ يتجاوز الرصيد المستحق ('.number_format($outstanding, 3).' د.ك)');
+                }
+            }
+
+            if ($type === 'payment' && $partyType === 'vendor' && $partyId) {
+                $owed = $this->filled('operation_id')
+                    ? $accounting->operationVendorOutstanding((int) $this->input('operation_id'))
+                    : $accounting->vendorBalance((int) $partyId);
+
+                if ($owed <= 0) {
+                    $validator->errors()->add('amount', 'لا يوجد رصيد مستحق لهذا المورد');
+                } elseif ($amount > $owed + 0.001) {
+                    $validator->errors()->add('amount', 'المبلغ يتجاوز الرصيد المستحق ('.number_format($owed, 3).' د.ك)');
+                }
+            }
+        });
+    }
+
+    public function messages(): array
+    {
+        return [
+            'party_id.required' => 'يجب تحديد الطرف عند اختيار عميل أو مورد',
+            'date.before_or_equal' => 'تاريخ السند لا يمكن أن يكون في المستقبل',
+            'amount.min' => 'الحد الأدنى للمبلغ 1 د.ك',
+        ];
+    }
+}

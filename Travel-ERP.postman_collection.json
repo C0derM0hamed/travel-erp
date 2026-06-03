@@ -1,0 +1,1234 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-travel-erp-2026",
+    "name": "Travel ERP",
+    "description": "Travel ERP — Laravel Sanctum (جلسة + كوكيز).\n\n## إعداد سريع\n1. `base_url` = نفس `APP_URL` و `SANCTUM_STATEFUL_DOMAINS` (مثال: http://127.0.0.1:8080)\n2. `password` = قيمة `SEED_USER_PASSWORD` من `.env`\n3. شغّل مجلد **0 — Smoke Test** بالترتيب (Run folder)\n\n## مشاكل شائعة (محلولة في المجموعة)\n- **401**: شغّل Authentication كاملاً؛ `base_url` يجب أن يطابق النطاق في `.env`\n- **419**: بعد Login شغّل **Refresh CSRF** — الجلسة تتجدد وتبطل توكن CSRF القديم\n- الهيدر `X-XSRF-TOKEN` يُضاف تلقائياً لـ POST/PATCH/DELETE من الكوكي\n\n## Newman\n`npx newman run Travel-ERP.postman_collection.json --env-var password=YOUR_PASS --folder \"0 — Smoke Test (شغّل بالترتيب)\"`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8080"
+    },
+    {
+      "key": "email",
+      "value": "admin@travel.kw"
+    },
+    {
+      "key": "password",
+      "value": ""
+    },
+    {
+      "key": "xsrf_token",
+      "value": ""
+    },
+    {
+      "key": "client_id",
+      "value": "1"
+    },
+    {
+      "key": "service_id",
+      "value": "1"
+    },
+    {
+      "key": "vendor_id",
+      "value": "1"
+    },
+    {
+      "key": "safe_id",
+      "value": "1"
+    },
+    {
+      "key": "operation_id",
+      "value": "1"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "// Travel ERP — sync session CSRF + attach header on mutating requests",
+          "function syncXsrfFromCookies() {",
+          "  const raw = pm.cookies.get('XSRF-TOKEN');",
+          "  if (raw) pm.collectionVariables.set('xsrf_token', decodeURIComponent(raw));",
+          "}",
+          "syncXsrfFromCookies();",
+          "",
+          "const method = pm.request.method;",
+          "const path = pm.request.url.getPath();",
+          "const mutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);",
+          "const csrfExempt = path.endsWith('/api/login') || path.endsWith('/api/logout');",
+          "",
+          "if (mutating && !csrfExempt) {",
+          "  const xsrf = pm.collectionVariables.get('xsrf_token');",
+          "  if (!xsrf) {",
+          "    console.warn('xsrf_token فارغ — شغّل Get CSRF ثم Login ثم Refresh CSRF بعد تسجيل الدخول');",
+          "  } else {",
+          "    pm.request.headers.upsert({ key: 'X-XSRF-TOKEN', value: xsrf });",
+          "  }",
+          "}"
+        ],
+        "type": "text/javascript"
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "exec": [
+          "if (['POST','PUT','PATCH','DELETE'].includes(pm.request.method)) {",
+          "  pm.test('ليس 401 (جلسة)', () => pm.expect(pm.response.code).to.not.eql(401));",
+          "  pm.test('ليس 419 (CSRF)', () => pm.expect(pm.response.code).to.not.eql(419));",
+          "}"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "0 — Smoke Test (شغّل بالترتيب)",
+      "description": "اختبار كامل: مصادقة + قراءة + كل عمليات POST/PATCH. شغّل المجلد Run folder بالكامل.",
+      "item": [
+        {
+          "name": "1. Get CSRF Cookie",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sanctum/csrf-cookie"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "syncXsrfFromCookies = () => { const t = pm.cookies.get('XSRF-TOKEN'); if (t) pm.collectionVariables.set('xsrf_token', decodeURIComponent(t)); };",
+                  "syncXsrfFromCookies();",
+                  "pm.test('CSRF cookie', () => pm.expect(pm.response.code).to.be.oneOf([204, 200]));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "description": "CSRF معفى — لكن الجلسة تتجدد بعده"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login 200', () => pm.response.to.have.status(200));",
+                  "pm.test('User email', () => pm.expect(pm.response.json().user.email).to.eql(pm.collectionVariables.get('email')));",
+                  "syncXsrfFromCookies = () => { const t = pm.cookies.get('XSRF-TOKEN'); if (t) pm.collectionVariables.set('xsrf_token', decodeURIComponent(t)); };",
+                  "syncXsrfFromCookies();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Refresh CSRF Cookie (after login)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sanctum/csrf-cookie",
+            "description": "إجباري — وإلا POST/PATCH ترجع 419"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "syncXsrfFromCookies = () => { const t = pm.cookies.get('XSRF-TOKEN'); if (t) pm.collectionVariables.set('xsrf_token', decodeURIComponent(t)); };",
+                  "syncXsrfFromCookies();",
+                  "pm.test('CSRF cookie', () => pm.expect(pm.response.code).to.be.oneOf([204, 200]));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/me"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Authenticated 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Bootstrap",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/bootstrap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Bootstrap 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "['users','clients','services','vendors','safes'].forEach(k => pm.expect(b).to.have.property(k));",
+                  "if (b.clients && b.clients.length) pm.collectionVariables.set('client_id', String(b.clients[0].id));",
+                  "if (b.services && b.services.length) pm.collectionVariables.set('service_id', String(b.services[0].id));",
+                  "if (b.vendors && b.vendors.length) pm.collectionVariables.set('vendor_id', String(b.vendors[0].id));",
+                  "if (b.safes && b.safes.length) pm.collectionVariables.set('safe_id', String(b.safes[0].id));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/dashboard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Dashboard 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Create Client",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/clients",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"عميل Postman\",\n  \"phone\": \"99112233\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Created 201', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "8. Create Vendor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/vendors",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"مورد Postman\",\n  \"category\": \"airline\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Created 201', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "9. Create Operation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/operations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": {{client_id}},\n  \"service_id\": {{service_id}},\n  \"vendor_id\": {{vendor_id}},\n  \"currency\": \"KWD\",\n  \"client_price\": 100,\n  \"vendor_cost\": 75,\n  \"initial_payment\": 0,\n  \"payment_method\": \"cash\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Created 201', () => pm.response.to.have.status(201));",
+                  "const id = pm.response.json().id;",
+                  "if (id) pm.collectionVariables.set('operation_id', String(id));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. Create Voucher",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/vouchers",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"receipt\",\n  \"party_type\": \"client\",\n  \"party_id\": {{client_id}},\n  \"amount\": 10,\n  \"currency\": \"KWD\",\n  \"method\": \"cash\",\n  \"safe_id\": {{safe_id}}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Created 201', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "11. Cancel Operation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/operations/{{operation_id}}/cancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Cancelled 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "12. Toggle Service",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/services/{{service_id}}/toggle",
+            "description": "Admin — body فارغ"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Toggled 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "13. Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/profile",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"أحمد الكندري\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Profile 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "description": "شغّل بالترتيب: CSRF → Login → Refresh CSRF (إجباري بعد Login) → Get Current User",
+      "item": [
+        {
+          "name": "1. Get CSRF Cookie",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sanctum/csrf-cookie"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "syncXsrfFromCookies = () => { const t = pm.cookies.get('XSRF-TOKEN'); if (t) pm.collectionVariables.set('xsrf_token', decodeURIComponent(t)); };",
+                  "syncXsrfFromCookies();",
+                  "pm.test('CSRF cookie', () => pm.expect(pm.response.code).to.be.oneOf([204, 200]));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "description": "CSRF معفى — لكن الجلسة تتجدد بعده"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login 200', () => pm.response.to.have.status(200));",
+                  "pm.test('User email', () => pm.expect(pm.response.json().user.email).to.eql(pm.collectionVariables.get('email')));",
+                  "syncXsrfFromCookies = () => { const t = pm.cookies.get('XSRF-TOKEN'); if (t) pm.collectionVariables.set('xsrf_token', decodeURIComponent(t)); };",
+                  "syncXsrfFromCookies();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Refresh CSRF Cookie (after login)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sanctum/csrf-cookie",
+            "description": "إجباري — وإلا POST/PATCH ترجع 419"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "syncXsrfFromCookies = () => { const t = pm.cookies.get('XSRF-TOKEN'); if (t) pm.collectionVariables.set('xsrf_token', decodeURIComponent(t)); };",
+                  "syncXsrfFromCookies();",
+                  "pm.test('CSRF cookie', () => pm.expect(pm.response.code).to.be.oneOf([204, 200]));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/me"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Authenticated 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Bootstrap",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/bootstrap"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Bootstrap 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "['users','clients','services','vendors','safes'].forEach(k => pm.expect(b).to.have.property(k));",
+                  "if (b.clients && b.clients.length) pm.collectionVariables.set('client_id', String(b.clients[0].id));",
+                  "if (b.services && b.services.length) pm.collectionVariables.set('service_id', String(b.services[0].id));",
+                  "if (b.vendors && b.vendors.length) pm.collectionVariables.set('vendor_id', String(b.vendors[0].id));",
+                  "if (b.safes && b.safes.length) pm.collectionVariables.set('safe_id', String(b.safes[0].id));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dashboard KPIs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/dashboard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Dashboard 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has today_sales', () => pm.expect(pm.response.json()).to.have.property('today_sales'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Clients",
+      "item": [
+        {
+          "name": "List Clients",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/clients?search="
+          }
+        },
+        {
+          "name": "Create Client",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/clients",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"عميل جديد\",\n  \"phone\": \"99998877\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Created 201', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Client Statement",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/clients/{{client_id}}/statement"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vendors",
+      "item": [
+        {
+          "name": "List Vendors",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/vendors"
+          }
+        },
+        {
+          "name": "Create Vendor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/vendors",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"مورد جديد\",\n  \"category\": \"airline\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Created 201', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Vendor Statement",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/vendors/{{vendor_id}}/statement"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Services",
+      "description": "القائمة عبر Bootstrap",
+      "item": [
+        {
+          "name": "Toggle Service Active",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/services/{{service_id}}/toggle",
+            "description": "Admin فقط"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Toggled 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Operations",
+      "item": [
+        {
+          "name": "List Operations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/operations"
+          }
+        },
+        {
+          "name": "Create Operation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/operations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": {{client_id}},\n  \"service_id\": {{service_id}},\n  \"vendor_id\": {{vendor_id}},\n  \"currency\": \"KWD\",\n  \"client_price\": 100,\n  \"vendor_cost\": 75,\n  \"initial_payment\": 0,\n  \"payment_method\": \"cash\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Created 201', () => pm.response.to.have.status(201));",
+                  "const id = pm.response.json().id;",
+                  "if (id) pm.collectionVariables.set('operation_id', String(id));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Show Operation",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/operations/{{operation_id}}"
+          }
+        },
+        {
+          "name": "Update Operation Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/operations/{{operation_id}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"processing\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status updated or validation returned', () => pm.expect([200, 422]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel Operation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/operations/{{operation_id}}/cancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Cancelled 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Vouchers",
+      "item": [
+        {
+          "name": "List Vouchers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/vouchers"
+          }
+        },
+        {
+          "name": "Create Voucher",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/vouchers",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"receipt\",\n  \"party_type\": \"client\",\n  \"party_id\": {{client_id}},\n  \"amount\": 10,\n  \"currency\": \"KWD\",\n  \"method\": \"cash\",\n  \"safe_id\": {{safe_id}}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Created 201', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Show Voucher",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/vouchers/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Journal",
+      "item": [
+        {
+          "name": "List Journal",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/journal"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Safes",
+      "item": [
+        {
+          "name": "List Safes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/safes"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Report: operations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/reports/operations"
+          }
+        },
+        {
+          "name": "Report: profit",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/reports/profit"
+          }
+        },
+        {
+          "name": "Report: aging",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/reports/aging"
+          }
+        },
+        {
+          "name": "Report: employee",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/reports/employee"
+          }
+        },
+        {
+          "name": "Report: cashflow",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/reports/cashflow"
+          }
+        },
+        {
+          "name": "Report: clients-debt",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/reports/clients-debt"
+          }
+        },
+        {
+          "name": "Report: vendors-balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/reports/vendors-balance"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Settings",
+      "item": [
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/users",
+            "description": "Admin فقط"
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/profile",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"أحمد الكندري\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Profile 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/logout",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "شغّله آخر شيء"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Logout 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

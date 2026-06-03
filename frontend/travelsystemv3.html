@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام إدارة خدمات السفر | Travel ERP</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--primary:#1E3A8A;--primary-light:#2563EB;--success:#059669;--danger:#DC2626;--warning:#D97706;--info:#0891B2;--bg:#F1F5F9;--white:#fff;--card:#fff;--text:#1e293b;--text-sm:#64748b;--border:#e2e8f0;--sidebar-w:260px;--radius:12px;--shadow:0 1px 3px rgba(0,0,0,.08),0 4px 12px rgba(0,0,0,.05)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;direction:rtl}
+#loginPage{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1E3A8A 0%,#1e4d8c 50%,#0f2d6b 100%)}
+.login-card{background:#fff;border-radius:20px;padding:48px 40px;width:420px;box-shadow:0 25px 60px rgba(0,0,0,.3)}
+.login-logo{text-align:center;margin-bottom:32px}
+.login-logo .icon{width:72px;height:72px;background:linear-gradient(135deg,var(--primary),var(--primary-light));border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:32px}
+.login-logo h1{font-size:22px;font-weight:800;color:var(--primary);margin-bottom:4px}
+.login-logo p{font-size:13px;color:var(--text-sm)}
+.form-group{margin-bottom:20px}
+.form-group label{display:block;font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px}
+.form-control{width:100%;padding:12px 16px;border:1.5px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;color:var(--text);background:var(--bg);transition:.2s;outline:none}
+.form-control:focus{border-color:var(--primary);background:#fff;box-shadow:0 0 0 3px rgba(30,58,138,.1)}
+.btn-login{width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;border:none;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:16px;font-weight:700;cursor:pointer;transition:.2s;margin-top:8px}
+.btn-login:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(30,58,138,.4)}
+.toast-container{position:fixed;top:20px;left:20px;z-index:9999;display:flex;flex-direction:column;gap:10px;max-width:360px;pointer-events:none}
+.toast{padding:14px 18px;border-radius:10px;font-size:14px;font-weight:600;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.15);opacity:0;transform:translateY(-8px);transition:opacity .25s,transform .25s;pointer-events:auto}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast-success{background:var(--success)}
+.toast-error{background:var(--danger)}
+.toast-warning{background:var(--warning)}
+.toast-info{background:var(--primary)}
+#appLayout{display:none;height:100vh;overflow:hidden}
+.sidebar{width:var(--sidebar-w);height:100vh;background:var(--primary);position:fixed;right:0;top:0;display:flex;flex-direction:column;z-index:100}
+.sidebar-logo{padding:24px 20px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:12px}
+.sidebar-logo .s-icon{width:40px;height:40px;background:rgba(255,255,255,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.sidebar-logo span{color:#fff;font-size:15px;font-weight:700;line-height:1.3}
+.sidebar-nav{flex:1;overflow-y:auto;padding:12px 0}
+.nav-section{padding:8px 16px 4px;font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:10px 20px;color:rgba(255,255,255,.75);cursor:pointer;transition:.15s;font-size:14px;font-weight:500;border-right:3px solid transparent;margin:1px 0}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-item.active{background:rgba(255,255,255,.15);color:#fff;border-right-color:#fff}
+.nav-icon{width:20px;text-align:center;font-size:16px;flex-shrink:0}
+.sidebar-footer{padding:16px;border-top:1px solid rgba(255,255,255,.1)}
+.user-info{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,.1);border-radius:10px;cursor:pointer}
+.user-avatar{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px}
+.user-meta span{display:block;color:#fff;font-size:13px;font-weight:600}
+.user-meta small{color:rgba(255,255,255,.6);font-size:11px}
+.main-content{margin-right:var(--sidebar-w);height:100vh;overflow-y:auto;display:flex;flex-direction:column}
+.topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;height:64px;display:flex;align-items:center;gap:16px;flex-shrink:0;position:sticky;top:0;z-index:50}
+.search-box{flex:1;max-width:400px;position:relative}
+.search-box input{width:100%;padding:9px 16px 9px 38px;border:1.5px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;background:var(--bg);outline:none;transition:.2s}
+.search-box input:focus{border-color:var(--primary);background:#fff}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-sm);font-size:16px}
+.topbar-actions{margin-right:auto;display:flex;align-items:center;gap:8px}
+.btn-icon{width:38px;height:38px;border:1.5px solid var(--border);border-radius:10px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:.15s;position:relative}
+.btn-icon:hover{border-color:var(--primary);color:var(--primary)}
+.badge{position:absolute;top:-4px;left:-4px;width:18px;height:18px;background:var(--danger);color:#fff;border-radius:50%;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.page-content{padding:24px;flex:1}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.page-title h2{font-size:22px;font-weight:800;color:var(--text)}
+.page-title p{font-size:13px;color:var(--text-sm);margin-top:2px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:.15s;text-decoration:none}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-light);box-shadow:0 4px 12px rgba(30,58,138,.3)}
+.btn-success{background:var(--success);color:#fff}
+.btn-success:hover{background:#047857}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-danger:hover{background:#b91c1c}
+.btn-outline{background:#fff;color:var(--text);border:1.5px solid var(--border)}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
+.btn-sm{padding:7px 14px;font-size:13px}
+.btn-xs{padding:4px 10px;font-size:12px;border-radius:6px}
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border)}
+.card-header{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-header h3{font-size:15px;font-weight:700;color:var(--text)}
+.card-body{padding:20px}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+.kpi-card{background:var(--card);border-radius:var(--radius);padding:20px;border:1px solid var(--border);box-shadow:var(--shadow)}
+.kpi-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:12px}
+.kpi-card.blue .kpi-icon{background:rgba(30,58,138,.1);color:var(--primary)}
+.kpi-card.green .kpi-icon{background:rgba(5,150,105,.1);color:var(--success)}
+.kpi-card.amber .kpi-icon{background:rgba(217,119,6,.1);color:var(--warning)}
+.kpi-card.cyan .kpi-icon{background:rgba(8,145,178,.1);color:var(--info)}
+.kpi-val{font-size:24px;font-weight:800;color:var(--text);margin-bottom:4px}
+.kpi-label{font-size:12px;color:var(--text-sm);font-weight:500}
+.kpi-change{font-size:12px;font-weight:600;margin-top:8px;padding:3px 8px;border-radius:20px;display:inline-block}
+.kpi-change.up{background:rgba(5,150,105,.1);color:var(--success)}
+.kpi-change.down{background:rgba(220,38,38,.1);color:var(--danger)}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.chart-container{position:relative;height:220px}
+.table-wrapper{overflow-x:auto;border-radius:var(--radius)}
+table{width:100%;border-collapse:collapse}
+thead{background:#F8FAFC}
+th{padding:11px 16px;text-align:right;font-size:12px;font-weight:700;color:var(--text-sm);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;border-bottom:2px solid var(--border)}
+td{padding:12px 16px;font-size:13px;color:var(--text);border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#F8FAFC}
+.badge-status{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+.badge-new{background:rgba(8,145,178,.1);color:var(--info)}
+.badge-processing{background:rgba(217,119,6,.1);color:var(--warning)}
+.badge-completed{background:rgba(5,150,105,.1);color:var(--success)}
+.badge-cancelled{background:rgba(220,38,38,.1);color:var(--danger)}
+.badge-paid{background:rgba(5,150,105,.15);color:var(--success)}
+.badge-partial{background:rgba(217,119,6,.15);color:var(--warning)}
+.badge-unpaid{background:rgba(220,38,38,.1);color:var(--danger)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;width:600px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.25);animation:slideUp .25s}
+.modal-lg{width:800px}
+.modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1}
+.modal-header h3{font-size:17px;font-weight:700}
+.modal-close{width:32px;height:32px;border:none;background:var(--bg);border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.modal-close:hover{background:var(--border)}
+.modal-body{padding:24px}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;background:#fff}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.form-row.three{grid-template-columns:1fr 1fr 1fr}
+.form-row.full{grid-template-columns:1fr}
+textarea.form-control{resize:vertical;min-height:80px}
+.filter-bar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.filter-bar .form-control{width:auto;min-width:140px}
+.tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px}
+.tab-btn{padding:10px 20px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:600;background:none;border:none;color:var(--text-sm);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.15s}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
+.tab-pane{display:none}
+.tab-pane.active{display:block}
+.stats-row{display:flex;gap:12px;flex-wrap:wrap}
+.stat-box{background:var(--bg);border-radius:10px;padding:14px 18px;min-width:140px;flex:1}
+.stat-box .val{font-size:20px;font-weight:800;color:var(--text)}
+.stat-box .lbl{font-size:12px;color:var(--text-sm);margin-top:2px}
+.drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:900;display:none;backdrop-filter:blur(2px)}
+.drawer-overlay.open{display:block}
+.drawer{position:fixed;left:0;top:0;width:580px;max-width:95vw;height:100vh;background:#fff;z-index:901;transform:translateX(-100%);transition:.3s ease;overflow-y:auto;box-shadow:-20px 0 60px rgba(0,0,0,.2)}
+.drawer.open{transform:translateX(0)}
+.drawer-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1}
+.drawer-body{padding:24px}
+.alert{padding:12px 16px;border-radius:10px;font-size:13px;font-weight:500;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.alert-danger{background:rgba(220,38,38,.1);color:var(--danger);border:1px solid rgba(220,38,38,.2)}
+.text-success{color:var(--success)!important;font-weight:700}
+.text-danger{color:var(--danger)!important;font-weight:700}
+.text-primary{color:var(--primary)!important;font-weight:700}
+.text-warning{color:var(--warning)!important;font-weight:700}
+.empty-state{text-align:center;padding:48px 24px;color:var(--text-sm)}
+.empty-state .e-icon{font-size:48px;margin-bottom:12px;opacity:.3}
+.empty-state p{font-size:15px;font-weight:600}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:500;z-index:9999;opacity:0;transition:.3s;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1}
+body[data-auth="login"] #appLayout{display:none!important}
+body[data-auth="login"] #appChrome{display:none!important;visibility:hidden!important;pointer-events:none!important}
+body[data-auth="app"] #loginPage{display:none!important}
+#loginPage{z-index:2000;position:relative}
+#appChrome{position:relative;z-index:100}
+.drawer-overlay.open,.drawer-overlay.is-open{display:block}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:3px}
+</style>
+</head>
+<body data-auth="login">
+<div id="toast"></div>
+<div id="loginPage">
+<div class="login-card">
+  <div class="login-logo">
+    <div class="icon">&#x2708;&#xFE0F;</div>
+    <h1>نظام إدارة خدمات السفر</h1>
+    <p>نظام تشغيل ومحاسبة خدمات السفر</p>
+  </div>
+  <div id="loginError" class="alert alert-danger" style="display:none"></div>
+  <div class="form-group"><label>البريد الإلكتروني</label><input type="email" class="form-control" id="loginEmail" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+  <div class="form-group"><label>كلمة المرور</label><input type="password" class="form-control" id="loginPass" autocomplete="new-password"></div>
+  <button class="btn-login" onclick="doLogin()">تسجيل الدخول &rarr;</button>
+</div>
+</div>
+<div id="appLayout">
+  <aside class="sidebar">
+    <div class="sidebar-logo"><div class="s-icon">&#x2708;&#xFE0F;</div><span>نظام السفر<br><small style="font-size:10px;opacity:.6">ERP للوكالات</small></span></div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">الرئيسية</div>
+      <div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')"><span class="nav-icon">&#x1F4CA;</span> لوحة التحكم</div>
+      <div class="nav-section">التشغيل</div>
+      <div class="nav-item" data-page="operations" onclick="navigate('operations')"><span class="nav-icon">&#x1F4CB;</span> العمليات</div>
+      <div class="nav-item" data-page="clients" onclick="navigate('clients')"><span class="nav-icon">&#x1F465;</span> العملاء</div>
+      <div class="nav-item" data-page="vendors" onclick="navigate('vendors')"><span class="nav-icon">&#x1F3E2;</span> المكاتب والمزودون</div>
+      <div class="nav-section">المالية</div>
+      <div class="nav-item" data-page="vouchers" onclick="navigate('vouchers')"><span class="nav-icon">&#x1F9FE;</span> السندات</div>
+      <div class="nav-item" data-page="journal" onclick="navigate('journal')"><span class="nav-icon">&#x1F4D2;</span> دفتر الأستاذ</div>
+      <div class="nav-item" data-page="safes" onclick="navigate('safes')"><span class="nav-icon">&#x1F3E6;</span> الصناديق والبنوك</div>
+      <div class="nav-section">التقارير</div>
+      <div class="nav-item" data-page="reports" onclick="navigate('reports')"><span class="nav-icon">&#x1F4C8;</span> التقارير</div>
+      <div class="nav-section">الإعدادات</div>
+      <div class="nav-item" data-page="settings" onclick="navigate('settings')"><span class="nav-icon">&#x2699;&#xFE0F;</span> الإعدادات</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info" onclick="navigate('settings')">
+        <div class="user-avatar" id="userAvatar">أ</div>
+        <div class="user-meta"><span id="userName">المستخدم</span><small id="userRole">الدور</small></div>
+      </div>
+    </div>
+  </aside>
+  <main class="main-content">
+    <div class="topbar">
+      <div class="search-box"><span class="search-icon">&#x1F50D;</span><input type="text" placeholder="بحث برقم عملية أو اسم عميل..." id="globalSearch" oninput="globalSearchFn(this.value)"></div>
+      <div class="topbar-actions">
+        <div class="btn-icon" id="topbarNewOpBtn" onclick="showModal('newOpModal');populateOpForm()" title="عملية جديدة">&#x2795;</div>
+        <div class="btn-icon" onclick="doLogout()" title="خروج">&#x1F6AA;</div>
+      </div>
+    </div>
+    <div class="page-content" id="pageContent"></div>
+  </main>
+<div id="appChrome" aria-hidden="false">
+<!-- MODALS -->
+<div class="modal-overlay" id="newOpModal">
+<div class="modal modal-lg">
+  <div class="modal-header"><h3>&#x2795; إنشاء عملية جديدة</h3><button class="modal-close" onclick="closeModal('newOpModal')">&#x2715;</button></div>
+  <div class="modal-body">
+    <div id="newOpModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
+    <div class="form-row">
+      <div class="form-group"><label>العميل *</label><select class="form-control" id="op_client"><option value="">-- اختر عميل --</option></select></div>
+      <div class="form-group"><label>الخدمة *</label><select class="form-control" id="op_service"><option value="">-- اختر خدمة --</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>المكتب/المزود *</label><select class="form-control" id="op_vendor"><option value="">-- اختر مكتب --</option></select></div>
+      <div class="form-group"><label>العملة</label><select class="form-control" id="op_currency"><option value="KWD">دينار كويتي (KWD)</option><option value="USD">دولار أمريكي (USD)</option><option value="SAR">ريال سعودي (SAR)</option></select></div>
+    </div>
+    <div class="form-row three">
+      <div class="form-group"><label>سعر العميل (إجمالي) *</label><input type="number" class="form-control" id="op_client_price" placeholder="0.000" step="0.001" min="1" oninput="calcProfit()"></div>
+      <div class="form-group"><label>تكلفة المكتب *</label><input type="number" class="form-control" id="op_vendor_cost" placeholder="0.000" step="0.001" min="0" oninput="calcProfit()"></div>
+      <div class="form-group"><label>الربح المتوقع</label><input type="text" class="form-control" id="op_profit" readonly style="background:#F0FDF4;color:var(--success);font-weight:700"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>دفعة أولى من العميل (اختياري)</label><input type="number" class="form-control" id="op_initial_payment" placeholder="0.000" step="0.001" oninput="calcProfit()"></div>
+      <div class="form-group"><label>طريقة الدفع</label><select class="form-control" id="op_payment_method"><option value="cash">نقد</option><option value="bank">تحويل بنكي</option><option value="knet">كي-نت</option></select></div>
+    </div>
+    <div class="form-row full"><div class="form-group"><label>ملاحظات</label><textarea class="form-control" id="op_notes"></textarea></div></div>
+    <div id="op_journal_preview" style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:10px;padding:16px;display:none">
+      <p style="font-size:13px;font-weight:700;color:var(--info);margin-bottom:10px">&#x1F4D2; القيود المحاسبية الآلية المتوقعة:</p>
+      <div id="op_journal_lines" style="font-size:12px"></div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-outline" onclick="closeModal('newOpModal')">إلغاء</button>
+    <button class="btn btn-primary" onclick="saveOperation()">&#x1F4BE; حفظ العملية وإنشاء القيود</button>
+  </div>
+</div>
+</div>
+<div class="modal-overlay" id="newClientModal">
+<div class="modal">
+  <div class="modal-header"><h3>&#x1F464; إضافة عميل جديد</h3><button class="modal-close" onclick="closeModal('newClientModal')">&#x2715;</button></div>
+  <div class="modal-body">
+    <div id="newClientModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
+    <div class="form-row"><div class="form-group"><label>الاسم الكامل *</label><input type="text" class="form-control" id="cl_name"></div><div class="form-group"><label>رقم الهاتف *</label><input type="text" class="form-control" id="cl_phone"></div></div>
+    <div class="form-row"><div class="form-group"><label>هاتف بديل</label><input type="text" class="form-control" id="cl_alt_phone"></div><div class="form-group"><label>الرقم المدني</label><input type="text" class="form-control" id="cl_civil_id"></div></div>
+    <div class="form-row"><div class="form-group"><label>البريد الإلكتروني</label><input type="email" class="form-control" id="cl_email"></div><div class="form-group"><label>الجنسية</label><input type="text" class="form-control" id="cl_nationality"></div></div>
+    <div class="form-row full"><div class="form-group"><label>ملاحظات</label><textarea class="form-control" id="cl_notes"></textarea></div></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('newClientModal')">إلغاء</button><button class="btn btn-primary" onclick="saveClient()">حفظ العميل</button></div>
+</div>
+</div>
+<div class="modal-overlay" id="newVendorModal">
+<div class="modal">
+  <div class="modal-header"><h3>&#x1F3E2; إضافة مكتب/مزود جديد</h3><button class="modal-close" onclick="closeModal('newVendorModal')">&#x2715;</button></div>
+  <div class="modal-body">
+    <div class="form-row"><div class="form-group"><label>اسم المكتب *</label><input type="text" class="form-control" id="vn_name"></div><div class="form-group"><label>التصنيف</label><select class="form-control" id="vn_category"><option value="airline">شركة طيران</option><option value="hotel">فندق</option><option value="visa">مكتب تأشيرات</option><option value="transport">نقل وسياحة</option><option value="other">أخرى</option></select></div></div>
+    <div class="form-row"><div class="form-group"><label>رقم الهاتف</label><input type="text" class="form-control" id="vn_phone"></div><div class="form-group"><label>جهة الاتصال</label><input type="text" class="form-control" id="vn_contact"></div></div>
+    <div class="form-row full"><div class="form-group"><label>العنوان</label><input type="text" class="form-control" id="vn_address"></div></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('newVendorModal')">إلغاء</button><button class="btn btn-primary" onclick="saveVendor()">حفظ المكتب</button></div>
+</div>
+</div>
+<div class="modal-overlay" id="newVoucherModal">
+<div class="modal">
+  <div class="modal-header"><h3 id="voucherModalTitle">&#x1F9FE; سند جديد</h3><button class="modal-close" onclick="closeModal('newVoucherModal')">&#x2715;</button></div>
+  <div class="modal-body">
+    <div class="form-row"><div class="form-group"><label>نوع الطرف</label><select class="form-control" id="vc_party_type" onchange="updateVoucherParties()"><option value="client">عميل</option><option value="vendor">مكتب/مزود</option><option value="general">عام</option></select></div><div class="form-group"><label>الطرف</label><select class="form-control" id="vc_party_id"><option value="">-- اختر --</option></select></div></div>
+    <div class="form-row"><div class="form-group"><label>المبلغ *</label><input type="number" class="form-control" id="vc_amount" placeholder="0.000" step="0.001"></div><div class="form-group"><label>العملة</label><select class="form-control" id="vc_currency"><option value="KWD">دينار كويتي</option><option value="USD">دولار أمريكي</option></select></div></div>
+    <div class="form-row"><div class="form-group"><label>طريقة الدفع</label><select class="form-control" id="vc_method"><option value="cash">نقد</option><option value="bank">تحويل بنكي</option><option value="knet">كي-نت</option><option value="check">شيك</option></select></div><div class="form-group"><label>الصندوق/البنك</label><select class="form-control" id="vc_safe"><option value="1">الصندوق الرئيسي</option><option value="2">البنك الأهلي</option></select></div></div>
+    <div class="form-row"><div class="form-group"><label>ربط بعملية (اختياري)</label><select class="form-control" id="vc_operation"><option value="">-- بدون ربط --</option></select></div><div class="form-group"><label>رقم المرجع</label><input type="text" class="form-control" id="vc_ref"></div></div>
+    <div class="form-row full"><div class="form-group"><label>البيان</label><textarea class="form-control" id="vc_desc"></textarea></div></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('newVoucherModal')">إلغاء</button><button class="btn btn-primary" id="voucherSaveBtn" onclick="saveVoucher()">&#x1F4BE; حفظ السند</button></div>
+</div>
+</div>
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="opDrawer"><div class="drawer-header"><h3 id="drawerTitle">تفاصيل العملية</h3><button class="modal-close" onclick="closeDrawer()">&#x2715;</button></div><div class="drawer-body" id="drawerBody"></div></div>
+<div class="drawer" id="stmtDrawer" style="width:680px"><div class="drawer-header"><h3 id="stmtTitle">كشف الحساب</h3><button class="modal-close" onclick="closeDrawer()">&#x2715;</button></div><div class="drawer-body" id="stmtBody"></div></div>
+</div>
+</div>
+<script>
+// ==================== DATA STORE (API-backed) ====================
+let currentUser = null;
+let charts = {};
+let JOURNAL_CACHE = [];
+const USERS = [];
+const SERVICES = [];
+const VENDORS = [];
+let CLIENTS = [];
+let OPS = [];
+let VOUCHERS = [];
+const SAFES = [];
+
+function notify(message, type = 'info', duration = 4200) {
+  let c = document.getElementById('toastContainer');
+  if (!c) {
+    c = document.createElement('div');
+    c.id = 'toastContainer';
+    c.className = 'toast-container';
+    document.body.appendChild(c);
+  }
+  const t = document.createElement('div');
+  t.className = 'toast toast-' + type;
+  t.textContent = message;
+  c.appendChild(t);
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 280); }, duration);
+}
+
+function getJournal() { return JOURNAL_CACHE; }
+
+function getClientBalance(cid) {
+  const c = CLIENTS.find(x => x.id === cid);
+  if (c && typeof c.balance === 'number') return c.balance;
+  const je = getJournal();
+  return je.filter(j => j.account === 'ذمم العملاء' && j.party_id === cid).reduce((s, j) => s + j.debit - j.credit, 0);
+}
+function getVendorBalance(vid) {
+  const v = VENDORS.find(x => x.id === vid);
+  if (v && typeof v.balance === 'number') return v.balance;
+  const je = getJournal();
+  return je.filter(j => j.account === 'ذمم الموردين' && j.party_id === vid).reduce((s, j) => s + j.credit - j.debit, 0);
+}
+function getSafeBalance(sid) {
+  const safe = SAFES.find(s => s.id === sid);
+  if (!safe) return 0;
+  if (typeof safe.balance === 'number') return safe.balance;
+  const je = getJournal();
+  const mvmt = je.filter(j => j.account === safe.name).reduce((s, j) => s + j.debit - j.credit, 0);
+  return (safe.initial ?? safe.opening_balance ?? 0) + mvmt;
+}
+function clientReceiptsTotal(cid) {
+  const je = getJournal();
+  if (je.length) return je.filter(j => j.account === 'ذمم العملاء' && j.party_id === cid).reduce((s, j) => s + j.credit, 0);
+  const purchases = OPS.filter(o => o.client_id === cid && o.status !== 'cancelled').reduce((s, o) => s + o.client_price, 0);
+  return Math.max(0, purchases - getClientBalance(cid));
+}
+function vendorPaymentsTotal(vid) {
+  const je = getJournal();
+  if (je.length) return je.filter(j => j.account === 'ذمم الموردين' && j.party_id === vid).reduce((s, j) => s + j.debit, 0);
+  const services = OPS.filter(o => o.vendor_id === vid && o.status !== 'cancelled').reduce((s, o) => s + o.vendor_cost, 0);
+  return Math.max(0, services - getVendorBalance(vid));
+}
+const TABLE_PAGE_SIZE = 25;
+const tablePages = {};
+function paginateRows(key, rows) {
+  const totalPages = Math.max(1, Math.ceil(rows.length / TABLE_PAGE_SIZE));
+  const page = Math.min(Math.max(tablePages[key] || 1, 1), totalPages);
+  tablePages[key] = page;
+  return { page, totalPages, slice: rows.slice((page - 1) * TABLE_PAGE_SIZE, page * TABLE_PAGE_SIZE) };
+}
+function tablePagerHtml(key, page, totalPages, totalRows) {
+  if (totalRows <= TABLE_PAGE_SIZE) return '';
+  return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-top:1px solid var(--border);font-size:13px">
+    <span style="color:var(--text-sm)">${totalRows} سجل — صفحة ${page} / ${totalPages}</span>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-sm btn-outline" ${page<=1?'disabled':''} onclick="tablePages['${key}']=${page-1};${key==='ops'?'filterOps()':key==='clients'?'filterClients()':key==='vendors'?'filterVendors()':key==='vouchers'?'renderVcTable()':key==='journal'?'filterJournal()':''}">السابق</button>
+      <button class="btn btn-sm btn-outline" ${page>=totalPages?'disabled':''} onclick="tablePages['${key}']=${page+1};${key==='ops'?'filterOps()':key==='clients'?'filterClients()':key==='vendors'?'filterVendors()':key==='vouchers'?'renderVcTable()':key==='journal'?'filterJournal()':''}">التالي</button>
+    </div></div>`;
+}
+let chartRenderTimer = null;
+
+function doLogin() {}
+function doLogout() {}
+
+// ==================== NAVIGATION ====================
+let currentPage='dashboard';
+function navigate(page){
+  closeAllOverlays();
+  currentPage=page;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const active=document.querySelector(`.nav-item[data-page="${page}"]`);
+  if(active)active.classList.add('active');
+  const pc=document.getElementById('pageContent');
+  pc.innerHTML='';
+  if(chartRenderTimer){ clearTimeout(chartRenderTimer); chartRenderTimer=null; }
+  Object.values(charts).forEach(c=>{try{c.destroy();}catch(e){}});
+  charts={};
+  const pages={dashboard:renderDashboard,operations:renderOperations,clients:renderClients,vendors:renderVendors,vouchers:renderVouchers,journal:renderJournal,safes:renderSafes,reports:renderReports,settings:renderSettings};
+  if(pages[page])pages[page](pc);
+}
+
+// ==================== HELPERS ====================
+const fmt=(n)=>(+n||0).toLocaleString('ar-KW',{minimumFractionDigits:3,maximumFractionDigits:3})+' د.ك';
+const fmtN=(n,d=3)=>(+n||0).toFixed(d);
+const statusLabel={new:'جديدة',processing:'قيد التنفيذ',completed:'مكتملة',cancelled:'ملغاة'};
+const statusClass={new:'badge-info',processing:'badge-warning',completed:'badge-success',cancelled:'badge-danger'};
+const vcTypeLabel={receipt:'سند قبض',payment:'سند صرف'};
+const categoryLabel={airline:'شركة طيران',hotel:'فندق',visa:'تأشيرات',transport:'نقل',other:'أخرى'};
+const methodLabels={cash:'نقد',bank:'تحويل بنكي',knet:'كي-نت',check:'شيك',cheque:'شيك'};
+const currencyLabels={KWD:'دينار كويتي',USD:'دولار أمريكي',SAR:'ريال سعودي'};
+function formatBalance(bal){
+  if(bal<-0.001) return {text:fmt(Math.abs(bal))+' (دائن)',color:'var(--success)',title:'رصيد دائن للعميل'};
+  if(bal>0.001) return {text:fmt(bal),color:'var(--danger)',title:'رصيد مدين على العميل'};
+  return {text:fmt(0),color:'var(--success)',title:'الحساب مسوّى'};
+}
+function displayVal(v){return v==null||v===''||v==='null'||v==='undefined'?'—':v;}
+function methodLabel(m){return methodLabels[m]||displayVal(m);}
+function currencyLabel(c){return currencyLabels[c]||displayVal(c);}
+function formatMargin(profit,sales){if(sales<=0)return '—';const pct=(profit/sales)*100;if(pct>0&&pct<0.1)return 'أقل من 0.1%';return 'هامش '+pct.toFixed(1)+'%';}
+function clientName(id){return CLIENTS.find(c=>c.id===id)?.name||'—';}
+function vendorName(id){return VENDORS.find(v=>v.id===id)?.name||'—';}
+function serviceName(id){return SERVICES.find(s=>s.id===id)?.name||'—';}
+function safeName(id){return SAFES.find(s=>s.id===id)?.name||'—';}
+function partyLabel(v){return v.party_type==='client'?clientName(v.party_id):v.party_type==='vendor'?vendorName(v.party_id):'عام';}
+function today(){return new Date().toISOString().slice(0,10);}
+
+// ==================== MODAL / DRAWER ====================
+function showModalError(modalId,msg){
+  const el=document.getElementById(modalId+'Error');
+  if(el){el.textContent=msg;el.style.display='block';}
+  else notify(msg,'warning');
+}
+function clearModalError(modalId){
+  const el=document.getElementById(modalId+'Error');
+  if(el){el.style.display='none';el.textContent='';}
+}
+function showModal(id){
+  if(window.AppShell) AppShell.prepareModal(id);
+  clearModalError(id);
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id){
+  document.getElementById(id).classList.remove('open');
+  clearModalError(id);
+}
+function closeAllOverlays(){ if(window.AppShell){AppShell.resetOverlays();return;} document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open')); closeDrawer(true); }
+function closeDrawer(clearContent){ if(window.AppShell){AppShell.closeDrawer(clearContent!==false);return;} document.getElementById('opDrawer').classList.remove('open');document.getElementById('stmtDrawer').classList.remove('open'); const o=document.getElementById('drawerOverlay'); if(o){o.classList.remove('open','is-open');o.style.display='none';} }
+function openDrawer(id){ if(window.AppShell){AppShell.openDrawer(id);return;} document.getElementById('opDrawer').classList.remove('open');document.getElementById('stmtDrawer').classList.remove('open');document.getElementById(id).classList.add('open'); const o=document.getElementById('drawerOverlay'); if(o){o.classList.add('open');o.style.display='block';} }
+
+// ==================== GLOBAL SEARCH ====================
+async function globalSearchFn(q){
+  if(!q||q.length<2)return;
+  if(window.AppShell&&AppShell.authMode!=='app')return;
+  await navigate('operations');
+  const input=document.getElementById('opSearchInput');
+  if(input){input.value=q;filterOps();}
+  const n=getFilteredOps().length;
+  if(!n) notify('لا توجد نتائج مطابقة لـ «'+q+'»','warning');
+}
+
+// ==================== EXPORT ====================
+function toExcelAndDownload(data,headers,filename){
+  const ws=XLSX.utils.json_to_sheet(data.map(row=>Object.fromEntries(headers.map((h,i)=>[h,Object.values(row)[i]]))));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'البيانات');
+  const cols=headers.map(h=>({wch:Math.max(h.length*2,14)}));
+  ws['!cols']=cols;
+  XLSX.writeFile(wb,filename+'.xlsx');
+}
+function toPDFAndDownload(title,headers,rows,filename){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  doc.setFont('helvetica');
+  doc.setFontSize(14);
+  doc.text(title,148,15,{align:'center'});
+  doc.setFontSize(8);
+  const colW=Math.min(35,260/headers.length);
+  const drawHeader=()=>headers.forEach((h,i)=>{doc.rect(10+i*colW,22,colW,7);doc.text(String(h),10+i*colW+colW/2,27,{align:'center'});});
+  drawHeader();
+  let y=29;
+  rows.forEach(row=>{
+    if(y>190){doc.addPage();drawHeader();y=29;}
+    row.forEach((cell,ci)=>{doc.rect(10+ci*colW,y,colW,7);doc.text(String(cell??''),10+ci*colW+colW/2,y+5,{align:'center'});});
+    y+=7;
+  });
+  doc.save(filename+'.pdf');
+}
+
+// ==================== DASHBOARD ====================
+function renderDashboard(pc){
+  const je=getJournal();
+  const todayStr=today();
+  const todayOps=OPS.filter(o=>o.date===todayStr&&o.status!=='cancelled');
+  const todaySales=(typeof DASHBOARD_DATA?.today_sales==='number')?DASHBOARD_DATA.today_sales:todayOps.reduce((s,o)=>s+o.client_price,0);
+  const todayProfit=(typeof DASHBOARD_DATA?.today_profit==='number')?DASHBOARD_DATA.today_profit:todayOps.reduce((s,o)=>s+o.profit,0);
+  const totalReceipts=(typeof DASHBOARD_DATA?.total_cash_receipts==='number')?DASHBOARD_DATA.total_cash_receipts:(BOOTSTRAP_METRICS.total_cash_receipts||BOOTSTRAP_METRICS.total_receipts||0);
+  const totalPayments=(typeof DASHBOARD_DATA?.total_payments==='number')?DASHBOARD_DATA.total_payments:(BOOTSTRAP_METRICS.total_payments||0);
+  const debtors=CLIENTS.map(c=>({...c,bal:getClientBalance(c.id)})).filter(c=>c.bal>0).sort((a,b)=>b.bal-a.bal).slice(0,5);
+  const creditors=VENDORS.map(v=>({...v,bal:getVendorBalance(v.id)})).filter(v=>v.bal>0).sort((a,b)=>b.bal-a.bal).slice(0,5);
+  const lastOps=OPS.slice().sort((a,b)=>b.id-a.id).slice(0,10);
+  const overdueOps=(DASHBOARD_DATA?.overdue_operations||[]).slice(0,5);
+  const overdueFallback=OPS.filter(o=>o.status!=='cancelled'&&o.status!=='completed'&&o.date<=new Date(Date.now()-7*86400000).toISOString().slice(0,10)&&(+o.client_outstanding||0)>0.001).slice(0,5);
+  const overdueList=overdueOps.length?overdueOps:overdueFallback;
+
+  // weekly data (last 7 days)
+  const days=[];
+  for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
+  const weekReceipts=DASHBOARD_DATA?.week?.receipts||days.map(d=>getJournal().filter(j=>j.account==='ذمم العملاء'&&j.party==='client'&&j.date===d).reduce((s,j)=>s+j.credit,0));
+  const weekPayments=DASHBOARD_DATA?.week?.payments||days.map(d=>getJournal().filter(j=>j.account==='ذمم الموردين'&&j.party==='vendor'&&j.date===d).reduce((s,j)=>s+j.debit,0));
+  const svcCount=SERVICES.map(s=>({name:s.name,count:OPS.filter(o=>o.service_id===s.id&&o.status!=='cancelled').length}));
+
+  pc.innerHTML=`
+  <div style="padding:24px">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
+      ${kpiCard('💰','مبيعات اليوم',fmt(todaySales),'var(--primary)','اليوم: '+todayOps.length+' عمليات')}
+      ${kpiCard('📈','ربح متوقع اليوم',fmt(todayProfit),'var(--success)',formatMargin(todayProfit,todaySales))}
+      ${kpiCard('🧾','التحصيلات النقدية',fmt(totalReceipts),'var(--info)',VOUCHERS.filter(v=>v.type==='receipt').length+' سند قبض')}
+      ${kpiCard('💸','إجمالي المدفوعات',fmt(totalPayments),'var(--warning)',VOUCHERS.filter(v=>v.type==='payment').length+' سند صرف')}
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:24px">
+      <div class="card"><div class="card-header"><h3>حركة الأسبوع (قبض ودفع)</h3></div><div class="card-body" style="min-height:240px"><div style="position:relative;height:220px"><canvas id="weekChart"></canvas></div></div></div>
+      <div class="card"><div class="card-header"><h3>العمليات حسب الخدمة</h3></div><div class="card-body" style="min-height:240px"><div style="position:relative;height:220px"><canvas id="svcChart"></canvas></div></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:24px">
+      <div class="card">
+        <div class="card-header"><h3>آخر 10 عمليات</h3><button class="btn btn-sm btn-outline" onclick="navigate('operations')">عرض الكل</button></div>
+        <div class="card-body" style="padding:0">
+        <table class="table"><thead><tr><th>الرقم</th><th>العميل</th><th>الخدمة</th><th>المبلغ</th><th>الربح</th><th>الحالة</th></tr></thead>
+        <tbody>${lastOps.map(o=>`<tr onclick="viewOp(${o.id})" style="cursor:pointer"><td><b>${o.ref}</b></td><td>${clientName(o.client_id)}</td><td>${serviceName(o.service_id)}</td><td>${fmt(o.client_price)}</td><td style="color:${o.profit>=0?'var(--success)':'var(--danger)'}">${fmt(o.profit)}</td><td><span class="badge ${statusClass[o.status]}">${statusLabel[o.status]}</span></td></tr>`).join('')}</tbody></table>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        ${overdueList.length>0?`<div class="card" style="border-right:4px solid var(--warning)"><div class="card-header"><h3>⏰ متأخر التحصيل (+7 أيام)</h3></div><div class="card-body">${overdueList.map(o=>`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><b>${o.ref}</b> - ${clientName(o.client_id)}<br><small style="color:var(--danger)">تاريخ: ${o.date} | ${statusLabel[o.status]} | متبقي: ${fmt(+o.client_outstanding||getClientBalance(o.client_id))}</small></div>`).join('')}</div></div>`:''}
+        <div class="card"><div class="card-header"><h3>🔴 أعلى 5 مدينين</h3></div><div class="card-body" style="padding:0">
+        <table class="table"><thead><tr><th>العميل</th><th>المبلغ</th></tr></thead><tbody>${debtors.map(c=>`<tr><td>${c.name}</td><td style="color:var(--danger);font-weight:700">${fmt(c.bal)}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text-sm)">لا يوجد مدينون</td></tr>'}</tbody></table></div></div>
+        <div class="card"><div class="card-header"><h3>🟡 أعلى 5 دائنين</h3></div><div class="card-body" style="padding:0">
+        <table class="table"><thead><tr><th>المورد</th><th>المبلغ</th></tr></thead><tbody>${creditors.map(v=>`<tr><td>${v.name}</td><td style="color:var(--warning);font-weight:700">${fmt(v.bal)}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text-sm)">لا يوجد دائنون</td></tr>'}</tbody></table></div></div>
+      </div>
+    </div>
+  </div>`;
+
+  chartRenderTimer=setTimeout(()=>{
+    chartRenderTimer=null;
+    if(currentPage!=='dashboard')return;
+    requestAnimationFrame(()=>{
+      const wctx=document.getElementById('weekChart')?.getContext('2d');
+      if(wctx){if(charts.week){try{charts.week.destroy();}catch(e){}} charts.week=new Chart(wctx,{type:'bar',data:{labels:days.map(d=>d.slice(5)),datasets:[{label:'مقبوضات',data:weekReceipts,backgroundColor:'rgba(5,150,105,.7)',borderRadius:6},{label:'مدفوعات',data:weekPayments,backgroundColor:'rgba(220,38,38,.7)',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true}}}});}
+      const sctx=document.getElementById('svcChart')?.getContext('2d');
+      if(sctx){if(charts.svc){try{charts.svc.destroy();}catch(e){}} charts.svc=new Chart(sctx,{type:'doughnut',data:{labels:svcCount.map(s=>s.name),datasets:[{data:svcCount.map(s=>s.count),backgroundColor:['#1E3A8A','#059669','#D97706','#DC2626','#0891B2'],borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom'}}}});}
+    });
+  },200);
+}
+function kpiCard(icon,label,value,color,sub){
+  return `<div class="card" style="border-top:4px solid ${color}"><div class="card-body"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><p style="font-size:12px;color:var(--text-sm);margin-bottom:6px">${label}</p><p style="font-size:24px;font-weight:800;color:${color}">${value}</p><p style="font-size:11px;color:var(--text-sm);margin-top:4px">${sub}</p></div><div style="font-size:32px">${icon}</div></div></div></div>`;
+}
+
+// ==================== OPERATIONS ====================
+let opFilter={search:'',status:'all',service:'all'};
+function renderOperations(pc){
+  pc.innerHTML=`
+  <div style="padding:24px">
+    <div class="card">
+      <div class="card-header">
+        <h3>📋 إدارة العمليات (${OPS.length})</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" class="form-control" id="opSearchInput" placeholder="بحث..." oninput="filterOps()" style="width:200px">
+          <select class="form-control" id="opStatusFilter" onchange="filterOps()" style="width:150px">
+            <option value="all">كل الحالات</option>
+            <option value="new">جديدة</option>
+            <option value="processing">قيد التنفيذ</option>
+            <option value="completed">مكتملة</option>
+            <option value="cancelled">ملغاة</option>
+          </select>
+          <select class="form-control" id="opSvcFilter" onchange="filterOps()" style="width:150px">
+            <option value="all">كل الخدمات</option>
+            ${SERVICES.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}
+          </select>
+          ${canDo('create_op')?`<button class="btn btn-primary" onclick="showModal('newOpModal');populateOpForm()">➕ عملية جديدة</button>`:''}
+          <button class="btn btn-sm btn-outline" onclick="exportOps()">📥 Excel</button>
+          <button class="btn btn-sm btn-outline" onclick="exportOpsPDF()">📄 PDF</button>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0"><div id="opTableWrap"></div></div>
+    </div>
+  </div>`;
+  filterOps();
+}
+function filterOps(){
+  const filtered=getFilteredOps();
+  const {slice, page, totalPages} = paginateRows('ops', filtered);
+  const wrap=document.getElementById('opTableWrap');
+  if(!wrap)return;
+  wrap.innerHTML=`<table class="table">
+    <thead><tr><th>المرجع</th><th>التاريخ</th><th>العميل</th><th>الخدمة</th><th>المورد</th><th>سعر العميل</th><th>التكلفة</th><th>الربح</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+    <tbody>${slice.map(o=>`<tr>
+      <td><b style="color:var(--primary);cursor:pointer" onclick="viewOp(${o.id})">${o.ref}</b></td>
+      <td>${o.date}</td><td>${clientName(o.client_id)}</td><td>${serviceName(o.service_id)}</td><td>${vendorName(o.vendor_id)}</td>
+      <td><b>${fmt(o.client_price)}</b></td><td>${fmt(o.vendor_cost)}</td>
+      <td style="color:${o.profit>=0?'var(--success)':'var(--danger)'};font-weight:700">${fmt(o.profit)}</td>
+      <td><span class="badge ${statusClass[o.status]}">${statusLabel[o.status]}</span></td>
+      <td><button class="btn btn-sm btn-outline" onclick="viewOp(${o.id})">تفاصيل</button>${o.status!=='cancelled'&&canDo('cancel_op')?` <button class="btn btn-sm btn-danger" onclick="cancelOp(${o.id})">إلغاء</button>`:''}</td>
+    </tr>`).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--text-sm);padding:40px">لا توجد عمليات</td></tr>'}</tbody>
+  </table>${tablePagerHtml('ops', page, totalPages, filtered.length)}`;
+}
+function getFilteredOps(){
+  const q=(document.getElementById('opSearchInput')?.value||'').toLowerCase();
+  const st=document.getElementById('opStatusFilter')?.value||'all';
+  const sv=document.getElementById('opSvcFilter')?.value||'all';
+  return OPS.filter(o=>{
+    const cl=clientName(o.client_id).toLowerCase();
+    const matchQ=!q||o.ref.toLowerCase().includes(q)||cl.includes(q)||serviceName(o.service_id).toLowerCase().includes(q);
+    const matchSt=st==='all'||o.status===st;
+    const matchSv=sv==='all'||o.service_id==sv;
+    return matchQ&&matchSt&&matchSv;
+  }).sort((a,b)=>b.id-a.id);
+}
+function canViewPage(page){
+  const r=currentUser?.role;
+  if(r==='admin')return true;
+  const access={
+    dashboard:['sales','accountant','auditor'],
+    operations:['sales','accountant','auditor'],
+    clients:['sales','accountant','auditor'],
+    vendors:['sales','accountant','auditor'],
+    vouchers:['sales','accountant','auditor'],
+    journal:['accountant','auditor'],
+    safes:['accountant','auditor'],
+    reports:['sales','accountant','auditor'],
+    settings:['sales','accountant','auditor'],
+  };
+  return (access[page]||[]).includes(r);
+}
+function canDo(action){
+  const r=currentUser?.role;
+  if(r==='admin')return true;
+  if(r==='auditor')return false;
+  if(action==='create_op'&&r==='sales')return true;
+  if(action==='update_op_status'&&(r==='sales'||r==='accountant'))return true;
+  if(action==='cancel_op'&&r==='accountant')return true;
+  if(action==='create_voucher'&&r==='accountant')return true;
+  if(action==='write_master'&&r==='sales')return true;
+  return false;
+}
+function applyRoleUi(){
+  document.querySelectorAll('.nav-item[data-page]').forEach(el=>{
+    el.style.display=canViewPage(el.dataset.page)?'flex':'none';
+  });
+  const topOp=document.getElementById('topbarNewOpBtn');
+  if(topOp)topOp.style.display=canDo('create_op')?'':'none';
+}
+/** viewOp / viewClientStmt / viewVendorStmt — API-backed implementations in travel-erp-api-bridge.js */
+function populateOpForm(){
+  const cs=document.getElementById('op_client');
+  const sv=document.getElementById('op_service');
+  const vn=document.getElementById('op_vendor');
+  if(cs)cs.innerHTML='<option value="">-- اختر عميل --</option>'+CLIENTS.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  if(sv)sv.innerHTML='<option value="">-- اختر خدمة --</option>'+SERVICES.filter(s=>s.active).map(s=>`<option value="${s.id}">${s.icon} ${s.name}</option>`).join('');
+  if(vn)vn.innerHTML='<option value="">-- اختر مكتب --</option>'+VENDORS.map(v=>`<option value="${v.id}">${v.name}</option>`).join('');
+  ['op_client','op_service','op_vendor','op_client_price','op_vendor_cost','op_profit','op_initial_payment','op_notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const jp=document.getElementById('op_journal_preview');
+  if(jp)jp.style.display='none';
+}
+function calcProfit(){
+  const cp=+document.getElementById('op_client_price')?.value||0;
+  const vc=+document.getElementById('op_vendor_cost')?.value||0;
+  const ip=+document.getElementById('op_initial_payment')?.value||0;
+  const pr=cp-vc;
+  const pEl=document.getElementById('op_profit');
+  if(pEl){pEl.value=fmtN(pr)+' د.ك'; pEl.style.color=pr>=0?'var(--success)':'var(--danger)';}
+  const jp=document.getElementById('op_journal_preview');
+  const jl=document.getElementById('op_journal_lines');
+  if(cp>0&&vc>0&&jp&&jl){
+    jp.style.display='block';
+    jl.innerHTML=`
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:4px;margin-bottom:4px;font-weight:700;border-bottom:1px solid #BAE6FD;padding-bottom:4px"><span>الحساب</span><span>مدين</span><span>دائن</span></div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:4px;padding:2px 0;color:var(--danger)"><span>ذمم العملاء</span><span>${fmtN(cp)}</span><span>—</span></div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:4px;padding:2px 0;color:var(--success)"><span>إيرادات الخدمات</span><span>—</span><span>${fmtN(cp)}</span></div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:4px;padding:2px 0;color:var(--danger)"><span>تكلفة الخدمات</span><span>${fmtN(vc)}</span><span>—</span></div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:4px;padding:2px 0;color:var(--success)"><span>ذمم الموردين</span><span>—</span><span>${fmtN(vc)}</span></div>
+      ${ip>0?`<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:4px;padding:2px 0;color:var(--primary)"><span>الصندوق (دفعة أولى)</span><span>${fmtN(ip)}</span><span>—</span></div><div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:4px;padding:2px 0;color:var(--primary)"><span>ذمم العملاء</span><span>—</span><span>${fmtN(ip)}</span></div>`:''}
+    `;
+  }
+}
+function exportOps(){
+  const rows=(currentPage==='reports'&&rptTab==='ops'?OPS.filter(o=>o.status!=='cancelled').sort((a,b)=>b.id-a.id):getFilteredOps());
+  toExcelAndDownload(rows.map(o=>({ref:o.ref,date:o.date,client:clientName(o.client_id),service:serviceName(o.service_id),vendor:vendorName(o.vendor_id),client_price:o.client_price,vendor_cost:o.vendor_cost,profit:o.profit,status:statusLabel[o.status]})),['المرجع','التاريخ','العميل','الخدمة','المورد','سعر العميل','التكلفة','الربح','الحالة'],'العمليات');
+}
+function exportOpsPDF(){
+  const rows=(currentPage==='reports'&&rptTab==='ops'?OPS.filter(o=>o.status!=='cancelled').sort((a,b)=>b.id-a.id):getFilteredOps());
+  toPDFAndDownload('قائمة العمليات',['المرجع','التاريخ','العميل','الخدمة','المورد','سعر العميل','التكلفة','الربح','الحالة'],rows.map(o=>[o.ref,o.date,clientName(o.client_id),serviceName(o.service_id),vendorName(o.vendor_id),fmtN(o.client_price),fmtN(o.vendor_cost),fmtN(o.profit),statusLabel[o.status]]),'العمليات');
+}
+
+// ==================== CLIENTS ====================
+function renderClients(pc){
+  pc.innerHTML=`
+  <div style="padding:24px">
+    <div class="card">
+      <div class="card-header">
+        <h3>👤 إدارة العملاء (${CLIENTS.length})</h3>
+        <div style="display:flex;gap:8px">
+          <input type="text" class="form-control" id="clSearch" placeholder="بحث..." oninput="filterClients()" style="width:200px">
+          ${canDo('write_master')?`<button class="btn btn-primary" onclick="showModal('newClientModal')">➕ عميل جديد</button>`:''}
+          <button class="btn btn-sm btn-outline" onclick="exportClients()">📥 Excel</button>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0"><div id="clTableWrap"></div></div>
+    </div>
+  </div>`;
+  filterClients();
+}
+function filterClients(){
+  const q=(document.getElementById('clSearch')?.value||'').toLowerCase();
+  const filtered=CLIENTS.filter(c=>!q||c.name.toLowerCase().includes(q)||c.phone.includes(q)||(c.civil_id||'').includes(q));
+  const {slice, page, totalPages} = paginateRows('clients', filtered);
+  const wrap=document.getElementById('clTableWrap');
+  if(!wrap)return;
+  wrap.innerHTML=`<table class="table"><thead><tr><th>#</th><th>الاسم</th><th>الهاتف</th><th>الرقم المدني</th><th>الجنسية</th><th>الرصيد</th><th>العمليات</th><th>إجراءات</th></tr></thead>
+  <tbody>${slice.map(c=>{
+    const bal=getClientBalance(c.id);
+    const ops=OPS.filter(o=>o.client_id===c.id).length;
+    const b=formatBalance(bal);
+    return `<tr><td>${c.id}</td><td><b>${c.name}</b></td><td>${c.phone}</td><td>${displayVal(c.civil_id)}</td><td>${displayVal(c.nationality)}</td><td style="color:${b.color};font-weight:700" title="${b.title}">${b.text}</td><td><span class="badge badge-info">${ops}</span></td><td><button class="btn btn-sm btn-outline" onclick="viewClientStmt(${c.id})">كشف حساب</button></td></tr>`;
+  }).join('')||'<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-sm)">لا يوجد عملاء</td></tr>'}</tbody></table>${tablePagerHtml('clients', page, totalPages, filtered.length)}`;
+}
+function exportClients(){
+  toExcelAndDownload(CLIENTS.map(c=>({id:c.id,name:c.name,phone:c.phone,civil_id:c.civil_id,email:c.email,nationality:c.nationality,balance:getClientBalance(c.id)})),['#','الاسم','الهاتف','الرقم المدني','الإيميل','الجنسية','الرصيد'],'العملاء');
+}
+function exportClientStmt(cid){
+  const cl=CLIENTS.find(c=>c.id===cid);
+  const je=getJournal().filter(j=>j.account==='ذمم العملاء'&&j.party_id===cid).sort((a,b)=>a.date.localeCompare(b.date));
+  let running=0;
+  toExcelAndDownload(je.map(j=>{running+=j.debit-j.credit;return {date:j.date,ref:j.ref,desc:j.desc,debit:j.debit||0,credit:j.credit||0,balance:running};}),['التاريخ','المرجع','البيان','مدين','دائن','الرصيد'],`كشف_حساب_${cl?.name}`);
+}
+
+// ==================== VENDORS ====================
+function renderVendors(pc){
+  pc.innerHTML=`
+  <div style="padding:24px">
+    <div class="card">
+      <div class="card-header">
+        <h3>🏢 الموردون والمكاتب (${VENDORS.length})</h3>
+        <div style="display:flex;gap:8px">
+          <input type="text" class="form-control" id="vnSearch" placeholder="بحث..." oninput="filterVendors()" style="width:200px">
+          ${canDo('write_master')?`<button class="btn btn-primary" onclick="showModal('newVendorModal')">➕ مورد جديد</button>`:''}
+          <button class="btn btn-sm btn-outline" onclick="exportVendors()">📥 Excel</button>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0"><div id="vnTableWrap"></div></div>
+    </div>
+  </div>`;
+  filterVendors();
+}
+function filterVendors(){
+  const q=(document.getElementById('vnSearch')?.value||'').toLowerCase();
+  const filtered=VENDORS.filter(v=>!q||v.name.toLowerCase().includes(q)||v.phone?.includes(q));
+  const {slice, page, totalPages} = paginateRows('vendors', filtered);
+  const wrap=document.getElementById('vnTableWrap');
+  if(!wrap)return;
+  wrap.innerHTML=`<table class="table"><thead><tr><th>#</th><th>الاسم</th><th>التصنيف</th><th>الهاتف</th><th>جهة الاتصال</th><th>الرصيد</th><th>إجراءات</th></tr></thead>
+  <tbody>${slice.map(v=>{
+    const bal=getVendorBalance(v.id);
+    return `<tr><td>${v.id}</td><td><b>${v.name}</b></td><td>${categoryLabel[v.category]||v.category}</td><td>${v.phone||'—'}</td><td>${v.contact||'—'}</td><td style="color:${bal>0?'var(--warning)':'var(--success)'};font-weight:700">${fmt(bal)}</td><td><button class="btn btn-sm btn-outline" onclick="viewVendorStmt(${v.id})">كشف حساب</button></td></tr>`;
+  }).join('')}</tbody></table>${tablePagerHtml('vendors', page, totalPages, filtered.length)}`;
+}
+function exportVendors(){
+  toExcelAndDownload(VENDORS.map(v=>({id:v.id,name:v.name,category:categoryLabel[v.category]||v.category,phone:v.phone,contact:v.contact,balance:getVendorBalance(v.id)})),['#','الاسم','التصنيف','الهاتف','جهة الاتصال','الرصيد'],'الموردون');
+}
+
+// ==================== VOUCHERS ====================
+let vcTab='receipt';
+function renderVouchers(pc){
+  const receipts=VOUCHERS.filter(v=>v.type==='receipt');
+  const payments=VOUCHERS.filter(v=>v.type==='payment');
+  pc.innerHTML=`
+  <div style="padding:24px">
+    <div class="card">
+      <div class="card-header">
+        <h3>🧾 السندات المالية</h3>
+        <div style="display:flex;gap:8px">
+          ${canDo('create_voucher')?`<button class="btn btn-success" onclick="openNewVoucher('receipt')">➕ سند قبض</button><button class="btn btn-danger" onclick="openNewVoucher('payment')">➕ سند صرف</button>`:''}
+          <button class="btn btn-sm btn-outline" onclick="exportVouchers()">📥 Excel</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--border)">
+          <button class="tab-btn ${vcTab==='receipt'?'active':''}" onclick="switchVcTab('receipt')">سندات القبض (${receipts.length})</button>
+          <button class="tab-btn ${vcTab==='payment'?'active':''}" onclick="switchVcTab('payment')">سندات الصرف (${payments.length})</button>
+        </div>
+        <div id="vcTableWrap"></div>
+      </div>
+    </div>
+  </div>`;
+  renderVcTable();
+}
+function switchVcTab(tab){vcTab=tab;tablePages.vouchers=1;navigate('vouchers');}
+function renderVcTable(){
+  const vcs=VOUCHERS.filter(v=>v.type===vcTab).sort((a,b)=>b.id-a.id);
+  const {slice, page, totalPages} = paginateRows('vouchers', vcs);
+  const wrap=document.getElementById('vcTableWrap');
+  if(!wrap)return;
+  wrap.innerHTML=`<table class="table"><thead><tr><th>الرقم</th><th>التاريخ</th><th>الطرف</th><th>المبلغ</th><th>الحالة</th><th>الطريقة</th><th>الصندوق</th><th>العملية</th><th>البيان</th><th>طباعة</th></tr></thead>
+  <tbody>${slice.map(v=>{
+    const party=partyLabel(v);
+    const op=OPS.find(o=>o.id===v.operation_id);
+    const reversed=v.reversed||op?.status==='cancelled';
+    return `<tr style="${reversed?'opacity:.65':''}"><td><b style="color:var(--primary)">${v.ref}</b></td><td>${v.date}</td><td>${party}</td><td style="font-weight:700;color:${vcTab==='receipt'?'var(--success)':'var(--danger)'}">${fmt(v.amount)}</td><td>${reversed?'<span class="badge badge-danger">ملغى</span>':'<span class="badge badge-success">فعّال</span>'}</td><td>${methodLabel(v.method)}</td><td>${safeName(v.safe_id)}</td><td>${op?op.ref:'—'}</td><td style="font-size:12px">${displayVal(v.desc)}</td><td><button class="btn btn-xs btn-outline" onclick="printVoucher(${v.id})">🖨️ طباعة</button></td></tr>`;
+  }).join('')||'<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-sm)">لا توجد سندات</td></tr>'}</tbody></table>${tablePagerHtml('vouchers', page, totalPages, vcs.length)}`;
+}
+function openNewVoucher(type){
+  vcTab=type;
+  document.getElementById('voucherModalTitle').textContent=type==='receipt'?'🧾 سند قبض جديد':'💸 سند صرف جديد';
+  document.getElementById('voucherSaveBtn').style.background=type==='receipt'?'var(--success)':'var(--danger)';
+  updateVoucherParties();
+  const vcSafe=document.getElementById('vc_safe');
+  if(vcSafe)vcSafe.innerHTML=SAFES.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  // Populate operations
+  const vcOp=document.getElementById('vc_operation');
+  if(vcOp)vcOp.innerHTML='<option value="">-- بدون ربط --</option>'+OPS.filter(o=>o.status!=='cancelled').map(o=>`<option value="${o.id}">${o.ref} - ${clientName(o.client_id)}</option>`).join('');
+  ['vc_amount','vc_ref'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('vc_desc').value='';
+  showModal('newVoucherModal');
+}
+function updateVoucherParties(){
+  const pt=document.getElementById('vc_party_type')?.value;
+  const sel=document.getElementById('vc_party_id');
+  if(!sel)return;
+  if(pt==='client')sel.innerHTML='<option value="">-- اختر عميل --</option>'+CLIENTS.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  else if(pt==='vendor')sel.innerHTML='<option value="">-- اختر مورد --</option>'+VENDORS.map(v=>`<option value="${v.id}">${v.name}</option>`).join('');
+  else sel.innerHTML='<option value="">-- عام --</option>';
+}
+function exportVouchers(){
+  toExcelAndDownload(VOUCHERS.map(v=>({ref:v.ref,type:vcTypeLabel[v.type],date:v.date,party:partyLabel(v),amount:v.amount,method:methodLabel(v.method),safe:safeName(v.safe_id),status:v.reversed?'ملغى':'فعّال',desc:displayVal(v.desc)})),['الرقم','النوع','التاريخ','الطرف','المبلغ','الطريقة','الصندوق','الحالة','البيان'],'السندات');
+}
+function printVoucher(id){
+  const v=VOUCHERS.find(x=>x.id===id);if(!v)return;
+  const party=partyLabel(v);
+  const op=v.operation_id?OPS.find(o=>o.id===v.operation_id):null;
+  const isReceipt=v.type==='receipt';
+  const methodLabel={'cash':'نقداً','bank':'تحويل بنكي','knet':'كي-نت','check':'شيك','cheque':'شيك'};
+  const w=window.open('','_blank','width=700,height=550');
+  if(!w){notify('يرجى السماح بالنوافذ المنبثقة للطباعة', 'warning');return;}
+  w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Tajawal',sans-serif;background:#fff;color:#1e293b;padding:0}
+    .voucher{width:680px;margin:20px auto;border:2px solid ${isReceipt?'#059669':'#DC2626'};border-radius:12px;overflow:hidden}
+    .v-header{background:${isReceipt?'#059669':'#DC2626'};color:#fff;padding:18px 28px;display:flex;justify-content:space-between;align-items:center}
+    .v-header h1{font-size:22px;font-weight:800}
+    .v-header .ref{font-size:14px;opacity:.85}
+    .v-body{padding:24px 28px}
+    .v-company{text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px dashed #cbd5e0}
+    .v-company h2{font-size:18px;font-weight:800;color:#1e3a8a}
+    .v-company p{font-size:12px;color:#64748b;margin-top:2px}
+    .v-amount{text-align:center;margin:20px 0;background:${isReceipt?'#f0fdf4':'#fff5f5'};border:2px dashed ${isReceipt?'#059669':'#DC2626'};border-radius:10px;padding:16px}
+    .v-amount .lbl{font-size:12px;color:#64748b;margin-bottom:4px}
+    .v-amount .val{font-size:32px;font-weight:800;color:${isReceipt?'#059669':'#DC2626'}}
+    .v-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+    .v-field{background:#f8fafc;border-radius:8px;padding:10px 14px}
+    .v-field .fl{font-size:11px;color:#64748b;font-weight:600;margin-bottom:3px}
+    .v-field .fv{font-size:14px;font-weight:700;color:#1e293b}
+    .v-notes{background:#f8fafc;border-radius:8px;padding:10px 14px;margin-bottom:20px}
+    .v-notes .fl{font-size:11px;color:#64748b;font-weight:600;margin-bottom:3px}
+    .v-notes .fv{font-size:13px;color:#1e293b}
+    .v-footer{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;padding-top:20px;border-top:1px dashed #cbd5e0;text-align:center}
+    .v-footer .sig-box{border-top:1px solid #94a3b8;padding-top:8px;margin-top:40px;font-size:12px;color:#64748b}
+    .v-stamp{text-align:center;margin-top:16px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8}
+    @media print{body{padding:0}@page{margin:0.5cm}.voucher{border:2px solid ${isReceipt?'#059669':'#DC2626'}!important}}
+  </style></head><body>
+  <div class="voucher">
+    <div class="v-header">
+      <div><h1>${isReceipt?'🧾 سند قبض':'💸 سند صرف'}</h1><div class="ref">${isReceipt?'Receipt Voucher':'Payment Voucher'}</div></div>
+      <div style="text-align:left"><div style="font-size:22px;font-weight:800">${v.ref}</div><div style="font-size:13px;opacity:.85">${v.date}</div></div>
+    </div>
+    <div class="v-body">
+      <div class="v-company">
+        <h2>✈️ نظام إدارة خدمات السفر</h2>
+        <p>Travel Services Management System</p>
+      </div>
+      <div class="v-amount">
+        <div class="lbl">${isReceipt?'المبلغ المقبوض':'المبلغ المصروف'}</div>
+        <div class="val">${fmt(v.amount)}</div>
+      </div>
+      <div class="v-grid">
+        <div class="v-field"><div class="fl">${v.party_type==='client'?'العميل':v.party_type==='vendor'?'المورد':'الطرف'}</div><div class="fv">${party}</div></div>
+        <div class="v-field"><div class="fl">طريقة الدفع</div><div class="fv">${methodLabel[v.method]||v.method}</div></div>
+        <div class="v-field"><div class="fl">الصندوق / البنك</div><div class="fv">${safeName(v.safe_id)}</div></div>
+        <div class="v-field"><div class="fl">العملة</div><div class="fv">${v.currency}</div></div>
+        ${op?`<div class="v-field"><div class="fl">رقم العملية</div><div class="fv">${op.ref}</div></div>`:''}
+      </div>
+      <div class="v-notes"><div class="fl">البيان</div><div class="fv">${v.desc||'—'}</div></div>
+      <div class="v-footer">
+        <div><div class="sig-box">المحاسب</div></div>
+        <div><div class="sig-box">${isReceipt?'المستلم':'المستلم منه'}</div></div>
+        <div><div class="sig-box">المدير</div></div>
+      </div>
+      <div class="v-stamp">طُبع بتاريخ: ${new Date().toLocaleDateString('ar-KW')} — نظام إدارة خدمات السفر</div>
+    </div>
+  </div>
+  <script>window.onload=function(){window.print();}<\/script>
+  
+
+
+</body></html>`);
+  w.document.close();
+}
+
+// ==================== JOURNAL ====================
+function renderJournal(pc){
+  const je=getJournal();
+  const totalD=je.reduce((s,j)=>s+j.debit,0);
+  const totalC=je.reduce((s,j)=>s+j.credit,0);
+  const balanced=Math.abs(totalD-totalC)<0.01;
+  const minDate=je.length?je.slice().sort((a,b)=>a.date.localeCompare(b.date))[0].date:today();
+  const maxDate=today();
+  pc.innerHTML=`
+  <div style="padding:24px">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px">
+      ${kpiCard('📊','إجمالي المدين',fmt(totalD),'var(--danger)',je.length+' قيد')}
+      ${kpiCard('📊','إجمالي الدائن',fmt(totalC),'var(--success)','')}
+      ${kpiCard(balanced?'✅':'❌','ميزان المراجعة',balanced?'متوازن ✅':'غير متوازن ❌',balanced?'var(--success)':'var(--danger)','')}
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <h3>📒 دفتر الأستاذ (${je.length} قيد)</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input type="text" class="form-control" id="jeSearch" placeholder="بحث..." oninput="filterJournal()" style="width:160px">
+          <select class="form-control" id="jeAccFilter" onchange="filterJournal()" style="width:180px">
+            <option value="all">كل الحسابات</option>
+            ${[...new Set(je.map(j=>j.account))].map(a=>`<option value="${a}">${a}</option>`).join('')}
+          </select>
+          <input type="date" class="form-control" id="jeFrom" value="${minDate}" onchange="filterJournal()" style="width:145px" title="من تاريخ">
+          <input type="date" class="form-control" id="jeTo" value="${maxDate}" onchange="filterJournal()" style="width:145px" title="إلى تاريخ">
+          <button class="btn btn-sm btn-outline" onclick="exportJournal()">📥 Excel</button>
+          <button class="btn btn-sm btn-outline" onclick="exportJournalPDF()">📄 PDF</button>
+          <button class="btn btn-sm btn-outline" onclick="printJournal()">🖨️ طباعة</button>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0"><div id="jeTableWrap"></div></div>
+    </div>
+  </div>`;
+  filterJournal();
+}
+function filterJournal(){
+  const je=getFilteredJournal();
+  const {slice, page, totalPages} = paginateRows('journal', je);
+  const wrap=document.getElementById('jeTableWrap');
+  if(!wrap)return;
+  const totalD=je.reduce((s,j)=>s+j.debit,0);
+  const totalC=je.reduce((s,j)=>s+j.credit,0);
+  wrap.innerHTML=`<table class="table"><thead><tr><th>#</th><th>التاريخ</th><th>المرجع</th><th>الحساب</th><th>البيان</th><th>مدين</th><th>دائن</th></tr></thead>
+  <tbody>${slice.map(j=>`<tr><td>${j.id}</td><td>${j.date}</td><td>${j.ref}</td><td><b>${j.account}</b></td><td style="font-size:12px">${j.desc}</td><td style="color:var(--danger);font-weight:700">${j.debit!==0?fmt(j.debit):'—'}</td><td style="color:var(--success);font-weight:700">${j.credit!==0?fmt(j.credit):'—'}</td></tr>`).join('')}
+  <tr style="background:#F1F5F9;font-weight:800"><td colspan="5" style="text-align:center;padding:10px 16px;color:var(--text-sm)">الإجمالي (${je.length} قيد)</td><td style="color:var(--danger);padding:10px 16px">${fmt(totalD)}</td><td style="color:var(--success);padding:10px 16px">${fmt(totalC)}</td></tr>
+  </tbody></table>${tablePagerHtml('journal', page, totalPages, je.length)}`;
+}
+function getFilteredJournal(){
+  const q=(document.getElementById('jeSearch')?.value||'').toLowerCase();
+  const acc=document.getElementById('jeAccFilter')?.value||'all';
+  const from=document.getElementById('jeFrom')?.value||'';
+  const to=document.getElementById('jeTo')?.value||'';
+  return getJournal().filter(j=>{
+    const matchQ=!q||(j.ref||'').toLowerCase().includes(q)||(j.desc||'').toLowerCase().includes(q)||(j.account||'').toLowerCase().includes(q);
+    const matchAcc=acc==='all'||j.account===acc;
+    const matchFrom=!from||j.date>=from;
+    const matchTo=!to||j.date<=to;
+    return matchQ&&matchAcc&&matchFrom&&matchTo;
+  });
+}
+function exportJournal(){
+  const je=getFilteredJournal();
+  toExcelAndDownload(je.map(j=>({id:j.id,date:j.date,ref:j.ref,account:j.account,desc:j.desc,debit:j.debit||0,credit:j.credit||0})),['#','التاريخ','المرجع','الحساب','البيان','مدين','دائن'],'دفتر_الأستاذ');
+}
+function exportJournalPDF(){
+  const from=document.getElementById('jeFrom')?.value||'';
+  const to=document.getElementById('jeTo')?.value||'';
+  const acc=document.getElementById('jeAccFilter')?.value||'all';
+  const je=getFilteredJournal();
+  const title=`دفتر الأستاذ${acc!=='all'?' - '+acc:''}${from?' | من '+from:''}${to?' إلى '+to:''}`;
+  toPDFAndDownload(title,['#','التاريخ','المرجع','الحساب','البيان','مدين','دائن'],
+    je.map(j=>[j.id,j.date,j.ref,j.account,(j.desc||'').substring(0,30),j.debit!==0?fmtN(j.debit):'—',j.credit!==0?fmtN(j.credit):'—']),'دفتر_الأستاذ');
+}
+function printJournal(){
+  const from=document.getElementById('jeFrom')?.value||'';
+  const to=document.getElementById('jeTo')?.value||'';
+  const acc=document.getElementById('jeAccFilter')?.value||'all';
+  const je=getFilteredJournal();
+  const totalD=je.reduce((s,j)=>s+j.debit,0);
+  const totalC=je.reduce((s,j)=>s+j.credit,0);
+  const title=`دفتر الأستاذ${acc!=='all'?' — '+acc:''}${from?' | من '+from:''}${to?' إلى '+to:''}`;
+  const w=window.open('','_blank','width=1000,height=700');
+  if(!w){notify('يرجى السماح بالنوافذ المنبثقة للطباعة', 'warning');return;}
+  w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}body{font-family:'Tajawal',sans-serif;padding:24px;color:#1e293b;font-size:13px}
+    h1{font-size:18px;font-weight:800;color:#1e3a8a;margin-bottom:4px}
+    .meta{font-size:12px;color:#64748b;margin-bottom:16px}
+    table{width:100%;border-collapse:collapse}
+    th{background:#1E3A8A;color:#fff;padding:8px 12px;text-align:right;font-size:12px}
+    td{padding:7px 12px;border-bottom:1px solid #e2e8f0;font-size:12px}
+    tr:nth-child(even) td{background:#f8fafc}
+    .total-row td{background:#f1f5f9;font-weight:800;border-top:2px solid #1E3A8A}
+    .debit{color:#DC2626;font-weight:700}.credit{color:#059669;font-weight:700}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #1E3A8A}
+    @media print{@page{margin:1cm}body{padding:0}}
+  </style></head><body>
+  <div class="header"><div><h1>✈️ نظام إدارة خدمات السفر</h1><div class="meta">${title}</div><div class="meta">${je.length} قيد محاسبي</div></div><div style="text-align:left;font-size:12px;color:#64748b">طُبع: ${new Date().toLocaleDateString('ar-KW')}</div></div>
+  <table><thead><tr><th>#</th><th>التاريخ</th><th>المرجع</th><th>الحساب</th><th>البيان</th><th>مدين</th><th>دائن</th></tr></thead>
+  <tbody>
+  ${je.map(j=>`<tr><td>${j.id}</td><td>${j.date}</td><td>${j.ref}</td><td><b>${j.account}</b></td><td>${j.desc}</td><td class="debit">${j.debit>0?fmtN(j.debit,3):'—'}</td><td class="credit">${j.credit>0?fmtN(j.credit,3):'—'}</td></tr>`).join('')}
+  <tr class="total-row"><td colspan="5" style="text-align:center">الإجمالي</td><td class="debit">${fmtN(totalD,3)}</td><td class="credit">${fmtN(totalC,3)}</td></tr>
+  </tbody></table>
+  <script>window.onload=function(){window.print();}<\/script>
+  
+
+</body></html>`);
+  w.document.close();
+}
+
+// ==================== SAFES ====================
+function renderSafes(pc){
+  pc.innerHTML=`
+  <div style="padding:24px">
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-bottom:24px">
+      ${SAFES.map(s=>{
+        const bal=getSafeBalance(s.id);
+        const movements=(s.movements&&s.movements.length)?s.movements:getJournal().filter(j=>j.account===s.name).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);
+        return `<div class="card">
+          <div class="card-body">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+              <div><h3>${s.type==='cash'?'💵':'🏦'} ${s.name}</h3><small style="color:var(--text-sm)">${currencyLabel(s.currency)} | رصيد مبدئي: ${fmt(s.initial)}</small></div>
+              <div style="font-size:28px;font-weight:800;color:${bal>=0?'var(--success)':'var(--danger)'}">${fmt(bal)}</div>
+            </div>
+            <table class="table"><thead><tr><th>التاريخ</th><th>المرجع</th><th>وارد</th><th>صادر</th></tr></thead>
+            <tbody>${movements.map(j=>`<tr><td>${j.date}</td><td>${displayVal(j.ref)}</td><td style="color:var(--success)">${j.debit>0?fmt(j.debit):'—'}</td><td style="color:var(--danger)">${j.credit>0?fmt(j.credit):'—'}</td></tr>`).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--text-sm)">لا توجد حركات</td></tr>'}</tbody></table>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+// ==================== REPORTS ====================
+let rptTab='ops';
+function renderReports(pc){
+  pc.innerHTML=`
+  <div style="padding:24px">
+    <div class="card">
+      <div class="card-body">
+        <div style="display:flex;gap:0;margin-bottom:24px;border-bottom:2px solid var(--border);flex-wrap:wrap">
+          ${[['ops','📋 تقرير العمليات'],['profit','📈 الربحية'],['aging','⏳ تقادم الديون'],['employee','👥 أداء الموظفين'],['cashflow','💧 التدفق النقدي'],['clients_debt','👤 مديونية العملاء'],['vendors_balance','🏢 أرصدة المكاتب']].map(([k,l])=>`<button class="tab-btn ${rptTab===k?'active':''}" onclick="switchRptTab('${k}')">${l}</button>`).join('')}
+        </div>
+        <div id="rptContent"></div>
+      </div>
+    </div>
+  </div>`;
+  renderRptContent();
+}
+function switchRptTab(tab){rptTab=tab;navigate('reports');}
+function renderRptContent(){
+  const wrap=document.getElementById('rptContent');
+  if(!wrap)return;
+  if(rptTab==='ops'){
+    const data=OPS.filter(o=>o.status!=='cancelled').slice().sort((a,b)=>b.id-a.id);
+    const totRev=data.reduce((s,o)=>s+o.client_price,0);
+    const totCost=data.reduce((s,o)=>s+o.vendor_cost,0);
+    const totProfit=data.reduce((s,o)=>s+o.profit,0);
+    wrap.innerHTML=`
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+        ${kpiCard('💰','إجمالي الإيرادات',fmt(totRev),'var(--primary)','')}
+        ${kpiCard('💸','إجمالي التكاليف',fmt(totCost),'var(--danger)','')}
+        ${kpiCard('📈','صافي الربح',fmt(totProfit),'var(--success)','')}
+      </div>
+      <div style="margin-bottom:12px;display:flex;justify-content:flex-end;gap:8px"><button class="btn btn-sm btn-outline" onclick="exportOps()">📥 Excel</button><button class="btn btn-sm btn-outline" onclick="exportOpsPDF()">📄 PDF</button></div>
+      <table class="table"><thead><tr><th>المرجع</th><th>التاريخ</th><th>العميل</th><th>الخدمة</th><th>الإيراد</th><th>التكلفة</th><th>الربح</th><th>الحالة</th></tr></thead>
+      <tbody>${data.map(o=>`<tr><td><b>${o.ref}</b></td><td>${o.date}</td><td>${clientName(o.client_id)}</td><td>${serviceName(o.service_id)}</td><td>${fmt(o.client_price)}</td><td>${fmt(o.vendor_cost)}</td><td style="color:${o.profit>=0?'var(--success)':'var(--danger)'};font-weight:700">${fmt(o.profit)}</td><td><span class="badge ${statusClass[o.status]}">${statusLabel[o.status]}</span></td></tr>`).join('')}</tbody></table>`;
+  } else if(rptTab==='profit'){
+    const byService=SERVICES.map(s=>{
+      const sOps=OPS.filter(o=>o.service_id===s.id&&o.status!=='cancelled');
+      return {name:s.name,icon:s.icon,count:sOps.length,revenue:sOps.reduce((t,o)=>t+o.client_price,0),cost:sOps.reduce((t,o)=>t+o.vendor_cost,0),profit:sOps.reduce((t,o)=>t+o.profit,0)};
+    }).sort((a,b)=>b.profit-a.profit);
+    wrap.innerHTML=`
+      <div style="margin-bottom:12px;display:flex;justify-content:flex-end"><button class="btn btn-sm btn-outline" onclick="exportProfitReport()">📥 Excel</button></div>
+      <table class="table"><thead><tr><th>الخدمة</th><th>عدد العمليات</th><th>الإيرادات</th><th>التكاليف</th><th>الربح</th><th>هامش الربح</th></tr></thead>
+      <tbody>${byService.map(s=>`<tr><td>${s.icon} <b>${s.name}</b></td><td><span class="badge badge-info">${s.count}</span></td><td>${fmt(s.revenue)}</td><td>${fmt(s.cost)}</td><td style="color:var(--success);font-weight:700">${fmt(s.profit)}</td><td>${s.revenue>0?(s.profit/s.revenue*100).toFixed(1)+'%':'—'}</td></tr>`).join('')}</tbody></table>`;
+  } else if(rptTab==='aging'){
+    const todayDate=new Date();
+    const aged=CLIENTS.map(c=>{
+      const bal=getClientBalance(c.id);
+      if(bal<=0)return null;
+      const lastOp=OPS.filter(o=>o.client_id===c.id&&o.status!=='cancelled').sort((a,b)=>b.date.localeCompare(a.date))[0];
+      const days=lastOp?Math.floor((todayDate-new Date(lastOp.date))/(1000*86400)):0;
+      return {name:c.name,balance:bal,days,b1:days<=30?bal:0,b2:days>30&&days<=60?bal:0,b3:days>60&&days<=90?bal:0,b4:days>90?bal:0};
+    }).filter(Boolean).sort((a,b)=>b.balance-a.balance);
+    wrap.innerHTML=`
+      <div style="margin-bottom:12px;display:flex;justify-content:flex-end"><button class="btn btn-sm btn-outline" onclick="exportAgingReport()">📥 Excel</button></div>
+      <table class="table"><thead><tr><th>العميل</th><th>الإجمالي</th><th>1-30 يوم</th><th>31-60 يوم</th><th>61-90 يوم</th><th>+90 يوم</th></tr></thead>
+      <tbody>${aged.map(a=>`<tr><td><b>${a.name}</b><br><small style="color:var(--text-sm)">${a.days} يوم</small></td><td style="font-weight:700;color:var(--danger)">${fmt(a.balance)}</td><td>${a.b1>0?fmt(a.b1):'—'}</td><td style="color:${a.b2>0?'var(--warning)':'inherit'}">${a.b2>0?fmt(a.b2):'—'}</td><td style="color:${a.b3>0?'var(--danger)':'inherit'}">${a.b3>0?fmt(a.b3):'—'}</td><td style="color:${a.b4>0?'var(--danger)':'inherit'};font-weight:${a.b4>0?'700':'400'}">${a.b4>0?fmt(a.b4):'—'}</td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--success)">✅ لا توجد ديون متأخرة</td></tr>'}</tbody></table>`;
+  } else if(rptTab==='employee'){
+    const byUser=USERS.map(u=>{
+      const uOps=OPS.filter(o=>o.created_by===u.id&&o.status!=='cancelled');
+      return {name:u.name,role:u.roleLabel,count:uOps.length,revenue:uOps.reduce((t,o)=>t+o.client_price,0),profit:uOps.reduce((t,o)=>t+o.profit,0)};
+    }).sort((a,b)=>b.revenue-a.revenue);
+    wrap.innerHTML=`
+      <table class="table"><thead><tr><th>الموظف</th><th>الدور</th><th>عدد العمليات</th><th>الإيرادات</th><th>الأرباح</th></tr></thead>
+      <tbody>${byUser.map(u=>`<tr><td><b>${u.name}</b></td><td>${u.role}</td><td><span class="badge badge-info">${u.count}</span></td><td>${fmt(u.revenue)}</td><td style="color:var(--success);font-weight:700">${fmt(u.profit)}</td></tr>`).join('')}</tbody></table>`;
+  } else if(rptTab==='cashflow'){
+    const je=getJournal();
+    const allDates=[...new Set([...OPS.map(o=>o.date),...VOUCHERS.map(v=>v.date)])].sort();
+    let safe1=SAFES[0].initial, safe2=SAFES[1].initial;
+    const rows=allDates.map(d=>{
+      const inflow=je.filter(j=>j.date===d&&j.account==='الصندوق الرئيسي'&&j.debit>0).reduce((s,j)=>s+j.debit,0)+je.filter(j=>j.date===d&&j.account==='البنك الأهلي الكويتي'&&j.debit>0).reduce((s,j)=>s+j.debit,0);
+      const outflow=je.filter(j=>j.date===d&&j.account==='الصندوق الرئيسي'&&j.credit>0).reduce((s,j)=>s+j.credit,0)+je.filter(j=>j.date===d&&j.account==='البنك الأهلي الكويتي'&&j.credit>0).reduce((s,j)=>s+j.credit,0);
+      safe1+=je.filter(j=>j.date===d&&j.account==='الصندوق الرئيسي').reduce((s,j)=>s+j.debit-j.credit,0);
+      safe2+=je.filter(j=>j.date===d&&j.account==='البنك الأهلي الكويتي').reduce((s,j)=>s+j.debit-j.credit,0);
+      return {date:d,inflow,outflow,net:inflow-outflow,cash:safe1,bank:safe2};
+    });
+    wrap.innerHTML=`
+      <div style="margin-bottom:12px;display:flex;justify-content:flex-end"><button class="btn btn-sm btn-outline" onclick="exportCashFlow()">📥 Excel</button></div>
+      <table class="table"><thead><tr><th>التاريخ</th><th>وارد</th><th>صادر</th><th>صافي</th><th>رصيد الصندوق</th><th>رصيد البنك</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr><td>${r.date}</td><td style="color:var(--success)">${r.inflow>0?fmt(r.inflow):'—'}</td><td style="color:var(--danger)">${r.outflow>0?fmt(r.outflow):'—'}</td><td style="font-weight:700;color:${r.net>=0?'var(--success)':'var(--danger)'}">${fmt(r.net)}</td><td>${fmt(r.cash)}</td><td>${fmt(r.bank)}</td></tr>`).join('')}</tbody></table>`;
+  } else if(rptTab==='clients_debt'){
+    const debtors=CLIENTS.map(c=>{
+      const bal=getClientBalance(c.id);
+      const totalPurchases=OPS.filter(o=>o.client_id===c.id&&o.status!=='cancelled').reduce((s,o)=>s+o.client_price,0);
+      const totalPaid=clientReceiptsTotal(c.id);
+      const opsCount=OPS.filter(o=>o.client_id===c.id&&o.status!=='cancelled').length;
+      const lastOp=OPS.filter(o=>o.client_id===c.id&&o.status!=='cancelled').sort((a,b)=>b.date.localeCompare(a.date))[0];
+      return {id:c.id,name:c.name,phone:c.phone,nationality:c.nationality,totalPurchases,totalPaid,balance:bal,opsCount,lastOpDate:lastOp?.date||'—'};
+    }).filter(c=>c.balance>0).sort((a,b)=>b.balance-a.balance);
+    const totalDebt=debtors.reduce((s,c)=>s+c.balance,0);
+    wrap.innerHTML=`
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+        ${kpiCard('👤','عدد المدينين',debtors.length+' عميل','var(--danger)','')}
+        ${kpiCard('💰','إجمالي المديونية',fmt(totalDebt),'var(--danger)','')}
+        ${kpiCard('📊','متوسط المديونية',fmt(debtors.length?totalDebt/debtors.length:0),'var(--warning)','')}
+      </div>
+      <div style="margin-bottom:12px;display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn btn-sm btn-outline" onclick="exportClientsDebtReport()">📥 Excel</button>
+        <button class="btn btn-sm btn-outline" onclick="printClientsDebtReport()">🖨️ طباعة</button>
+      </div>
+      <table class="table"><thead><tr><th>#</th><th>اسم العميل</th><th>الهاتف</th><th>الجنسية</th><th>إجمالي المشتريات</th><th>المدفوع</th><th style="color:var(--danger)">الرصيد المدين</th><th>آخر معاملة</th><th>عدد العمليات</th></tr></thead>
+      <tbody>${debtors.map((c,i)=>`<tr>
+        <td>${i+1}</td>
+        <td><b>${c.name}</b></td>
+        <td>${c.phone}</td>
+        <td>${displayVal(c.nationality)}</td>
+        <td>${fmt(c.totalPurchases)}</td>
+        <td style="color:var(--success);font-weight:700">${fmt(c.totalPaid)}</td>
+        <td style="color:var(--danger);font-weight:800;font-size:14px">${fmt(c.balance)}</td>
+        <td>${c.lastOpDate}</td>
+        <td><span class="badge badge-info">${c.opsCount}</span></td>
+      </tr>`).join('')||'<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--success);font-weight:700">✅ لا توجد ذمم على العملاء</td></tr>'}
+      ${debtors.length?`<tr style="background:#FEE2E2"><td colspan="6" style="text-align:center;font-weight:800;padding:10px 16px;color:var(--danger)">الإجمالي</td><td style="font-weight:800;color:var(--danger);padding:10px 16px;font-size:15px">${fmt(totalDebt)}</td><td colspan="2"></td></tr>`:''}
+      </tbody></table>`;
+  } else if(rptTab==='vendors_balance'){
+    const creditors=VENDORS.map(v=>{
+      const bal=getVendorBalance(v.id);
+      const totalServices=OPS.filter(o=>o.vendor_id===v.id&&o.status!=='cancelled').reduce((s,o)=>s+o.vendor_cost,0);
+      const totalPaid=vendorPaymentsTotal(v.id);
+      const opsCount=OPS.filter(o=>o.vendor_id===v.id&&o.status!=='cancelled').length;
+      const lastOp=OPS.filter(o=>o.vendor_id===v.id&&o.status!=='cancelled').sort((a,b)=>b.date.localeCompare(a.date))[0];
+      return {id:v.id,name:v.name,category:categoryLabel[v.category]||v.category,phone:v.phone||'—',contact:v.contact||'—',totalServices,totalPaid,balance:bal,opsCount,lastOpDate:lastOp?.date||'—'};
+    }).filter(v=>v.balance>0).sort((a,b)=>b.balance-a.balance);
+    const allVendors=VENDORS.map(v=>({...v,bal:getVendorBalance(v.id)}));
+    const totalOwed=creditors.reduce((s,v)=>s+v.balance,0);
+    wrap.innerHTML=`
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+        ${kpiCard('🏢','عدد المكاتب الدائنة',creditors.length+' مكتب','var(--warning)','')}
+        ${kpiCard('💸','إجمالي المستحقات',fmt(totalOwed),'var(--warning)','')}
+        ${kpiCard('📊','متوسط المستحقات',fmt(creditors.length?totalOwed/creditors.length:0),'var(--info)','')}
+      </div>
+      <div style="margin-bottom:12px;display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn btn-sm btn-outline" onclick="exportVendorsBalanceReport()">📥 Excel</button>
+        <button class="btn btn-sm btn-outline" onclick="printVendorsBalanceReport()">🖨️ طباعة</button>
+      </div>
+      <table class="table"><thead><tr><th>#</th><th>اسم المكتب</th><th>التصنيف</th><th>الهاتف</th><th>جهة الاتصال</th><th>إجمالي الخدمات</th><th>المدفوع</th><th style="color:var(--warning)">الرصيد المستحق</th><th>عدد العمليات</th></tr></thead>
+      <tbody>${creditors.map((v,i)=>`<tr>
+        <td>${i+1}</td>
+        <td><b>${v.name}</b></td>
+        <td><span class="badge badge-info">${v.category}</span></td>
+        <td>${v.phone}</td>
+        <td>${v.contact}</td>
+        <td>${fmt(v.totalServices)}</td>
+        <td style="color:var(--success);font-weight:700">${fmt(v.totalPaid)}</td>
+        <td style="color:var(--warning);font-weight:800;font-size:14px">${fmt(v.balance)}</td>
+        <td><span class="badge badge-info">${v.opsCount}</span></td>
+      </tr>`).join('')||'<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--success);font-weight:700">✅ لا توجد مستحقات للمكاتب</td></tr>'}
+      ${creditors.length?`<tr style="background:#FEF3C7"><td colspan="7" style="text-align:center;font-weight:800;padding:10px 16px;color:var(--warning)">الإجمالي</td><td style="font-weight:800;color:var(--warning);padding:10px 16px;font-size:15px">${fmt(totalOwed)}</td><td></td></tr>`:''}
+      </tbody></table>`;
+  }
+}
+function exportClientsDebtReport(){
+  const debtors=CLIENTS.map(c=>{
+    const bal=getClientBalance(c.id);
+    const totalPurchases=OPS.filter(o=>o.client_id===c.id&&o.status!=='cancelled').reduce((s,o)=>s+o.client_price,0);
+    const totalPaid=clientReceiptsTotal(c.id);
+    return {name:c.name,phone:c.phone,nationality:c.nationality,totalPurchases,totalPaid,balance:bal};
+  }).filter(c=>c.balance>0).sort((a,b)=>b.balance-a.balance);
+  toExcelAndDownload(debtors,['اسم العميل','الهاتف','الجنسية','إجمالي المشتريات','المدفوع','الرصيد المدين'],'تقرير_مديونية_العملاء');
+}
+function printClientsDebtReport(){
+  const debtors=CLIENTS.map(c=>{
+    const bal=getClientBalance(c.id);
+    const totalPurchases=OPS.filter(o=>o.client_id===c.id&&o.status!=='cancelled').reduce((s,o)=>s+o.client_price,0);
+    const totalPaid=clientReceiptsTotal(c.id);
+    const opsCount=OPS.filter(o=>o.client_id===c.id&&o.status!=='cancelled').length;
+    return {name:c.name,phone:c.phone,nationality:c.nationality,totalPurchases,totalPaid,balance:bal,opsCount};
+  }).filter(c=>c.balance>0).sort((a,b)=>b.balance-a.balance);
+  const totalDebt=debtors.reduce((s,c)=>s+c.balance,0);
+  const w=window.open('','_blank','width=900,height=600');
+  if(!w){notify('يرجى السماح بالنوافذ المنبثقة للطباعة', 'warning');return;}
+  w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Tajawal',sans-serif;padding:24px;color:#1e293b;font-size:13px}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:12px;border-bottom:3px solid #DC2626}
+  h1{font-size:20px;font-weight:800;color:#1e3a8a}.sub{font-size:13px;color:#DC2626;font-weight:700;margin-top:4px}
+  .meta{font-size:12px;color:#64748b;margin-top:2px}
+  .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+  .sum-box{background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:12px;text-align:center}
+  .sum-box .val{font-size:18px;font-weight:800;color:#DC2626}.sum-box .lbl{font-size:11px;color:#64748b;margin-top:2px}
+  table{width:100%;border-collapse:collapse}
+  th{background:#DC2626;color:#fff;padding:9px 12px;text-align:right;font-size:12px}
+  td{padding:8px 12px;border-bottom:1px solid #fee2e2;font-size:12px}
+  tr:nth-child(even) td{background:#fff5f5}.total-row td{background:#FEE2E2;font-weight:800;border-top:2px solid #DC2626}
+  .balance{color:#DC2626;font-weight:800}.paid{color:#059669;font-weight:700}
+  @media print{@page{margin:1cm}body{padding:0}}</style></head><body>
+  <div class="header"><div><h1>✈️ نظام إدارة خدمات السفر</h1><div class="sub">تقرير مديونية العملاء</div><div class="meta">تاريخ الطباعة: ${new Date().toLocaleDateString('ar-KW')}</div></div><div style="text-align:left;font-size:12px;color:#64748b">${debtors.length} عميل مدين</div></div>
+  <div class="summary"><div class="sum-box"><div class="val">${debtors.length}</div><div class="lbl">عدد العملاء المدينين</div></div><div class="sum-box"><div class="val">${fmtN(totalDebt,3)} د.ك</div><div class="lbl">إجمالي المديونية</div></div><div class="sum-box"><div class="val">${debtors.length?fmtN(totalDebt/debtors.length,3):0} د.ك</div><div class="lbl">متوسط المديونية</div></div></div>
+  <table><thead><tr><th>#</th><th>اسم العميل</th><th>الهاتف</th><th>الجنسية</th><th>إجمالي المشتريات</th><th>المدفوع</th><th>الرصيد المدين</th><th>العمليات</th></tr></thead>
+  <tbody>${debtors.map((c,i)=>`<tr><td>${i+1}</td><td><b>${c.name}</b></td><td>${c.phone}</td><td>${displayVal(c.nationality)}</td><td>${fmtN(c.totalPurchases,3)} د.ك</td><td class="paid">${fmtN(c.totalPaid,3)} د.ك</td><td class="balance">${fmtN(c.balance,3)} د.ك</td><td>${c.opsCount}</td></tr>`).join('')}
+  <tr class="total-row"><td colspan="6" style="text-align:center">الإجمالي</td><td class="balance">${fmtN(totalDebt,3)} د.ك</td><td></td></tr>
+  </tbody></table>
+  <script>window.onload=function(){window.print();}<\/script>
+
+</body></html>`);
+  w.document.close();
+}
+function exportVendorsBalanceReport(){
+  const creditors=VENDORS.map(v=>{
+    const bal=getVendorBalance(v.id);
+    const totalServices=OPS.filter(o=>o.vendor_id===v.id&&o.status!=='cancelled').reduce((s,o)=>s+o.vendor_cost,0);
+    const totalPaid=vendorPaymentsTotal(v.id);
+    return {name:v.name,category:categoryLabel[v.category]||v.category,phone:v.phone||'—',totalServices,totalPaid,balance:bal};
+  }).filter(v=>v.balance>0).sort((a,b)=>b.balance-a.balance);
+  toExcelAndDownload(creditors,['اسم المكتب','التصنيف','الهاتف','إجمالي الخدمات','المدفوع','الرصيد المستحق'],'تقرير_أرصدة_المكاتب');
+}
+function printVendorsBalanceReport(){
+  const creditors=VENDORS.map(v=>{
+    const bal=getVendorBalance(v.id);
+    const totalServices=OPS.filter(o=>o.vendor_id===v.id&&o.status!=='cancelled').reduce((s,o)=>s+o.vendor_cost,0);
+    const totalPaid=vendorPaymentsTotal(v.id);
+    const opsCount=OPS.filter(o=>o.vendor_id===v.id&&o.status!=='cancelled').length;
+    return {name:v.name,category:categoryLabel[v.category]||v.category,phone:v.phone||'—',contact:v.contact||'—',totalServices,totalPaid,balance:bal,opsCount};
+  }).filter(v=>v.balance>0).sort((a,b)=>b.balance-a.balance);
+  const totalOwed=creditors.reduce((s,v)=>s+v.balance,0);
+  const w=window.open('','_blank','width=900,height=600');
+  if(!w){notify('يرجى السماح بالنوافذ المنبثقة للطباعة', 'warning');return;}
+  w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Tajawal',sans-serif;padding:24px;color:#1e293b;font-size:13px}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:12px;border-bottom:3px solid #D97706}
+  h1{font-size:20px;font-weight:800;color:#1e3a8a}.sub{font-size:13px;color:#D97706;font-weight:700;margin-top:4px}
+  .meta{font-size:12px;color:#64748b;margin-top:2px}
+  .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+  .sum-box{background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:12px;text-align:center}
+  .sum-box .val{font-size:18px;font-weight:800;color:#D97706}.sum-box .lbl{font-size:11px;color:#64748b;margin-top:2px}
+  table{width:100%;border-collapse:collapse}
+  th{background:#D97706;color:#fff;padding:9px 12px;text-align:right;font-size:12px}
+  td{padding:8px 12px;border-bottom:1px solid #FEF3C7;font-size:12px}
+  tr:nth-child(even) td{background:#FFFBEB}.total-row td{background:#FEF3C7;font-weight:800;border-top:2px solid #D97706}
+  .balance{color:#D97706;font-weight:800}.paid{color:#059669;font-weight:700}
+  @media print{@page{margin:1cm}body{padding:0}}</style></head><body>
+  <div class="header"><div><h1>✈️ نظام إدارة خدمات السفر</h1><div class="sub">تقرير أرصدة المكاتب والموردين</div><div class="meta">تاريخ الطباعة: ${new Date().toLocaleDateString('ar-KW')}</div></div><div style="text-align:left;font-size:12px;color:#64748b">${creditors.length} مكتب دائن</div></div>
+  <div class="summary"><div class="sum-box"><div class="val">${creditors.length}</div><div class="lbl">عدد المكاتب الدائنة</div></div><div class="sum-box"><div class="val">${fmtN(totalOwed,3)} د.ك</div><div class="lbl">إجمالي المستحقات</div></div><div class="sum-box"><div class="val">${creditors.length?fmtN(totalOwed/creditors.length,3):0} د.ك</div><div class="lbl">متوسط المستحق</div></div></div>
+  <table><thead><tr><th>#</th><th>اسم المكتب</th><th>التصنيف</th><th>الهاتف</th><th>جهة الاتصال</th><th>إجمالي الخدمات</th><th>المدفوع</th><th>الرصيد المستحق</th><th>العمليات</th></tr></thead>
+  <tbody>${creditors.map((v,i)=>`<tr><td>${i+1}</td><td><b>${v.name}</b></td><td>${v.category}</td><td>${v.phone}</td><td>${v.contact}</td><td>${fmtN(v.totalServices,3)} د.ك</td><td class="paid">${fmtN(v.totalPaid,3)} د.ك</td><td class="balance">${fmtN(v.balance,3)} د.ك</td><td>${v.opsCount}</td></tr>`).join('')}
+  <tr class="total-row"><td colspan="7" style="text-align:center">الإجمالي</td><td class="balance">${fmtN(totalOwed,3)} د.ك</td><td></td></tr>
+  </tbody></table>
+  <script>window.onload=function(){window.print();}<\/script>
+
+</body></html>`);
+  w.document.close();
+}
+function exportProfitReport(){
+  const byService=SERVICES.map(s=>{const sOps=OPS.filter(o=>o.service_id===s.id&&o.status!=='cancelled');return {name:s.name,count:sOps.length,revenue:sOps.reduce((t,o)=>t+o.client_price,0),cost:sOps.reduce((t,o)=>t+o.vendor_cost,0),profit:sOps.reduce((t,o)=>t+o.profit,0)};});
+  toExcelAndDownload(byService,['الخدمة','عدد العمليات','الإيرادات','التكاليف','الربح'],'تقرير_الربحية');
+}
+function exportAgingReport(){
+  const todayDate=new Date();
+  const aged=CLIENTS.map(c=>{const bal=getClientBalance(c.id);if(bal<=0)return null;const lastOp=OPS.filter(o=>o.client_id===c.id&&o.status!=='cancelled').sort((a,b)=>b.date.localeCompare(a.date))[0];const days=lastOp?Math.floor((todayDate-new Date(lastOp.date))/(1000*86400)):0;return {name:c.name,balance:bal,days};}).filter(Boolean);
+  toExcelAndDownload(aged,['العميل','الرصيد','عمر الدين (أيام)'],'تقرير_التقادم');
+}
+function exportCashFlow(){
+  const je=getJournal();
+  const allDates=[...new Set([...OPS.map(o=>o.date),...VOUCHERS.map(v=>v.date)])].sort();
+  const rows=allDates.map(d=>{
+    const inflow=je.filter(j=>j.date===d&&(j.account==='الصندوق الرئيسي'||j.account==='البنك الأهلي الكويتي')&&j.debit>0).reduce((s,j)=>s+j.debit,0);
+    const outflow=je.filter(j=>j.date===d&&(j.account==='الصندوق الرئيسي'||j.account==='البنك الأهلي الكويتي')&&j.credit>0).reduce((s,j)=>s+j.credit,0);
+    return {date:d,inflow,outflow,net:inflow-outflow};
+  });
+  toExcelAndDownload(rows,['التاريخ','وارد','صادر','صافي'],'التدفق_النقدي');
+}
+
+// ==================== SETTINGS ====================
+function settingsStatsRows(){
+  const journalCount=getJournal().length||BOOTSTRAP_METRICS.journal_count||0;
+  const rows=[['العمليات الإجمالية',OPS.length],['العملاء',CLIENTS.length],['الموردون',VENDORS.length],['السندات',VOUCHERS.length],['القيود المحاسبية',journalCount]];
+  if(currentUser?.role==='sales') return rows.filter(([l])=>['العمليات الإجمالية','العملاء'].includes(l));
+  return rows;
+}
+function renderSettings(pc){
+  pc.innerHTML=`
+  <div style="padding:24px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      ${currentUser?.role==='admin'?`<div class="card">
+        <div class="card-header"><h3>👤 المستخدمون</h3></div>
+        <div class="card-body" style="padding:0">
+          <table class="table"><thead><tr><th>الاسم</th><th>البريد</th><th>الدور</th></tr></thead>
+          <tbody>${USERS.map(u=>`<tr><td><div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">${u.avatar}</div><b>${u.name}</b></div></td><td style="font-size:13px">${u.email}</td><td><span class="badge badge-info">${u.roleLabel}</span></td></tr>`).join('')}</tbody></table>
+        </div>
+      </div>`:''}
+      <div class="card">
+        <div class="card-header"><h3>🛎️ الخدمات</h3></div>
+        <div class="card-body" style="padding:0">
+          <table class="table"><thead><tr><th>الخدمة</th><th>الحالة</th><th>تبديل</th></tr></thead>
+          <tbody id="svcSettings">${SERVICES.map(s=>`<tr><td>${s.icon} ${s.name}</td><td><span class="badge ${s.active?'badge-success':'badge-danger'}">${s.active?'نشطة':'معطلة'}</span></td><td>${currentUser?.role==='admin'?`<button class="btn btn-sm btn-outline" onclick="toggleService(${s.id})">${s.active?'تعطيل':'تفعيل'}</button>`:'—'}</td></tr>`).join('')}</tbody>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>👤 ملفي الشخصي</h3></div>
+        <div class="card-body">
+          <div class="form-row"><div class="form-group"><label>الاسم</label><input class="form-control" id="prof_name" value="${currentUser?.name||''}"></div><div class="form-group"><label>البريد الإلكتروني</label><input class="form-control" value="${currentUser?.email||''}" readonly></div></div>
+          <div class="form-row"><div class="form-group"><label>الدور</label><input class="form-control" value="${currentUser?.roleLabel||''}" readonly></div></div>
+          <button class="btn btn-primary" onclick="saveProfile()">💾 حفظ الاسم</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>📊 ${currentUser?.role==='sales'?'ملخص سريع':'إحصائيات النظام'}</h3></div>
+        <div class="card-body">
+          <div style="display:grid;gap:12px">
+            ${settingsStatsRows().map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:10px;background:var(--bg);border-radius:8px"><span style="color:var(--text-sm)">${l}</span><b style="color:var(--primary)">${v}</b></div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+// ==================== EXTRA CSS ====================
+const style=document.createElement('style');
+style.textContent=`
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow)}
+.card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.card-header h3{font-size:15px;font-weight:700;margin:0}
+.card-body{padding:20px}
+.table{width:100%;border-collapse:collapse;font-size:13px}
+.table th{background:var(--bg);padding:10px 14px;text-align:right;font-size:12px;font-weight:700;color:var(--text-sm);white-space:nowrap}
+.table td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+.table tr:hover td{background:#F8FAFC}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-success{background:#D1FAE5;color:#065F46}
+.badge-danger{background:#FEE2E2;color:#991B1B}
+.badge-warning{background:#FEF3C7;color:#92400E}
+.badge-info{background:#E0F2FE;color:#0C4A6E}
+.btn{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:600;transition:.15s}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-light)}
+.btn-success{background:var(--success);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-icon{width:36px;height:36px;border-radius:8px;background:var(--bg);border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;position:relative;transition:.15s}
+.btn-icon:hover{background:var(--border)}
+.badge.badge-info.btn-icon{width:auto;height:auto;padding:4px 8px}
+.badge{position:relative}
+span.badge{position:absolute;top:-4px;left:-4px;width:16px;height:16px;background:var(--danger);color:#fff;border-radius:50%;font-size:9px;display:flex;align-items:center;justify-content:center}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;max-width:640px;width:90%;max-height:90vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.3)}
+.modal-lg{max-width:760px}
+.modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-header h3{font-size:16px;font-weight:700;margin:0}
+.modal-body{padding:24px}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-sm);padding:4px 8px;border-radius:6px}
+.modal-close:hover{background:var(--bg)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:4px}
+.form-row.three{grid-template-columns:1fr 1fr 1fr}
+.form-row.full{grid-template-columns:1fr}
+textarea.form-control{min-height:80px;resize:vertical}
+.page-content{flex:1;overflow-y:auto}
+.drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:150}
+.drawer{position:fixed;left:0;top:0;height:100vh;width:560px;background:#fff;z-index:151;transform:translateX(-100%);transition:.3s;box-shadow:4px 0 20px rgba(0,0,0,.15);overflow-y:auto}
+.drawer.open{transform:translateX(0)}
+.drawer-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;z-index:1}
+.drawer-body{padding:24px}
+.info-item{display:flex;flex-direction:column;gap:4px;padding:10px;background:var(--bg);border-radius:8px}
+.info-label{font-size:11px;color:var(--text-sm);font-weight:600}
+.info-value{font-size:14px;font-weight:600;color:var(--text)}
+.tab-btn{padding:10px 20px;border:none;background:none;cursor:pointer;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:600;color:var(--text-sm);border-bottom:3px solid transparent;transition:.15s}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
+.tab-btn:hover{color:var(--primary)}
+`;
+document.head.appendChild(style);
+
+// ==================== INIT ====================
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&document.getElementById('loginPage').style.display!=='none')doLogin();
+  if(e.key==='Escape'){ closeAllOverlays(); closeDrawer(); }
+});
+document.querySelectorAll('.modal-overlay').forEach(el=>{
+  el.addEventListener('click',e=>{ if(e.target===el) closeModal(el.id); });
+});
+</script>
+
+
+<!-- API INTEGRATION BRIDGE -->
+<script src="/travel-erp-api-bridge.js"></script>
+</body>
+</html>

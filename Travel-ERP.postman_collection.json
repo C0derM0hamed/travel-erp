@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a1b2c3d4-travel-erp-2026",
     "name": "Travel ERP",
-    "description": "Travel ERP — Laravel Sanctum (جلسة + كوكيز).\n\n## إعداد سريع\n1. `base_url` = نفس `APP_URL` و `SANCTUM_STATEFUL_DOMAINS` (مثال: http://127.0.0.1:8080)\n2. `password` = قيمة `SEED_USER_PASSWORD` من `.env`\n3. شغّل مجلد **0 — Smoke Test** بالترتيب (Run folder)\n\n## مشاكل شائعة (محلولة في المجموعة)\n- **401**: شغّل Authentication كاملاً؛ `base_url` يجب أن يطابق النطاق في `.env`\n- **419**: بعد Login شغّل **Refresh CSRF** — الجلسة تتجدد وتبطل توكن CSRF القديم\n- الهيدر `X-XSRF-TOKEN` يُضاف تلقائياً لـ POST/PATCH/DELETE من الكوكي\n\n## Newman\n`npx newman run Travel-ERP.postman_collection.json --env-var password=YOUR_PASS --folder \"0 — Smoke Test (شغّل بالترتيب)\"`",
+    "description": "Travel ERP — Laravel Sanctum (جلسة + كوكيز).\n\n## إعداد سريع\n1. `base_url` = نفس `APP_URL` و `SANCTUM_STATEFUL_DOMAINS` (مثال: http://127.0.0.1:8080)\n2. `password` = قيمة `SEED_USER_PASSWORD` من `.env`\n3. شغّل مجلد **0 — Smoke Test** بالترتيب (Run folder)\n\n## Bootstrap\n`GET /api/bootstrap` يعيد metadata فقط: `user`, `users`, `services`, `safes`, `metrics`. العملاء والموردين والعمليات والسندات تُجلب من `/api/clients`, `/api/vendors`, `/api/operations`, `/api/vouchers`.\n\n## مشاكل شائعة (محلولة في المجموعة)\n- **401**: شغّل Authentication كاملاً؛ `base_url` يجب أن يطابق النطاق في `.env`\n- **419**: بعد Login شغّل **Refresh CSRF** — الجلسة تتجدد وتبطل توكن CSRF القديم\n- الهيدر `X-XSRF-TOKEN` يُضاف تلقائياً لـ POST/PATCH/DELETE من الكوكي\n\n## Newman\n`npx newman run Travel-ERP.postman_collection.json --env-var password=YOUR_PASS --folder \"0 — Smoke Test (شغّل بالترتيب)\"`",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -226,11 +226,11 @@
                 "exec": [
                   "pm.test('Bootstrap 200', () => pm.response.to.have.status(200));",
                   "const b = pm.response.json();",
-                  "['users','clients','services','vendors','safes'].forEach(k => pm.expect(b).to.have.property(k));",
-                  "if (b.clients && b.clients.length) pm.collectionVariables.set('client_id', String(b.clients[0].id));",
-                  "if (b.services && b.services.length) pm.collectionVariables.set('service_id', String(b.services[0].id));",
-                  "if (b.vendors && b.vendors.length) pm.collectionVariables.set('vendor_id', String(b.vendors[0].id));",
-                  "if (b.safes && b.safes.length) pm.collectionVariables.set('safe_id', String(b.safes[0].id));"
+                  "['user','users','services','safes','metrics'].forEach(k => pm.expect(b).to.have.property(k));",
+                  "['clients','vendors','operations','vouchers','journal'].forEach(k => pm.expect(b).to.not.have.property(k));",
+                  "pm.test('Metrics shaped', () => pm.expect(b.metrics).to.include.keys('total_receipts','total_payments','journal_count','journal_balanced'));",
+                  "if (b.services?.length) pm.collectionVariables.set('service_id', String(b.services[0].id));",
+                  "if (b.safes?.length) pm.collectionVariables.set('safe_id', String(b.safes[0].id));"
                 ],
                 "type": "text/javascript"
               }
@@ -627,11 +627,11 @@
                 "exec": [
                   "pm.test('Bootstrap 200', () => pm.response.to.have.status(200));",
                   "const b = pm.response.json();",
-                  "['users','clients','services','vendors','safes'].forEach(k => pm.expect(b).to.have.property(k));",
-                  "if (b.clients && b.clients.length) pm.collectionVariables.set('client_id', String(b.clients[0].id));",
-                  "if (b.services && b.services.length) pm.collectionVariables.set('service_id', String(b.services[0].id));",
-                  "if (b.vendors && b.vendors.length) pm.collectionVariables.set('vendor_id', String(b.vendors[0].id));",
-                  "if (b.safes && b.safes.length) pm.collectionVariables.set('safe_id', String(b.safes[0].id));"
+                  "['user','users','services','safes','metrics'].forEach(k => pm.expect(b).to.have.property(k));",
+                  "['clients','vendors','operations','vouchers','journal'].forEach(k => pm.expect(b).to.not.have.property(k));",
+                  "pm.test('Metrics shaped', () => pm.expect(b.metrics).to.include.keys('total_receipts','total_payments','journal_count','journal_balanced'));",
+                  "if (b.services?.length) pm.collectionVariables.set('service_id', String(b.services[0].id));",
+                  "if (b.safes?.length) pm.collectionVariables.set('safe_id', String(b.safes[0].id));"
                 ],
                 "type": "text/javascript"
               }
@@ -679,7 +679,21 @@
               }
             ],
             "url": "{{base_url}}/api/clients?search="
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('List 200', () => pm.response.to.have.status(200));",
+                  "const rows = pm.response.json().data || [];",
+                  "pm.expect(rows).to.be.an('array');",
+                  "if (rows.length) pm.collectionVariables.set('client_id', String(rows[0].id));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Create Client",
@@ -763,7 +777,21 @@
               }
             ],
             "url": "{{base_url}}/api/vendors"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('List 200', () => pm.response.to.have.status(200));",
+                  "const rows = pm.response.json().data || [];",
+                  "pm.expect(rows).to.be.an('array');",
+                  "if (rows.length) pm.collectionVariables.set('vendor_id', String(rows[0].id));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Create Vendor",

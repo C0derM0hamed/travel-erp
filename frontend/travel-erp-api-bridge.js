@@ -685,7 +685,7 @@ viewOp = async function(id, opts = {}){
     document.getElementById('drawerTitle').textContent=`تفاصيل العملية - ${op.ref}`;
     document.getElementById('drawerBody').innerHTML=`
       <div style="margin-bottom:16px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <div class="grid-2" style="margin-bottom:16px">
           <div class="info-item"><span class="info-label">رقم العملية</span><span class="info-value">${op.ref}</span></div>
           <div class="info-item"><span class="info-label">التاريخ</span><span class="info-value">${op.date}</span></div>
           <div class="info-item"><span class="info-label">العميل</span><span class="info-value">${op.client||clientName(op.client_id)}</span></div>
@@ -703,17 +703,17 @@ viewOp = async function(id, opts = {}){
       </div>
       <div style="margin-bottom:16px">
         <h4 style="margin-bottom:10px;color:var(--primary)">القيود المحاسبية</h4>
-        <table class="table"><thead><tr><th>الحساب</th><th>مدين</th><th>دائن</th><th>البيان</th></tr></thead>
-        <tbody>${je.map(j=>`<tr><td>${j.account}</td><td>${signedAmount(j.debit,'var(--danger)','var(--success)')}</td><td>${signedAmount(j.credit,'var(--success)','var(--danger)')}</td><td style="font-size:12px">${j.desc||''}</td></tr>`).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--text-sm)">لا توجد قيود</td></tr>'}</tbody></table>
+        <div class="table-wrapper"><table class="table"><thead><tr><th>الحساب</th><th>مدين</th><th>دائن</th><th>البيان</th></tr></thead>
+        <tbody>${je.map(j=>`<tr><td>${j.account}</td><td>${signedAmount(j.debit,'var(--danger)','var(--success)')}</td><td>${signedAmount(j.credit,'var(--success)','var(--danger)')}</td><td style="font-size:12px">${j.desc||''}</td></tr>`).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--text-sm)">لا توجد قيود</td></tr>'}</tbody></table></div>
       </div>
       <div>
         <h4 style="margin-bottom:10px;color:var(--primary)">السندات المرتبطة</h4>
-        ${vcs.length?`<table class="table"><thead><tr><th>الرقم</th><th>النوع</th><th>المبلغ</th><th>الطريقة</th><th>التاريخ</th><th>الحالة</th><th>إجراء</th></tr></thead>
+        ${vcs.length?`<div class="table-wrapper"><table class="table"><thead><tr><th>الرقم</th><th>النوع</th><th>المبلغ</th><th>الطريقة</th><th>التاريخ</th><th>الحالة</th><th>إجراء</th></tr></thead>
         <tbody>${vcs.map(v=>{
           const rev = v.reversed || op.status==='cancelled';
           const voidBtn = canDo('void_voucher') && !rev ? `<button class="btn btn-xs btn-danger" onclick="voidVoucher(${v.id})">إلغاء</button>` : '—';
           return `<tr><td><b>${v.ref}</b></td><td><span class="badge ${v.type==='receipt'?'badge-success':'badge-danger'}">${vcTypeLabel[v.type]}</span></td><td>${fmt(v.amount)}</td><td>${methodLabel(v.method)}</td><td>${v.date}</td><td>${rev?'<span class="badge badge-danger">ملغى</span>':'<span class="badge badge-success">فعّال</span>'}</td><td>${voidBtn}</td></tr>`;
-        }).join('')}</tbody></table>`:'<p style="color:var(--text-sm);text-align:center;padding:20px">لا توجد سندات مرتبطة</p>'}
+        }).join('')}</tbody></table></div>`:'<p style="color:var(--text-sm);text-align:center;padding:20px">لا توجد سندات مرتبطة</p>'}
       </div>`;
   }catch(e){ document.getElementById('drawerBody').innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
 };
@@ -732,14 +732,14 @@ viewClientStmt = async function(cid, opts = {}){
     const rows = stmt.rows || [];
     document.getElementById('stmtTitle').textContent=`كشف حساب - ${stmt.client?.name || cl?.name || ''}`;
     document.getElementById('stmtBody').innerHTML=`
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px">
+      <div class="grid-3" style="margin-bottom:20px">
         <div class="card" style="background:var(--bg)"><div class="card-body" style="text-align:center"><div style="font-size:11px;color:var(--text-sm)">إجمالي المشتريات</div><div style="font-size:20px;font-weight:800;color:var(--primary)">${fmt(stmt.total_purchases)}</div></div></div>
         <div class="card" style="background:var(--bg)"><div class="card-body" style="text-align:center"><div style="font-size:11px;color:var(--text-sm)">المدفوع</div><div style="font-size:20px;font-weight:800;color:var(--success)">${fmt(stmt.paid)}</div></div></div>
         <div class="card" style="background:var(--bg)"><div class="card-body" style="text-align:center"><div style="font-size:11px;color:var(--text-sm)">الرصيد المتبقي</div><div style="font-size:20px;font-weight:800;color:${stmt.balance>0?'var(--danger)':'var(--success)'}">${fmt(stmt.balance)}</div></div></div>
       </div>
-      <div style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center"><h4>حركات الحساب</h4><button class="btn btn-sm btn-outline" onclick="exportClientStmt(${cid})">تصدير</button></div>
-      <table class="table"><thead><tr><th>التاريخ</th><th>المرجع</th><th>البيان</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead>
-      <tbody>${rows.map(j=>`<tr><td>${j.date}</td><td>${j.ref}</td><td style="font-size:12px">${j.desc||''}</td><td>${signedAmount(j.debit,'var(--danger)','var(--success)')}</td><td>${signedAmount(j.credit,'var(--success)','var(--danger)')}</td><td style="font-weight:700;color:${j.balance>0?'var(--danger)':'var(--success)'}">${fmt(j.balance)}</td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--text-sm)">لا توجد حركات</td></tr>'}</tbody></table>`;
+      <div class="drawer-actions"><h4 style="margin:0">حركات الحساب</h4><button class="btn btn-sm btn-outline" onclick="exportClientStmt(${cid})">تصدير</button></div>
+      <div class="table-wrapper"><table class="table"><thead><tr><th>التاريخ</th><th>المرجع</th><th>البيان</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead>
+      <tbody>${rows.map(j=>`<tr><td>${j.date}</td><td>${j.ref}</td><td style="font-size:12px">${j.desc||''}</td><td>${signedAmount(j.debit,'var(--danger)','var(--success)')}</td><td>${signedAmount(j.credit,'var(--success)','var(--danger)')}</td><td style="font-weight:700;color:${j.balance>0?'var(--danger)':'var(--success)'}">${fmt(j.balance)}</td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--text-sm)">لا توجد حركات</td></tr>'}</tbody></table></div>`;
   }catch(e){ document.getElementById('stmtBody').innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
 };
 
@@ -758,13 +758,13 @@ viewVendorStmt = async function(vid, opts = {}){
     const totalOwed = rows.reduce((s,j)=>s+(+j.credit||0),0);
     document.getElementById('stmtTitle').textContent=`كشف حساب مورد - ${stmt.vendor?.name || vn?.name || ''}`;
     document.getElementById('stmtBody').innerHTML=`
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px">
+      <div class="grid-3" style="margin-bottom:20px">
         <div class="card" style="background:var(--bg)"><div class="card-body" style="text-align:center"><div style="font-size:11px;color:var(--text-sm)">إجمالي المستحقات</div><div style="font-size:20px;font-weight:800;color:var(--warning)">${fmt(totalOwed)}</div></div></div>
         <div class="card" style="background:var(--bg)"><div class="card-body" style="text-align:center"><div style="font-size:11px;color:var(--text-sm)">المدفوع</div><div style="font-size:20px;font-weight:800;color:var(--success)">${fmt(stmt.paid)}</div></div></div>
         <div class="card" style="background:var(--bg)"><div class="card-body" style="text-align:center"><div style="font-size:11px;color:var(--text-sm)">الرصيد الحالي</div><div style="font-size:20px;font-weight:800;color:${stmt.balance>0?'var(--warning)':'var(--success)'}">${fmt(stmt.balance)}</div></div></div>
       </div>
-      <table class="table"><thead><tr><th>التاريخ</th><th>المرجع</th><th>البيان</th><th>مدين</th><th>دائن</th></tr></thead>
-      <tbody>${rows.map(j=>`<tr><td>${j.date}</td><td>${j.ref}</td><td style="font-size:12px">${j.desc||''}</td><td>${signedAmount(j.debit,'var(--success)','var(--danger)')}</td><td>${signedAmount(j.credit,'var(--danger)','var(--success)')}</td></tr>`).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--text-sm)">لا توجد حركات</td></tr>'}</tbody></table>`;
+      <div class="table-wrapper"><table class="table"><thead><tr><th>التاريخ</th><th>المرجع</th><th>البيان</th><th>مدين</th><th>دائن</th></tr></thead>
+      <tbody>${rows.map(j=>`<tr><td>${j.date}</td><td>${j.ref}</td><td style="font-size:12px">${j.desc||''}</td><td>${signedAmount(j.debit,'var(--success)','var(--danger)')}</td><td>${signedAmount(j.credit,'var(--danger)','var(--success)')}</td></tr>`).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--text-sm)">لا توجد حركات</td></tr>'}</tbody></table></div>`;
   }catch(e){ document.getElementById('stmtBody').innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
 };
 
@@ -792,13 +792,13 @@ renderRptContent = async function(){
       const rows = data.rows || [];
       const totals = data.totals || {};
       wrap.innerHTML=`
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+        <div class="grid-kpi-3">
           ${kpiCard('💰','إجمالي الإيرادات',fmt(totals.revenue||0),'var(--primary)','')}
           ${kpiCard('💸','إجمالي التكاليف',fmt(totals.cost||0),'var(--danger)','')}
           ${kpiCard('📈','صافي الربح',fmt(totals.profit||0),'var(--success)','')}
         </div>
-        <table class="table"><thead><tr><th>المرجع</th><th>التاريخ</th><th>العميل</th><th>الخدمة</th><th>الإيراد</th><th>التكلفة</th><th>الربح</th><th>الحالة</th></tr></thead>
-        <tbody>${rows.map(o=>`<tr><td><b>${o.ref}</b></td><td>${o.date}</td><td>${o.client||clientName(o.client_id)}</td><td>${o.service||serviceName(o.service_id)}</td><td>${fmt(o.client_price)}</td><td>${fmt(o.vendor_cost)}</td><td style="color:${o.profit>=0?'var(--success)':'var(--danger)'};font-weight:700">${fmt(o.profit)}</td><td><span class="badge ${statusClass[o.status]}">${statusLabel[o.status]}</span></td></tr>`).join('')}</tbody></table>`;
+        <div class="table-wrapper"><table class="table"><thead><tr><th>المرجع</th><th>التاريخ</th><th>العميل</th><th>الخدمة</th><th>الإيراد</th><th>التكلفة</th><th>الربح</th><th>الحالة</th></tr></thead>
+        <tbody>${rows.map(o=>`<tr><td><b>${o.ref}</b></td><td>${o.date}</td><td>${o.client||clientName(o.client_id)}</td><td>${o.service||serviceName(o.service_id)}</td><td>${fmt(o.client_price)}</td><td>${fmt(o.vendor_cost)}</td><td style="color:${o.profit>=0?'var(--success)':'var(--danger)'};font-weight:700">${fmt(o.profit)}</td><td><span class="badge ${statusClass[o.status]}">${statusLabel[o.status]}</span></td></tr>`).join('')}</tbody></table></div>`;
     }catch(e){ wrap.innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
     return;
   }
@@ -807,8 +807,8 @@ renderRptContent = async function(){
     try{
       const data = await loadReport('profit');
       const rows = data.rows || [];
-      wrap.innerHTML=`<table class="table"><thead><tr><th>الخدمة</th><th>عدد العمليات</th><th>الإيرادات</th><th>التكاليف</th><th>الربح</th><th>هامش الربح</th></tr></thead>
-      <tbody>${rows.map(s=>`<tr><td>${s.icon||''} <b>${s.name}</b></td><td><span class="badge badge-info">${s.count}</span></td><td>${fmt(s.revenue)}</td><td>${fmt(s.cost)}</td><td style="color:var(--success);font-weight:700">${fmt(s.profit)}</td><td>${s.revenue>0?(s.profit/s.revenue*100).toFixed(1)+'%':'—'}</td></tr>`).join('')}</tbody></table>`;
+      wrap.innerHTML=`<div class="table-wrapper"><table class="table"><thead><tr><th>الخدمة</th><th>عدد العمليات</th><th>الإيرادات</th><th>التكاليف</th><th>الربح</th><th>هامش الربح</th></tr></thead>
+      <tbody>${rows.map(s=>`<tr><td>${s.icon||''} <b>${s.name}</b></td><td><span class="badge badge-info">${s.count}</span></td><td>${fmt(s.revenue)}</td><td>${fmt(s.cost)}</td><td style="color:var(--success);font-weight:700">${fmt(s.profit)}</td><td>${s.revenue>0?(s.profit/s.revenue*100).toFixed(1)+'%':'—'}</td></tr>`).join('')}</tbody></table></div>`;
     }catch(e){ wrap.innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
     return;
   }
@@ -819,8 +819,8 @@ renderRptContent = async function(){
       const aged = data.rows || [];
       wrap.innerHTML=`
         <div style="margin-bottom:12px;display:flex;justify-content:flex-end"><button class="btn btn-sm btn-outline" onclick="exportAgingReport()">Excel</button></div>
-        <table class="table"><thead><tr><th>العميل</th><th>الإجمالي</th><th>1-30 يوم</th><th>31-60 يوم</th><th>61-90 يوم</th><th>+90 يوم</th></tr></thead>
-        <tbody>${aged.map(a=>`<tr><td><b>${a.name}</b><br><small style="color:var(--text-sm)">${a.days} يوم</small></td><td style="font-weight:700;color:var(--danger)">${fmt(a.balance)}</td><td>${a.b1>0?fmt(a.b1):'—'}</td><td style="color:${a.b2>0?'var(--warning)':'inherit'}">${a.b2>0?fmt(a.b2):'—'}</td><td style="color:${a.b3>0?'var(--danger)':'inherit'}">${a.b3>0?fmt(a.b3):'—'}</td><td style="color:${a.b4>0?'var(--danger)':'inherit'};font-weight:${a.b4>0?'700':'400'}">${a.b4>0?fmt(a.b4):'—'}</td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--success)">لا توجد ديون متأخرة</td></tr>'}</tbody></table>`;
+        <div class="table-wrapper"><table class="table"><thead><tr><th>العميل</th><th>الإجمالي</th><th>1-30 يوم</th><th>31-60 يوم</th><th>61-90 يوم</th><th>+90 يوم</th></tr></thead>
+        <tbody>${aged.map(a=>`<tr><td><b>${a.name}</b><br><small style="color:var(--text-sm)">${a.days} يوم</small></td><td style="font-weight:700;color:var(--danger)">${fmt(a.balance)}</td><td>${a.b1>0?fmt(a.b1):'—'}</td><td style="color:${a.b2>0?'var(--warning)':'inherit'}">${a.b2>0?fmt(a.b2):'—'}</td><td style="color:${a.b3>0?'var(--danger)':'inherit'}">${a.b3>0?fmt(a.b3):'—'}</td><td style="color:${a.b4>0?'var(--danger)':'inherit'};font-weight:${a.b4>0?'700':'400'}">${a.b4>0?fmt(a.b4):'—'}</td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--success)">لا توجد ديون متأخرة</td></tr>'}</tbody></table></div>`;
     }catch(e){ wrap.innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
     return;
   }
@@ -833,8 +833,8 @@ renderRptContent = async function(){
       const safeHeaders = safes.map(s=>`<th>رصيد ${s.name}</th>`).join('');
       wrap.innerHTML=`
         <div style="margin-bottom:12px;display:flex;justify-content:flex-end"><button class="btn btn-sm btn-outline" onclick="exportCashFlow()">Excel</button></div>
-        <table class="table"><thead><tr><th>التاريخ</th><th>وارد</th><th>صادر</th><th>صافي</th>${safeHeaders}</tr></thead>
-        <tbody>${rows.map(r=>`<tr><td>${r.date}</td><td style="color:var(--success)">${r.inflow!==0?fmt(r.inflow):'—'}</td><td style="color:var(--danger)">${r.outflow!==0?fmt(r.outflow):'—'}</td><td style="font-weight:700;color:${r.net>=0?'var(--success)':'var(--danger)'}">${fmt(r.net)}</td>${safes.map(s=>`<td>${fmt(r.safes?.[s.id]||0)}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="'+(4+safes.length)+'" style="text-align:center;color:var(--text-sm)">لا توجد حركات نقدية</td></tr>'}</tbody></table>`;
+        <div class="table-wrapper"><table class="table"><thead><tr><th>التاريخ</th><th>وارد</th><th>صادر</th><th>صافي</th>${safeHeaders}</tr></thead>
+        <tbody>${rows.map(r=>`<tr><td>${r.date}</td><td style="color:var(--success)">${r.inflow!==0?fmt(r.inflow):'—'}</td><td style="color:var(--danger)">${r.outflow!==0?fmt(r.outflow):'—'}</td><td style="font-weight:700;color:${r.net>=0?'var(--success)':'var(--danger)'}">${fmt(r.net)}</td>${safes.map(s=>`<td>${fmt(r.safes?.[s.id]||0)}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="'+(4+safes.length)+'" style="text-align:center;color:var(--text-sm)">لا توجد حركات نقدية</td></tr>'}</tbody></table></div>`;
     }catch(e){ wrap.innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
     return;
   }
@@ -843,8 +843,8 @@ renderRptContent = async function(){
     try{
       const data = await loadReport('employee');
       const rows = data.rows || [];
-      wrap.innerHTML=`<table class="table"><thead><tr><th>الموظف</th><th>الدور</th><th>العمليات</th><th>الإيراد</th><th>الربح</th></tr></thead>
-      <tbody>${rows.map(u=>`<tr><td><b>${u.name}</b></td><td>${u.role||''}</td><td><span class="badge badge-info">${u.count}</span></td><td>${fmt(u.revenue)}</td><td style="color:var(--success);font-weight:700">${fmt(u.profit)}</td></tr>`).join('')}</tbody></table>`;
+      wrap.innerHTML=`<div class="table-wrapper"><table class="table"><thead><tr><th>الموظف</th><th>الدور</th><th>العمليات</th><th>الإيراد</th><th>الربح</th></tr></thead>
+      <tbody>${rows.map(u=>`<tr><td><b>${u.name}</b></td><td>${u.role||''}</td><td><span class="badge badge-info">${u.count}</span></td><td>${fmt(u.revenue)}</td><td style="color:var(--success);font-weight:700">${fmt(u.profit)}</td></tr>`).join('')}</tbody></table></div>`;
     }catch(e){ wrap.innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
     return;
   }
@@ -853,8 +853,8 @@ renderRptContent = async function(){
     try{
       const data = await loadReport('clients-debt');
       const rows = data.rows || [];
-      wrap.innerHTML=`<table class="table"><thead><tr><th>العميل</th><th>الهاتف</th><th>المشتريات</th><th>المدفوع</th><th>الرصيد</th><th>آخر عملية</th></tr></thead>
-      <tbody>${rows.map(c=>`<tr><td><b>${c.name}</b></td><td>${c.phone||''}</td><td>${fmt(c.totalPurchases)}</td><td>${fmt(c.totalPaid)}</td><td style="color:var(--danger);font-weight:700">${fmt(c.balance)}</td><td>${c.lastOpDate}</td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--success)">لا توجد مديونيات</td></tr>'}</tbody></table>`;
+      wrap.innerHTML=`<div class="table-wrapper"><table class="table"><thead><tr><th>العميل</th><th>الهاتف</th><th>المشتريات</th><th>المدفوع</th><th>الرصيد</th><th>آخر عملية</th></tr></thead>
+      <tbody>${rows.map(c=>`<tr><td><b>${c.name}</b></td><td>${c.phone||''}</td><td>${fmt(c.totalPurchases)}</td><td>${fmt(c.totalPaid)}</td><td style="color:var(--danger);font-weight:700">${fmt(c.balance)}</td><td>${c.lastOpDate}</td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--success)">لا توجد مديونيات</td></tr>'}</tbody></table></div>`;
     }catch(e){ wrap.innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
     return;
   }
@@ -863,8 +863,8 @@ renderRptContent = async function(){
     try{
       const data = await loadReport('vendors-balance');
       const rows = data.rows || [];
-      wrap.innerHTML=`<table class="table"><thead><tr><th>المورد</th><th>التصنيف</th><th>إجمالي الخدمات</th><th>المدفوع</th><th>الرصيد</th><th>آخر عملية</th></tr></thead>
-      <tbody>${rows.map(v=>`<tr><td><b>${v.name}</b></td><td>${v.category||''}</td><td>${fmt(v.totalServices)}</td><td>${fmt(v.totalPaid)}</td><td style="color:var(--warning);font-weight:700">${fmt(v.balance)}</td><td>${v.lastOpDate}</td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--success)">لا توجد أرصدة مستحقة</td></tr>'}</tbody></table>`;
+      wrap.innerHTML=`<div class="table-wrapper"><table class="table"><thead><tr><th>المورد</th><th>التصنيف</th><th>إجمالي الخدمات</th><th>المدفوع</th><th>الرصيد</th><th>آخر عملية</th></tr></thead>
+      <tbody>${rows.map(v=>`<tr><td><b>${v.name}</b></td><td>${v.category||''}</td><td>${fmt(v.totalServices)}</td><td>${fmt(v.totalPaid)}</td><td style="color:var(--warning);font-weight:700">${fmt(v.balance)}</td><td>${v.lastOpDate}</td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--success)">لا توجد أرصدة مستحقة</td></tr>'}</tbody></table></div>`;
     }catch(e){ wrap.innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
     return;
   }
@@ -1078,31 +1078,31 @@ renderDashboard = function(pc){
     const todayOpsCount = OPS.filter(o=>o.date===todayStr&&o.status!=='cancelled').length;
 
     pc.innerHTML=`
-  <div style="padding:24px">
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
+  <div class="page-shell">
+    <div class="grid-kpi-4">
       ${kpiCard('💰','مبيعات اليوم',fmt(todaySales),'var(--primary)','اليوم: '+todayOpsCount+' عمليات')}
       ${kpiCard('📈','ربح متوقع اليوم',fmt(todayProfit),'var(--success)',formatMargin(todayProfit,todaySales))}
       ${kpiCard('🧾','التحصيلات النقدية',fmt(totalReceipts),'var(--info)','')}
       ${kpiCard('💸','إجمالي المدفوعات',fmt(totalPayments),'var(--warning)','')}
     </div>
-    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:24px">
-      <div class="card"><div class="card-header"><h3>حركة الأسبوع (قبض ودفع)</h3></div><div class="card-body" style="min-height:240px"><div style="position:relative;height:220px"><canvas id="weekChart"></canvas></div></div></div>
-      <div class="card"><div class="card-header"><h3>العمليات حسب الخدمة</h3></div><div class="card-body" style="min-height:240px"><div style="position:relative;height:220px"><canvas id="svcChart"></canvas></div></div></div>
+    <div class="grid-charts-2-1">
+      <div class="card"><div class="card-header"><h3>حركة الأسبوع (قبض ودفع)</h3></div><div class="card-body" style="min-height:240px"><div class="chart-box"><canvas id="weekChart"></canvas></div></div></div>
+      <div class="card"><div class="card-header"><h3>العمليات حسب الخدمة</h3></div><div class="card-body" style="min-height:240px"><div class="chart-box"><canvas id="svcChart"></canvas></div></div></div>
     </div>
-    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:24px">
+    <div class="grid-dashboard-split">
       <div class="card">
         <div class="card-header"><h3>آخر 10 عمليات</h3><button class="btn btn-sm btn-outline" onclick="navigate('operations')">عرض الكل</button></div>
-        <div class="card-body" style="padding:0">
+        <div class="card-body" style="padding:0"><div class="table-wrapper">
         <table class="table"><thead><tr><th>الرقم</th><th>العميل</th><th>الخدمة</th><th>المبلغ</th><th>الربح</th><th>الحالة</th></tr></thead>
         <tbody>${lastOps.map(o=>`<tr onclick="viewOp(${o.id})" style="cursor:pointer"><td><b>${o.ref}</b></td><td>${o.client||clientName(o.client_id)}</td><td>${o.service||serviceName(o.service_id)}</td><td>${fmt(o.client_price)}</td><td style="color:${o.profit>=0?'var(--success)':'var(--danger)'}">${fmt(o.profit)}</td><td><span class="badge ${statusClass[o.status]}">${statusLabel[o.status]}</span></td></tr>`).join('')}</tbody></table>
-        </div>
+        </div></div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="grid-stack">
         ${overdueList.length>0?`<div class="card" style="border-right:4px solid var(--warning)"><div class="card-header"><h3>⏰ متأخر التحصيل (+7 أيام)</h3></div><div class="card-body">${overdueList.map(o=>`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><b>${o.ref}</b> - ${o.client||clientName(o.client_id)}<br><small style="color:var(--danger)">تاريخ: ${o.date} | ${statusLabel[o.status]} | متبقي: ${fmt(+o.client_outstanding||0)}</small></div>`).join('')}</div></div>`:''}
-        <div class="card"><div class="card-header"><h3>🔴 أعلى 5 مدينين</h3></div><div class="card-body" style="padding:0">
-        <table class="table"><thead><tr><th>العميل</th><th>المبلغ</th></tr></thead><tbody>${debtors.map(c=>`<tr><td>${c.name}</td><td style="color:var(--danger);font-weight:700">${fmt(c.bal)}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text-sm)">لا يوجد مدينون</td></tr>'}</tbody></table></div></div>
-        <div class="card"><div class="card-header"><h3>🟡 أعلى 5 دائنين</h3></div><div class="card-body" style="padding:0">
-        <table class="table"><thead><tr><th>المورد</th><th>المبلغ</th></tr></thead><tbody>${creditors.map(v=>`<tr><td>${v.name}</td><td style="color:var(--warning);font-weight:700">${fmt(v.bal)}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text-sm)">لا يوجد دائنون</td></tr>'}</tbody></table></div></div>
+        <div class="card"><div class="card-header"><h3>🔴 أعلى 5 مدينين</h3></div><div class="card-body" style="padding:0"><div class="table-wrapper">
+        <table class="table"><thead><tr><th>العميل</th><th>المبلغ</th></tr></thead><tbody>${debtors.map(c=>`<tr><td>${c.name}</td><td style="color:var(--danger);font-weight:700">${fmt(c.bal)}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text-sm)">لا يوجد مدينون</td></tr>'}</tbody></table></div></div></div>
+        <div class="card"><div class="card-header"><h3>🟡 أعلى 5 دائنين</h3></div><div class="card-body" style="padding:0"><div class="table-wrapper">
+        <table class="table"><thead><tr><th>المورد</th><th>المبلغ</th></tr></thead><tbody>${creditors.map(v=>`<tr><td>${v.name}</td><td style="color:var(--warning);font-weight:700">${fmt(v.bal)}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text-sm)">لا يوجد دائنون</td></tr>'}</tbody></table></div></div></div>
       </div>
     </div>
   </div>`;

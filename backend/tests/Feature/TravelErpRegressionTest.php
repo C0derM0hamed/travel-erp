@@ -30,7 +30,11 @@ class TravelErpRegressionTest extends TestCase
             $this->actingAs($user)
                 ->getJson('/api/bootstrap')
                 ->assertOk()
-                ->assertJsonStructure(['users', 'services', 'vendors', 'clients', 'operations', 'vouchers', 'safes', 'metrics']);
+                ->assertJsonStructure(['user', 'users', 'services', 'safes', 'metrics'])
+                ->assertJsonMissingPath('vendors')
+                ->assertJsonMissingPath('clients')
+                ->assertJsonMissingPath('operations')
+                ->assertJsonMissingPath('vouchers');
         }
     }
 

@@ -9,11 +9,11 @@ class Safe extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'type', 'currency', 'opening_balance'];
+    protected $fillable = ['name', 'type', 'currency', 'opening_balance', 'is_active'];
 
     protected function casts(): array
     {
-        return ['opening_balance' => 'decimal:3'];
+        return ['opening_balance' => 'decimal:3', 'is_active' => 'boolean'];
     }
 
     public function account()

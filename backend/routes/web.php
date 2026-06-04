@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\TravelErpController;
+use App\Http\Controllers\Api\AuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -18,5 +18,5 @@ Route::get('/travel-erp-api-bridge.js', function () {
         ->header('Content-Type', 'application/javascript; charset=UTF-8');
 });
 
-Route::post('/api/login', [TravelErpController::class, 'login'])->middleware('throttle:10,1');
-Route::post('/api/logout', [TravelErpController::class, 'logout'])->middleware('auth:sanctum');
+Route::post('/api/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+Route::post('/api/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');

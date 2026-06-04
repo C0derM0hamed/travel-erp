@@ -10,7 +10,7 @@ use Illuminate\Validation\ValidationException;
 
 class OperationService
 {
-    public function __construct(private AccountingService $accounting, private ReferenceService $references) {}
+    public function __construct(private AccountingService $accounting, private ReferenceService $references, private SafeResolver $safeResolver, private ActivityLogger $activityLogger) {}
 
     public function create(array $data, int $userId): Operation
     {
@@ -35,7 +35,7 @@ class OperationService
             $this->accounting->postOperation($operation);
 
             if ((float) $operation->initial_payment > 0) {
-                $safeId = in_array($operation->payment_method, ['bank', 'knet', 'check'], true) ? 2 : 1;
+                $safeId = $this->safeResolver->resolveForPaymentMethod($operation->payment_method);
                 $voucher = Voucher::create([
                     'ref' => $this->references->voucherRef('receipt'),
                     'type' => 'receipt',
@@ -53,7 +53,10 @@ class OperationService
                 $this->accounting->postVoucher($voucher);
             }
 
-            return $this->refreshStatusIfSettled($operation)->fresh(['client', 'service', 'vendor', 'vouchers']);
+            $operation = $this->refreshStatusIfSettled($operation)->fresh(['client', 'service', 'vendor', 'vouchers']);
+            $this->activityLogger->log('operation.created', $operation, ['ref' => $operation->ref], $userId);
+
+            return $operation;
         });
     }
 
@@ -88,6 +91,7 @@ class OperationService
             }
 
             $operation->update(['status' => $status]);
+            $this->activityLogger->log('operation.status_updated', $operation, ['status' => $status], $user->id);
 
             return $operation->fresh(['client', 'service', 'vendor']);
         });
@@ -95,11 +99,37 @@ class OperationService
 
     public function refreshStatusIfSettled(Operation $operation): Operation
     {
-        if ($operation->status !== 'cancelled' && $this->isSettled($operation)) {
+        if ($operation->status === 'processing' && $this->isSettled($operation)) {
             $operation->update(['status' => 'completed']);
         }
 
         return $operation->fresh(['client', 'service', 'vendor']);
+    }
+
+    public function update(Operation $operation, array $data, int $userId): Operation
+    {
+        return DB::transaction(function () use ($operation, $data, $userId) {
+            $operation = $operation->fresh();
+
+            if ($operation->status === 'new' && $this->hasFinancialChanges($data)) {
+                $this->reverseOperationAccounting($operation);
+
+                $operation->update($this->operationAttributes($data, $operation));
+                $operation = $operation->fresh();
+
+                $this->accounting->postOperation($operation);
+                $this->recreateInitialReceipt($operation, $userId);
+            } else {
+                $operation->update(array_filter([
+                    'notes' => $data['notes'] ?? $operation->notes,
+                    'op_date' => $data['date'] ?? $operation->op_date,
+                ], fn ($value) => $value !== null));
+            }
+
+            $this->activityLogger->log('operation.updated', $operation, ['ref' => $operation->ref], $userId);
+
+            return $operation->fresh(['client', 'service', 'vendor', 'vouchers']);
+        });
     }
 
     public function cancel(Operation $operation): Operation
@@ -114,9 +144,11 @@ class OperationService
             $operation->update(['status' => 'cancelled', 'cancelled_at' => now()]);
             $this->accounting->postOperation($operation->fresh(), -1);
 
-            foreach ($operation->vouchers()->get() as $voucher) {
+            foreach ($operation->vouchers()->whereNull('voided_at')->get() as $voucher) {
                 $this->accounting->postVoucher($voucher, -1);
+                $voucher->update(['voided_at' => now()]);
             }
+            $this->activityLogger->log('operation.cancelled', $operation, ['ref' => $operation->ref]);
 
             return $operation->fresh(['client', 'service', 'vendor']);
         });
@@ -126,5 +158,71 @@ class OperationService
     {
         return $this->accounting->operationClientOutstanding($operation->id) <= 0.001
             && $this->accounting->operationVendorOutstanding($operation->id) <= 0.001;
+    }
+
+    private function hasFinancialChanges(array $data): bool
+    {
+        return array_key_exists('client_id', $data)
+            || array_key_exists('service_id', $data)
+            || array_key_exists('vendor_id', $data)
+            || array_key_exists('client_price', $data)
+            || array_key_exists('vendor_cost', $data)
+            || array_key_exists('initial_payment', $data)
+            || array_key_exists('payment_method', $data)
+            || array_key_exists('currency', $data);
+    }
+
+    private function operationAttributes(array $data, Operation $operation): array
+    {
+        $clientPrice = (float) ($data['client_price'] ?? $operation->client_price);
+        $vendorCost = (float) ($data['vendor_cost'] ?? $operation->vendor_cost);
+
+        return [
+            'client_id' => $data['client_id'] ?? $operation->client_id,
+            'service_id' => $data['service_id'] ?? $operation->service_id,
+            'vendor_id' => $data['vendor_id'] ?? $operation->vendor_id,
+            'currency' => $data['currency'] ?? $operation->currency,
+            'client_price' => $clientPrice,
+            'vendor_cost' => $vendorCost,
+            'profit' => $clientPrice - $vendorCost,
+            'initial_payment' => $data['initial_payment'] ?? $operation->initial_payment,
+            'payment_method' => $data['payment_method'] ?? $operation->payment_method,
+            'notes' => $data['notes'] ?? $operation->notes,
+            'op_date' => $data['date'] ?? $operation->op_date,
+        ];
+    }
+
+    private function reverseOperationAccounting(Operation $operation): void
+    {
+        $this->accounting->postOperation($operation, -1);
+
+        foreach ($operation->vouchers()->whereNull('voided_at')->get() as $voucher) {
+            $this->accounting->postVoucher($voucher, -1);
+            $voucher->update(['voided_at' => now()]);
+        }
+    }
+
+    private function recreateInitialReceipt(Operation $operation, int $userId): void
+    {
+        if ((float) $operation->initial_payment <= 0) {
+            return;
+        }
+
+        $safeId = $this->safeResolver->resolveForPaymentMethod($operation->payment_method);
+        $voucher = Voucher::create([
+            'ref' => $this->references->voucherRef('receipt'),
+            'type' => 'receipt',
+            'party_type' => 'client',
+            'party_id' => $operation->client_id,
+            'amount' => $operation->initial_payment,
+            'currency' => $operation->currency,
+            'method' => $operation->payment_method,
+            'safe_id' => $safeId,
+            'operation_id' => $operation->id,
+            'description' => 'دفعة أولى - '.$operation->ref,
+            'voucher_date' => $operation->op_date,
+            'created_by' => $userId,
+        ]);
+        $this->accounting->postVoucher($voucher);
     }
 }

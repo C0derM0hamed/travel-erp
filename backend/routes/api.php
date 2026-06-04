@@ -1,36 +1,55 @@
 <?php
 
-use App\Http\Controllers\TravelErpController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BootstrapController;
+use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\JournalController;
+use App\Http\Controllers\Api\OperationController;
+use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\SafeController;
+use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\VendorController;
+use App\Http\Controllers\Api\VoucherController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:sanctum'])->group(function () {
-    Route::get('/me', [TravelErpController::class, 'me']);
-    Route::get('/bootstrap', [TravelErpController::class, 'bootstrap']);
-    Route::get('/dashboard', [TravelErpController::class, 'dashboard']);
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::get('/bootstrap', BootstrapController::class);
+    Route::get('/dashboard', DashboardController::class);
 
-    Route::get('/clients', [TravelErpController::class, 'clients']);
-    Route::post('/clients', [TravelErpController::class, 'storeClient']);
-    Route::get('/clients/{client}/statement', [TravelErpController::class, 'clientStatement']);
+    Route::get('/clients', [ClientController::class, 'index']);
+    Route::post('/clients', [ClientController::class, 'store'])->middleware('idempotency');
+    Route::patch('/clients/{client}', [ClientController::class, 'update']);
+    Route::get('/clients/{client}/statement', [ClientController::class, 'statement']);
 
-    Route::get('/vendors', [TravelErpController::class, 'vendors']);
-    Route::post('/vendors', [TravelErpController::class, 'storeVendor']);
-    Route::get('/vendors/{vendor}/statement', [TravelErpController::class, 'vendorStatement']);
+    Route::get('/vendors', [VendorController::class, 'index']);
+    Route::post('/vendors', [VendorController::class, 'store'])->middleware('idempotency');
+    Route::patch('/vendors/{vendor}', [VendorController::class, 'update']);
+    Route::get('/vendors/{vendor}/statement', [VendorController::class, 'statement']);
 
-    Route::get('/operations', [TravelErpController::class, 'operations']);
-    Route::post('/operations', [TravelErpController::class, 'storeOperation']);
-    Route::get('/operations/{operation}', [TravelErpController::class, 'operationShow']);
-    Route::post('/operations/{operation}/cancel', [TravelErpController::class, 'cancelOperation']);
-    Route::patch('/operations/{operation}/status', [TravelErpController::class, 'updateOperationStatus']);
+    Route::get('/operations', [OperationController::class, 'index']);
+    Route::post('/operations', [OperationController::class, 'store'])->middleware('idempotency');
+    Route::get('/operations/{operation}', [OperationController::class, 'show']);
+    Route::patch('/operations/{operation}', [OperationController::class, 'update']);
+    Route::post('/operations/{operation}/cancel', [OperationController::class, 'cancel'])->middleware('idempotency');
+    Route::patch('/operations/{operation}/status', [OperationController::class, 'updateStatus']);
 
-    Route::get('/vouchers', [TravelErpController::class, 'vouchers']);
-    Route::post('/vouchers', [TravelErpController::class, 'storeVoucher']);
-    Route::get('/vouchers/{voucher}', [TravelErpController::class, 'voucherShow']);
+    Route::get('/vouchers', [VoucherController::class, 'index']);
+    Route::post('/vouchers', [VoucherController::class, 'store'])->middleware('idempotency');
+    Route::get('/vouchers/{voucher}', [VoucherController::class, 'show']);
+    Route::post('/vouchers/{voucher}/void', [VoucherController::class, 'void'])->middleware('idempotency');
 
-    Route::get('/journal', [TravelErpController::class, 'journal']);
-    Route::get('/safes', [TravelErpController::class, 'safes']);
-    Route::get('/reports/{type}', [TravelErpController::class, 'reports']);
+    Route::get('/journal', JournalController::class);
+    Route::get('/safes', SafeController::class);
+    Route::get('/reports/{type}', [ReportController::class, 'show']);
 
-    Route::get('/users', [TravelErpController::class, 'users']);
-    Route::patch('/services/{service}/toggle', [TravelErpController::class, 'toggleService']);
-    Route::patch('/profile', [TravelErpController::class, 'updateProfile']);
+    Route::get('/users', [UserController::class, 'index']);
+    Route::post('/users', [UserController::class, 'store'])->middleware('idempotency');
+    Route::patch('/users/{user}', [UserController::class, 'update']);
+    Route::patch('/services/{service}/toggle', [ServiceController::class, 'toggle']);
+    Route::patch('/profile', [ProfileController::class, 'update']);
+    Route::patch('/profile/password', [ProfileController::class, 'updatePassword']);
 });

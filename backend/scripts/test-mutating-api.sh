@@ -5,6 +5,7 @@ set -euo pipefail
 BASE="${BASE_URL:-http://127.0.0.1:8080}"
 EMAIL="${API_EMAIL:-admin@travel.kw}"
 PASS="${API_PASSWORD:-Travel@2026}"
+STAMP="$(date +%s)"
 COOKIES="$(mktemp)"
 trap 'rm -f "$COOKIES"' EXIT
 
@@ -40,16 +41,19 @@ csrf
 echo "XSRF length after refresh: $(get_xsrf | wc -c)"
 
 echo "=== Mutating endpoints ==="
-api POST /clients '{"name":"API Test Client","phone":"90000999"}'
-DUPE_CODE="$(curl -s -c "$COOKIES" -b "$COOKIES" -H "Accept: application/json" -H "X-XSRF-TOKEN: $(get_xsrf)" -H "Content-Type: application/json" -X POST -d '{"name":"Dup Client","phone":"90000999"}' -w "%{http_code}" "$BASE/api/clients" -o /tmp/api-dup.json)"
+CLIENT_PHONE="9${STAMP: -7}"
+api POST /clients "{\"name\":\"API Test Client $STAMP\",\"phone\":\"$CLIENT_PHONE\"}"
+DUPE_CODE="$(curl -s -c "$COOKIES" -b "$COOKIES" -H "Accept: application/json" -H "X-XSRF-TOKEN: $(get_xsrf)" -H "Idempotency-Key: dup-$STAMP" -H "Content-Type: application/json" -X POST -d "{\"name\":\"Dup Client\",\"phone\":\"$CLIENT_PHONE\"}" -w "%{http_code}" "$BASE/api/clients" -o /tmp/api-dup.json)"
 echo "POST /clients duplicate => $DUPE_CODE"
 [[ "$DUPE_CODE" == "422" ]] || { head -c 200 /tmp/api-dup.json; exit 1; }
-api POST /vendors '{"name":"API Test Vendor Unique","category":"hotel","phone":"99001123"}'
+api POST /vendors "{\"name\":\"API Test Vendor $STAMP\",\"category\":\"hotel\",\"phone\":\"99${STAMP: -6}\"}"
 
 BOOT="$(curl -s -c "$COOKIES" -b "$COOKIES" -H "Accept: application/json" "$BASE/api/bootstrap")"
-CID=$(python3 -c "import json,sys; print(json.load(sys.stdin)['clients'][0]['id'])" <<<"$BOOT")
-SID=$(python3 -c "import json,sys; print(json.load(sys.stdin)['services'][0]['id'])" <<<"$BOOT")
-VID=$(python3 -c "import json,sys; print(json.load(sys.stdin)['vendors'][0]['id'])" <<<"$BOOT")
+CLIENTS_JSON="$(curl -s -c "$COOKIES" -b "$COOKIES" -H "Accept: application/json" "$BASE/api/clients?per_page=1")"
+VENDORS_JSON="$(curl -s -c "$COOKIES" -b "$COOKIES" -H "Accept: application/json" "$BASE/api/vendors?per_page=1")"
+CID=$(python3 -c "import json,sys; print(json.load(sys.stdin)['data'][0]['id'])" <<<"$CLIENTS_JSON")
+SID=$(python3 -c "import json,sys; print(next(s['id'] for s in json.load(sys.stdin)['services'] if s.get('active')))" <<<"$BOOT")
+VID=$(python3 -c "import json,sys; print(json.load(sys.stdin)['data'][0]['id'])" <<<"$VENDORS_JSON")
 SAFE=$(python3 -c "import json,sys; print(json.load(sys.stdin)['safes'][0]['id'])" <<<"$BOOT")
 
 api POST /operations "{\"client_id\":$CID,\"service_id\":$SID,\"vendor_id\":$VID,\"currency\":\"KWD\",\"client_price\":100,\"vendor_cost\":80,\"initial_payment\":10,\"payment_method\":\"cash\"}"
@@ -58,6 +62,7 @@ OID=$(echo "$OPS" | python3 -c "import json,sys; d=json.load(sys.stdin); items=d
 
 api POST /vouchers "{\"type\":\"receipt\",\"party_type\":\"client\",\"party_id\":$CID,\"amount\":5,\"currency\":\"KWD\",\"method\":\"cash\",\"safe_id\":$SAFE,\"description\":\"test\"}"
 api POST "/operations/$OID/cancel" ""
+api PATCH "/services/$SID/toggle" ""
 api PATCH "/services/$SID/toggle" ""
 api PATCH /profile '{"name":"أحمد الكندري"}'
 

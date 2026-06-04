@@ -4,10 +4,11 @@ namespace App\Services;
 
 use App\Models\Voucher;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class VoucherService
 {
-    public function __construct(private AccountingService $accounting, private ReferenceService $references, private OperationService $operations) {}
+    public function __construct(private AccountingService $accounting, private ReferenceService $references, private OperationService $operations, private ActivityLogger $activityLogger) {}
 
     public function create(array $data, int $userId): Voucher
     {
@@ -31,6 +32,35 @@ class VoucherService
             if ($voucher->operation_id && $voucher->operation) {
                 $this->operations->refreshStatusIfSettled($voucher->operation);
             }
+            $this->activityLogger->log('voucher.created', $voucher, ['ref' => $voucher->ref, 'type' => $voucher->type], $userId);
+
+            return $voucher->fresh(['safe', 'operation']);
+        });
+    }
+
+    public function void(Voucher $voucher, int $userId): Voucher
+    {
+        return DB::transaction(function () use ($voucher, $userId) {
+            if ($voucher->voided_at) {
+                throw ValidationException::withMessages([
+                    'voucher' => ['السند ملغى مسبقاً'],
+                ]);
+            }
+
+            if ($voucher->operation?->status === 'cancelled') {
+                throw ValidationException::withMessages([
+                    'voucher' => ['لا يمكن إلغاء سند مرتبط بعملية ملغاة'],
+                ]);
+            }
+
+            $this->accounting->postVoucher($voucher, -1);
+            $voucher->update(['voided_at' => now()]);
+
+            if ($voucher->operation_id && $voucher->operation) {
+                $this->operations->refreshStatusIfSettled($voucher->operation);
+            }
+
+            $this->activityLogger->log('voucher.voided', $voucher, ['ref' => $voucher->ref], $userId);
 
             return $voucher->fresh(['safe', 'operation']);
         });

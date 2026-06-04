@@ -24,8 +24,8 @@ The user interface is a single-page application (`frontend/travelsystemv3.html`)
 
 | Module | Capabilities |
 |--------|----------------|
-| **Authentication** | Email/password login, session logout, profile name update |
-| **Dashboard** | KPIs, charts, recent operations, debtors/creditors (from bootstrap data) |
+| **Authentication** | Email/password login, session logout, profile name/password update |
+| **Dashboard** | KPIs, charts, recent operations, debtors/creditors (from dedicated API endpoints) |
 | **Clients** | List, search, create, account statement, Excel export |
 | **Vendors** | List, search, create, statement, Excel export |
 | **Services** | List in settings, enable/disable (admin) |
@@ -53,9 +53,10 @@ The user interface is a single-page application (`frontend/travelsystemv3.html`)
 │  Laravel 12 (backend/)                                       │
 │  ├── routes/web.php    → SPA, login/logout, static JS        │
 │  ├── routes/api.php    → JSON API (auth:sanctum)             │
-│  ├── TravelErpController                                      │
-│  ├── Services: Accounting, Operation, Voucher                 │
-│  └── Models + migrations                                      │
+│  ├── Controllers: Auth, Clients, Operations, Vouchers, etc.   │
+│  ├── Policies + Form Requests                                 │
+│  ├── Services: Accounting, Operation, Voucher, SafeResolver   │
+│  └── Models + migrations + activity audit log                 │
 └──────────────────────────┬──────────────────────────────────┘
                            │
 ┌──────────────────────────▼──────────────────────────────────┐
@@ -65,7 +66,9 @@ The user interface is a single-page application (`frontend/travelsystemv3.html`)
 
 **Authentication model:** Laravel Sanctum **stateful SPA** (session cookies), not API tokens. See `SANCTUM_STATEFUL_DOMAINS` in `.env`.
 
-**Primary data load:** `GET /api/bootstrap` returns all entities for the SPA. Mutations call specific POST/PATCH endpoints then refresh bootstrap.
+**Primary data load:** `GET /api/bootstrap` returns metadata only (`user`, `users`, `services`, `safes`, `metrics`). The SPA loads clients, vendors, operations, and vouchers from paginated API endpoints.
+
+**Financial safety:** Accounting is KWD-only until a full FX ledger is implemented. Mutating POST requests support `Idempotency-Key` to prevent duplicate records during retries or double-clicks.
 
 ---
 

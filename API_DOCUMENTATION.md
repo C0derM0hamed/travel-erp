@@ -104,6 +104,8 @@ Permission checks use `User::canPerform()` and Laravel Gates: `create-op`, `canc
 
 **Data integrity (clients / vendors):** `phone` numbers are normalized (strip spaces, leading `0`, Kuwait country code `965`) before uniqueness checks. Vendor `name` is trimmed and unique. Duplicate create returns **422** with Arabic field errors.
 
+**Idempotency:** Mutating POST routes (`/api/clients`, `/api/vendors`, `/api/operations`, `/api/vouchers`, `/api/vouchers/{id}/void`, operation cancellation, and user creation) accept `Idempotency-Key`. Send a unique UUID per create/cancel request. Reusing the same key returns the first stored JSON response and prevents duplicate financial records.
+
 **Login rate limit:** `POST /api/login` is limited to **10 attempts per minute** per IP (HTTP **429** when exceeded).
 
 **Validation rules** (`LoginRequest`):
@@ -178,9 +180,9 @@ Permission checks use `User::canPerform()` and Laravel Gates: `create-op`, `canc
 
 ## Dashboard
 
-### Bootstrap (full application data)
+### Bootstrap (metadata only)
 
-**Purpose:** Single payload used by the frontend SPA (`loadAllData()`). Includes users, services, vendors, clients, operations, vouchers, safes, and summary **metrics** (not the full journal — use `GET /api/journal` for ledger data).
+**Purpose:** Lightweight startup payload used by the frontend SPA. It includes the current user, role-visible users, services, safes, and summary **metrics** only. Large datasets are loaded through paginated endpoints (`GET /api/clients`, `GET /api/vendors`, `GET /api/operations`, `GET /api/vouchers`) to keep production startup fast.
 
 | | |
 |--|--|
@@ -193,22 +195,9 @@ Permission checks use `User::canPerform()` and Laravel Gates: `create-op`, `canc
 
 ```json
 {
+  "user": { "id": 1, "name": "...", "email": "...", "role": "admin", "roleLabel": "...", "avatar": "أ" },
   "users": [{ "id": 1, "name": "...", "email": "...", "role": "admin", "roleLabel": "...", "avatar": "أ" }],
   "services": [{ "id": 1, "name": "تذكرة طيران", "icon": "✈️", "active": true, "created_at": "...", "updated_at": "..." }],
-  "vendors": [{ "id": 1, "name": "...", "category": "airline", "phone": "...", "contact": "...", "address": "..." }],
-  "clients": [{ "id": 1, "name": "...", "phone": "...", "alt_phone": "...", "civil_id": "...", "email": "...", "nationality": "...", "notes": "..." }],
-  "operations": [{
-    "id": 1, "ref": "OP-001", "client_id": 1, "service_id": 1, "vendor_id": 1,
-    "currency": "KWD", "client_price": 450, "vendor_cost": 320, "profit": 130,
-    "initial_payment": 200, "payment_method": "cash", "notes": "...",
-    "status": "completed", "created_by": 3, "date": "2026-04-01",
-    "client": "محمد سالم الصبيح", "service": "تذكرة طيران", "vendor": "الخطوط الجوية الكويتية"
-  }],
-  "vouchers": [{
-    "id": 1, "ref": "RV-001", "type": "receipt", "party_type": "client", "party_id": 1,
-    "amount": 250, "currency": "KWD", "method": "cash", "safe_id": 1, "operation_id": 1,
-    "desc": "تحصيل جزئي OP-001", "description": "تحصيل جزئي OP-001", "date": "2026-04-01", "created_by": 2
-  }],
   "safes": [{ "id": 1, "name": "الصندوق الرئيسي", "type": "cash", "currency": "KWD", "initial": 5000, "opening_balance": 5000, "balance": 5800 }],
   "metrics": {
     "total_receipts": 4625,
@@ -219,7 +208,7 @@ Permission checks use `User::canPerform()` and Laravel Gates: `create-op`, `canc
 }
 ```
 
-**Note:** `clients` and `vendors` include computed `balance`. Journal lines are loaded separately via `GET /api/journal` (supports pagination).
+**Note:** `clients`, `vendors`, `operations`, and `vouchers` are intentionally excluded. Journal lines are loaded separately via `GET /api/journal` (supports pagination).
 
 ---
 
@@ -331,6 +320,22 @@ Permission checks use `User::canPerform()` and Laravel Gates: `create-op`, `canc
 
 ---
 
+### Update client
+
+| | |
+|--|--|
+| **Method** | `PATCH` |
+| **URL** | `/api/clients/{client}` |
+| **Path parameters** | `client` — client ID |
+| **Authentication** | Required |
+| **Permissions** | admin, accountant, sales (**not** auditor) |
+
+**Request body:** Any subset of create fields (`name`, `phone`, `alt_phone`, `civil_id`, `email`, `nationality`, `notes`). Phone and civil_id uniqueness rules apply.
+
+**Success `200`:** Updated client object (same shape as list item).
+
+---
+
 ### Client statement
 
 | | |
@@ -418,6 +423,22 @@ Permission checks use `User::canPerform()` and Laravel Gates: `create-op`, `canc
 | `address` | nullable, string, max:255 |
 
 **Success `201`:** Vendor with `balance`.
+
+---
+
+### Update vendor
+
+| | |
+|--|--|
+| **Method** | `PATCH` |
+| **URL** | `/api/vendors/{vendor}` |
+| **Path parameters** | `vendor` — vendor ID |
+| **Authentication** | Required |
+| **Permissions** | admin, accountant, sales (**not** auditor) |
+
+**Request body:** Any subset of create fields.
+
+**Success `200`:** Updated vendor with `balance`.
 
 ---
 
@@ -555,7 +576,7 @@ There is **no** standalone `GET /api/services` endpoint. Active services are ret
 | `client_id` | required, exists:clients,id |
 | `service_id` | required, exists:services,id **and active** |
 | `vendor_id` | required, exists:vendors,id |
-| `currency` | nullable, string, size:3 |
+| `currency` | nullable, must be `KWD` |
 | `client_price` | required, numeric, decimal:0,3, min:0.001 |
 | `vendor_cost` | required, numeric, gte:0, **lte:client_price** (no loss-making sales) |
 | `initial_payment` | nullable, numeric, gte:0, **lte:client_price** |
@@ -590,15 +611,46 @@ There is **no** standalone `GET /api/services` endpoint. Active services are ret
 
 ---
 
+### Update operation
+
+**Purpose:** Edit operation metadata. Financial fields (`client_price`, `vendor_cost`, `initial_payment`, parties, etc.) may only be changed while status is `new` and no extra vouchers exist beyond the optional initial receipt. While status is `processing`, only `notes` and `date` may be updated.
+
+| | |
+|--|--|
+| **Method** | `PATCH` |
+| **URL** | `/api/operations/{operation}` |
+| **Permissions** | admin, sales |
+
+**Request body (examples):**
+
+```json
+{ "notes": "تعديل ملاحظة", "date": "2026-06-01" }
+```
+
+```json
+{
+  "client_price": 150,
+  "vendor_cost": 90,
+  "initial_payment": 25,
+  "payment_method": "cash"
+}
+```
+
+**Success `200`:** Operation payload (same shape as list/show). Financial updates reverse and repost journal lines via `AccountingService`.
+
+**Error `422`:** Cancelled/completed operation, financial edit after extra vouchers, or invalid amounts.
+
+---
+
 ### Cancel operation
 
-**Purpose:** Set status to `cancelled`, post reversing journal entries for the operation, and reverse all vouchers linked to that operation.
+**Purpose:** Set status to `cancelled`, post reversing journal entries for the operation, and reverse all active vouchers linked to that operation (sets `voided_at` on each).
 
 | | |
 |--|--|
 | **Method** | `POST` |
 | **URL** | `/api/operations/{operation}/cancel` |
-| **Permissions** | admin, sales, accountant (`cancel-op` Gate) |
+| **Permissions** | admin, accountant (`cancel-op` Gate) |
 
 **Request body:** None
 
@@ -700,7 +752,7 @@ Allowed manual transitions are `new → processing` and `processing → complete
 | `party_type` | nullable, in: client, vendor, general |
 | `party_id` | required when party_type is client/vendor; must exist in matching table |
 | `amount` | required, numeric, gt:0, min:0.001; **must not exceed outstanding client/vendor balance** (or operation outstanding when `operation_id` is set) |
-| `currency` | nullable, string, size:3 |
+| `currency` | nullable, must be `KWD` |
 | `method` | nullable, in: cash, bank, knet, check |
 | `safe_id` | required, exists:safes,id |
 | `operation_id` | nullable, exists:operations,id; **rejected if cancelled**; must match party |
@@ -722,7 +774,27 @@ Allowed manual transitions are `new → processing` and `processing → complete
 | **Method** | `GET` |
 | **URL** | `/api/vouchers/{voucher}` |
 
-**Success `200`:** Single voucher with `safe` and `operation` relations loaded internally.
+**Success `200`:** Single voucher with `reversed`, `voided_at`, and related fields.
+
+---
+
+### Void voucher
+
+**Purpose:** Cancel a single voucher without cancelling the whole operation. Posts reversing journal entries (multiplier −1) and sets `voided_at`.
+
+| | |
+|--|--|
+| **Method** | `POST` |
+| **URL** | `/api/vouchers/{voucher}/void` |
+| **Permissions** | admin, accountant |
+
+**Request body:** None
+
+**Success `200`:** Voucher with `"reversed": true` and `voided_at` timestamp.
+
+**Error `422`:** Already voided (`errors.voucher`) or linked operation is cancelled.
+
+**Error `403`:** Sales, auditor.
 
 ---
 

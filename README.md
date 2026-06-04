@@ -8,6 +8,9 @@ Arabic-first travel agency operations and accounting system. The UI lives in `fr
 - Role-based access: admin, accountant, sales, auditor
 - Double-entry accounting with persisted journal entries
 - Same-origin SPA auth (Laravel Sanctum cookies)
+- Lightweight bootstrap plus paginated API lists for production-sized datasets
+- `Idempotency-Key` support on mutating POST routes to prevent duplicate financial records
+- KWD-only accounting until a full FX ledger is added
 
 ## Quick start (local)
 
@@ -48,11 +51,12 @@ php artisan test --env=testing
 
 - **[PROJECT_HANDOVER.md](PROJECT_HANDOVER.md)** — installation, architecture, roles, troubleshooting
 - **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** — complete REST API reference
-- **[Travel-ERP.postman_collection.json](Travel-ERP.postman_collection.json)** — Postman collection (31 requests)
+- **[Travel-ERP.postman_collection.json](Travel-ERP.postman_collection.json)** — Postman collection (36 requests)
 
 ### Technical
 
 - **[backend/DEPLOYMENT.md](backend/DEPLOYMENT.md)** — production deployment checklist
+- **[backend/ARCHITECTURE.md](backend/ARCHITECTURE.md)** — backend architecture and accounting decisions
 - **[backend/README.md](backend/README.md)** — backend technical reference
 
 ## Project layout

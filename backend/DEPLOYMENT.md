@@ -47,11 +47,16 @@ If using Docker MariaDB locally/staging, start it **before** migrating:
 docker compose up -d mariadb   # from backend/
 php artisan migrate --force
 php artisan db:seed --force   # first install only; requires SEED_USER_PASSWORD
+php scripts/production-audit.php
 ```
 
 `db:seed` resets all ERP demo data before inserting the UAT dataset. Run it only for the first install or a deliberate demo reset. In production, seeding without `--force` is blocked unless `ALLOW_PRODUCTION_SEED=true`.
 
 Change all user passwords after first login (via database or a future admin tool). Seeded passwords all use `SEED_USER_PASSWORD` once at seed time.
+
+After first login, create named users from the admin users screen/API and rotate seeded passwords. Mutating POST routes accept an `Idempotency-Key` header; client integrations should send a unique key for every create/cancel request so retries do not duplicate financial records.
+
+The production accounting ledger is currently KWD-only. Do not enable USD/SAR in the UI or API until a full FX ledger and exchange-rate policy are implemented.
 
 ## 4. Laravel optimization
 

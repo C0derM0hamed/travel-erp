@@ -13,13 +13,13 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
-    protected $fillable = ['name', 'email', 'password', 'role', 'role_label', 'avatar'];
+    protected $fillable = ['name', 'email', 'password', 'role', 'role_label', 'avatar', 'is_active', 'must_change_password'];
 
     protected $hidden = ['password', 'remember_token'];
 
     protected function casts(): array
     {
-        return ['email_verified_at' => 'datetime', 'password' => 'hashed'];
+        return ['email_verified_at' => 'datetime', 'password' => 'hashed', 'is_active' => 'boolean', 'must_change_password' => 'boolean'];
     }
 
     public function canPerform(string $action): bool

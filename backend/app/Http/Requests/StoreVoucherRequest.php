@@ -29,7 +29,7 @@ class StoreVoucherRequest extends FormRequest
                 'integer',
             ],
             'amount' => ['required', 'numeric', 'decimal:0,3', 'gt:0', 'min:1', 'max:99999.999'],
-            'currency' => ['nullable', 'string', 'size:3'],
+            'currency' => ['nullable', Rule::in(['KWD'])],
             'method' => ['nullable', Rule::in(['cash', 'bank', 'knet', 'check'])],
             'safe_id' => ['required', 'exists:safes,id'],
             'operation_id' => ['nullable', 'exists:operations,id'],
@@ -106,6 +106,7 @@ class StoreVoucherRequest extends FormRequest
         return [
             'party_id.required' => 'يجب تحديد الطرف عند اختيار عميل أو مورد',
             'date.before_or_equal' => 'تاريخ السند لا يمكن أن يكون في المستقبل',
+            'currency.in' => 'النظام المحاسبي يدعم الدينار الكويتي فقط حالياً',
             'amount.min' => 'الحد الأدنى للمبلغ 1 د.ك',
         ];
     }

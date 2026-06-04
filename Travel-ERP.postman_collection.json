@@ -60,6 +60,10 @@
           "const mutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);",
           "const csrfExempt = path.endsWith('/api/login') || path.endsWith('/api/logout');",
           "",
+          "if (method === 'POST' && !csrfExempt) {",
+          "  pm.request.headers.upsert({ key: 'Idempotency-Key', value: `${Date.now()}-${Math.random()}` });",
+          "}",
+          "",
           "if (mutating && !csrfExempt) {",
           "  const xsrf = pm.collectionVariables.get('xsrf_token');",
           "  if (!xsrf) {",
@@ -710,6 +714,27 @@
           ]
         },
         {
+          "name": "Update Client",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/clients/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"عميل محدّث\",\n  \"notes\": \"ملاحظة\"\n}"
+            }
+          }
+        },
+        {
           "name": "Client Statement",
           "request": {
             "method": "GET",
@@ -783,6 +808,27 @@
               }
             ],
             "url": "{{base_url}}/api/vendors/{{vendor_id}}/statement"
+          }
+        },
+        {
+          "name": "Update Vendor",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/vendors/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contact\": \"قسم محدث\"\n}"
+            }
           }
         }
       ]
@@ -883,6 +929,27 @@
               }
             ],
             "url": "{{base_url}}/api/operations/{{operation_id}}"
+          }
+        },
+        {
+          "name": "Update Operation",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/operations/{{operation_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"ملاحظة محدثة\"\n}"
+            }
           }
         },
         {
@@ -1010,6 +1077,27 @@
               }
             ],
             "url": "{{base_url}}/api/vouchers/1"
+          }
+        },
+        {
+          "name": "Void Voucher",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/vouchers/1/void",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
           }
         }
       ]

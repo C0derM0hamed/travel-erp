@@ -1,19 +1,21 @@
 <?php
 
+use App\Models\Client;
+use App\Models\JournalEntry;
+use App\Models\User;
+use App\Models\Vendor;
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
+
 /**
  * CLI production audit — run from backend/: php scripts/production-audit.php
  */
 require __DIR__.'/../vendor/autoload.php';
 $app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-
-use App\Models\Client;
-use App\Models\JournalEntry;
-use App\Models\User;
-use App\Models\Vendor;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
+$app->make(Kernel::class)->bootstrap();
 
 $issues = [];
 $password = env('SEED_USER_PASSWORD');
@@ -48,6 +50,18 @@ if (! Schema::hasColumn('clients', 'phone')) {
     }
 }
 
+foreach (['idempotency_keys', 'activity_logs'] as $table) {
+    if (! Schema::hasTable($table)) {
+        $issues[] = ['high', "Missing {$table} table — run php artisan migrate"];
+    }
+}
+
+foreach (['users' => 'must_change_password', 'safes' => 'is_active'] as $table => $column) {
+    if (! Schema::hasColumn($table, $column)) {
+        $issues[] = ['high', "Missing {$table}.{$column} — run php artisan migrate"];
+    }
+}
+
 $html = @file_get_contents(dirname(__DIR__).'/../frontend/travelsystemv3.html') ?: '';
 foreach (["password:'123456'", 'login-hint', 'generateJournal', 'alert('] as $needle) {
     if ($html !== '' && str_contains($html, $needle)) {
@@ -59,7 +73,7 @@ $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 Auth::login($admin);
 
 foreach (['operations', 'profit', 'aging', 'employee', 'cashflow', 'clients-debt', 'vendors-balance'] as $type) {
-    $req = Illuminate\Http\Request::create("/api/reports/$type", 'GET');
+    $req = Request::create("/api/reports/$type", 'GET');
     $req->headers->set('Accept', 'application/json');
     $req->setUserResolver(fn () => $admin);
     $res = $kernel->handle($req);
@@ -68,7 +82,18 @@ foreach (['operations', 'profit', 'aging', 'employee', 'cashflow', 'clients-debt
     }
 }
 
-$dupClientReq = Illuminate\Http\Request::create('/api/clients', 'POST', [
+$bootstrapReq = Request::create('/api/bootstrap', 'GET');
+$bootstrapReq->headers->set('Accept', 'application/json');
+$bootstrapReq->setUserResolver(fn () => $admin);
+$bootstrapRes = $kernel->handle($bootstrapReq);
+$bootstrap = json_decode($bootstrapRes->getContent(), true) ?: [];
+foreach (['clients', 'vendors', 'operations', 'vouchers'] as $heavyKey) {
+    if (array_key_exists($heavyKey, $bootstrap)) {
+        $issues[] = ['high', "Bootstrap still returns heavy key: {$heavyKey}"];
+    }
+}
+
+$dupClientReq = Request::create('/api/clients', 'POST', [
     'name' => 'Audit Dup',
     'phone' => Client::value('phone'),
 ]);
@@ -79,7 +104,7 @@ if ($dupClientRes->getStatusCode() !== 422) {
     $issues[] = ['critical', 'Duplicate client phone was accepted (expected 422, got '.$dupClientRes->getStatusCode().')'];
 }
 
-$dupVendorReq = Illuminate\Http\Request::create('/api/vendors', 'POST', [
+$dupVendorReq = Request::create('/api/vendors', 'POST', [
     'name' => Vendor::value('name'),
     'category' => 'other',
 ]);

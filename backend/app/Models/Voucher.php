@@ -9,11 +9,16 @@ class Voucher extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['ref', 'type', 'party_type', 'party_id', 'amount', 'currency', 'method', 'safe_id', 'operation_id', 'reference_number', 'description', 'voucher_date', 'created_by'];
+    protected $fillable = ['ref', 'type', 'party_type', 'party_id', 'amount', 'currency', 'method', 'safe_id', 'operation_id', 'reference_number', 'description', 'voucher_date', 'created_by', 'voided_at'];
 
     protected function casts(): array
     {
-        return ['amount' => 'decimal:3', 'voucher_date' => 'date:Y-m-d'];
+        return ['amount' => 'decimal:3', 'voucher_date' => 'date:Y-m-d', 'voided_at' => 'datetime'];
+    }
+
+    public function isVoided(): bool
+    {
+        return $this->voided_at !== null;
     }
 
     public function safe()

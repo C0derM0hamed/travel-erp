@@ -1,10 +1,13 @@
 <?php
 
+use App\Http\Middleware\EnsureIdempotency;
+use App\Http\Middleware\EnsureStatefulApiRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -20,9 +23,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->statefulApi();
         $middleware->replaceInGroup(
             'api',
-            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
-            \App\Http\Middleware\EnsureStatefulApiRequests::class,
+            EnsureFrontendRequestsAreStateful::class,
+            EnsureStatefulApiRequests::class,
         );
+        $middleware->alias([
+            'idempotency' => EnsureIdempotency::class,
+        ]);
         $middleware->validateCsrfTokens(except: [
             'api/login',
             'api/logout',

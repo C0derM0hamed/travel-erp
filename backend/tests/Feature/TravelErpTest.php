@@ -29,9 +29,21 @@ class TravelErpTest extends TestCase
         $this->actingAs(User::where('email', 'admin@travel.kw')->first())
             ->getJson('/api/bootstrap')
             ->assertOk()
-            ->assertJsonCount(13, 'operations')
-            ->assertJsonCount(10, 'vouchers')
-            ->assertJsonPath('operations.0.ref', 'OP-001');
+            ->assertJsonStructure(['user', 'users', 'services', 'safes', 'metrics'])
+            ->assertJsonMissingPath('operations')
+            ->assertJsonMissingPath('vouchers')
+            ->assertJsonMissingPath('clients')
+            ->assertJsonMissingPath('vendors');
+
+        $this->actingAs(User::where('email', 'admin@travel.kw')->first())
+            ->getJson('/api/operations?per_page=20')
+            ->assertOk()
+            ->assertJsonCount(13, 'data');
+
+        $this->actingAs(User::where('email', 'admin@travel.kw')->first())
+            ->getJson('/api/vouchers?per_page=20')
+            ->assertOk()
+            ->assertJsonCount(10, 'data');
     }
 
     public function test_operation_creation_posts_journal_and_initial_receipt(): void

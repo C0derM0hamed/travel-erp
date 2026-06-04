@@ -289,6 +289,11 @@ class TravelErpProductionAuditTest extends TestCase
         $report = $this->actingAs($accountant)->getJson('/api/reports/cashflow')->assertOk();
         $this->assertTrue(collect($report->json('safes'))->pluck('id')->contains($safe->id));
         $this->assertTrue(collect($report->json('rows'))->contains(fn ($row) => abs((float) ($row['safes'][$safe->id] ?? 0) - 35) < 0.01));
+
+        $lastRow = collect($report->json('rows'))->last();
+        $cashSafeIds = Safe::where('type', 'cash')->pluck('id')->all();
+        $cashFromSafes = collect($lastRow['safes'])->only($cashSafeIds)->sum();
+        $this->assertEqualsWithDelta($cashFromSafes, (float) $lastRow['cash'], 0.01);
     }
 
     public function test_aging_buckets_operation_outstanding_by_operation_date(): void

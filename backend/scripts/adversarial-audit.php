@@ -1,19 +1,18 @@
 <?php
 
+use App\Models\Client;
+use App\Models\JournalEntry;
+use App\Models\Operation;
+use App\Services\AccountingService;
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\Schema;
+
 /**
  * Adversarial edge-case audit — run: php scripts/adversarial-audit.php
  */
 require __DIR__.'/../vendor/autoload.php';
 $app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-
-use App\Models\Client;
-use App\Models\JournalEntry;
-use App\Models\Operation;
-use App\Models\User;
-use App\Models\Voucher;
-use App\Services\AccountingService;
-use Illuminate\Support\Facades\Schema;
+$app->make(Kernel::class)->bootstrap();
 
 $base = rtrim(env('APP_URL', 'http://127.0.0.1:8080'), '/');
 $password = env('SEED_USER_PASSWORD');
@@ -234,7 +233,7 @@ if ($cancelClient['code'] === 201) {
     ]);
     if ($cop['code'] === 201) {
         post($acct, '/api/vouchers', ['type' => 'receipt', 'party_type' => 'client', 'party_id' => $ccid, 'amount' => 30, 'safe_id' => 1, 'operation_id' => $cop['body']['id']]);
-        post($sales, '/api/operations/'.$cop['body']['id'].'/cancel', []);
+        post($acct, '/api/operations/'.$cop['body']['id'].'/cancel', []);
         $stmt = api('GET', '/api/clients/'.$ccid.'/statement', null, $sales['cookies']);
         $paid = $stmt['body']['paid'] ?? 0;
         $balance = $stmt['body']['balance'] ?? 0;
@@ -253,8 +252,8 @@ $opForCancel = post($sales, '/api/operations', [
 ]);
 if ($opForCancel['code'] === 201) {
     $oid = $opForCancel['body']['id'];
-    post($sales, '/api/operations/'.$oid.'/cancel', []);
-    $r2 = post($sales, '/api/operations/'.$oid.'/cancel', []);
+    post($acct, '/api/operations/'.$oid.'/cancel', []);
+    $r2 = post($acct, '/api/operations/'.$oid.'/cancel', []);
     if ($r2['code'] !== 422) {
         finding('accounting', 'CRITICAL', 'Double cancel returned '.$r2['code'].' instead of 422');
     }

@@ -31,8 +31,9 @@ jobs:
           cp .env.example .env
           php artisan key:generate
           echo "DB_CONNECTION=sqlite" >> .env
-          echo "DB_DATABASE=:memory:" >> .env
+          echo "DB_DATABASE=database/ci.sqlite" >> .env
           echo "SEED_USER_PASSWORD=travel-erp-test-secret" >> .env
+          touch database/ci.sqlite
 
       - name: Run migrations and seed
         run: |

@@ -16,6 +16,7 @@ use App\Services\ReferenceService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 class DatabaseSeeder extends Seeder
 {
@@ -119,8 +120,16 @@ class DatabaseSeeder extends Seeder
 
     private function resetData(): void
     {
+        if (! Schema::hasTable('journal_entries')) {
+            return;
+        }
+
         foreach ([JournalEntry::class, Voucher::class, Operation::class, ChartOfAccount::class, Safe::class, Client::class, Vendor::class, Service::class, User::class] as $model) {
             $model::query()->delete();
+        }
+
+        if (Schema::hasTable('reference_sequences')) {
+            DB::table('reference_sequences')->delete();
         }
     }
 }

@@ -963,6 +963,33 @@ exportVouchers = async function(){
   } catch (e) { notify(e.message, 'error'); }
 };
 
+exportOpsPDF = async function(){
+  try {
+    let rows;
+    if (currentPage === 'reports' && rptTab === 'ops') {
+      const data = await loadReport('operations', rptOpsDateParams());
+      rows = (data.rows || []).map(o => [
+        o.ref, o.date, o.client || clientName(o.client_id), o.service || serviceName(o.service_id), o.vendor || vendorName(o.vendor_id),
+        fmtN(o.client_price), fmtN(o.vendor_cost), fmtN(o.profit), statusLabel[o.status],
+      ]);
+    } else {
+      const search = document.getElementById('opSearchInput')?.value?.trim() || '';
+      const status = document.getElementById('opStatusFilter')?.value || 'all';
+      const service = document.getElementById('opSvcFilter')?.value || 'all';
+      const params = {};
+      if (search) params.search = search;
+      if (status !== 'all') params.status = status;
+      if (service !== 'all') params.service = service;
+      const ops = await fetchAllPages('/operations', params);
+      rows = ops.map(o => [
+        o.ref, o.date, o.client || clientName(o.client_id), o.service || serviceName(o.service_id), o.vendor || vendorName(o.vendor_id),
+        fmtN(o.client_price), fmtN(o.vendor_cost), fmtN(o.profit), statusLabel[o.status],
+      ]);
+    }
+    await toPDFAndDownload('قائمة العمليات', ['المرجع','التاريخ','العميل','الخدمة','المورد','سعر العميل','التكلفة','الربح','الحالة'], rows, 'العمليات');
+  } catch (e) { notify(e.message, 'error'); }
+};
+
 openEditClient = async function(id){
   let c = CLIENTS.find(x=>x.id===id);
   if (!c) {

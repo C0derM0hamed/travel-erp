@@ -6,7 +6,6 @@
 <title>نظام إدارة خدمات السفر | Travel ERP</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{--primary:#1E3A8A;--primary-light:#2563EB;--success:#059669;--danger:#DC2626;--warning:#D97706;--info:#0891B2;--bg:#F1F5F9;--white:#fff;--card:#fff;--text:#1e293b;--text-sm:#64748b;--border:#e2e8f0;--sidebar-w:260px;--radius:12px;--shadow:0 1px 3px rgba(0,0,0,.08),0 4px 12px rgba(0,0,0,.05)}
@@ -600,39 +599,36 @@ function toExcelAndDownload(data,headers,filename){
   ws['!cols']=cols;
   XLSX.writeFile(wb,filename+'.xlsx');
 }
-async function toPDFAndDownload(title,headers,rows,filename){
-  if(typeof html2pdf!=='function'){notify('مكتبة PDF غير متوفرة','danger');return;}
-  const container=document.createElement('div');
-  container.setAttribute('dir','rtl');
-  container.setAttribute('lang','ar');
-  container.style.cssText="position:fixed;left:-10000px;top:0;width:1100px;padding:24px;background:#fff;color:#1e293b;font-family:'Tajawal',sans-serif;";
-  const tableRows=rows.map(row=>`<tr>${row.map(cell=>`<td style="padding:6px 8px;border:1px solid #e2e8f0;text-align:center;font-size:11px;word-break:break-word">${escapeHtml(cell)}</td>`).join('')}</tr>`).join('');
-  container.innerHTML=`
-    <div style="text-align:center;margin-bottom:16px">
-      <h1 style="font-size:18px;font-weight:800;color:#1E3A8A;margin:0">${escapeHtml(title)}</h1>
-      <div style="font-size:11px;color:#64748b;margin-top:4px">${escapeHtml(new Date().toLocaleDateString('ar-KW'))}</div>
-    </div>
-    <table style="width:100%;border-collapse:collapse">
-      <thead><tr>${headers.map(h=>`<th style="background:#1E3A8A;color:#fff;padding:8px;border:1px solid #1E3A8A;font-size:11px;text-align:center">${escapeHtml(h)}</th>`).join('')}</tr></thead>
-      <tbody>${tableRows}</tbody>
-    </table>`;
-  document.body.appendChild(container);
-  try{
-    if(document.fonts&&document.fonts.ready) await document.fonts.ready;
-    await html2pdf().set({
-      margin:[8,8,8,8],
-      filename:filename+'.pdf',
-      image:{type:'jpeg',quality:0.95},
-      html2canvas:{scale:2,useCORS:true,logging:false},
-      jsPDF:{unit:'mm',format:'a4',orientation:'landscape'},
-      pagebreak:{mode:['css','legacy']}
-    }).from(container).save();
-  }catch(err){
-    notify('تعذر إنشاء ملف PDF','danger');
-    console.error(err);
-  }finally{
-    document.body.removeChild(container);
-  }
+function buildPrintableTableDoc(title,headers,rows,filename){
+  const tableRows=rows.length?rows.map(row=>`<tr>${row.map(cell=>`<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${headers.length}" style="text-align:center;padding:24px">لا توجد بيانات</td></tr>`;
+  return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+  <title>${escapeHtml(filename)}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Tajawal',sans-serif;padding:24px;color:#1e293b;font-size:12px;direction:rtl}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #1E3A8A}
+    h1{font-size:18px;font-weight:800;color:#1e3a8a;margin-bottom:4px}
+    .meta{font-size:12px;color:#64748b}
+    table{width:100%;border-collapse:collapse;direction:rtl}
+    th{background:#1E3A8A;color:#fff;padding:8px 10px;text-align:right;font-size:11px}
+    td{padding:7px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;word-break:break-word}
+    tr:nth-child(even) td{background:#f8fafc}
+    @media print{@page{size:A4 landscape;margin:1cm}body{padding:0}}
+  </style></head><body>
+  <div class="header">
+    <div><h1>${escapeHtml(title)}</h1><div class="meta">${rows.length} سجل — ${escapeHtml(new Date().toLocaleDateString('ar-KW'))}</div></div>
+    <div class="meta">نظام إدارة خدمات السفر</div>
+  </div>
+  <table><thead><tr>${headers.map(h=>`<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>${tableRows}</tbody></table>
+  <script>window.onload=function(){window.focus();window.print();}<\/script>
+  </body></html>`;
+}
+function toPDFAndDownload(title,headers,rows,filename){
+  const w=window.open('','_blank','width=1100,height=800');
+  if(!w){notify('يرجى السماح بالنوافذ المنبثقة لتصدير PDF','warning');return;}
+  w.document.write(buildPrintableTableDoc(title,headers,rows,filename));
+  w.document.close();
 }
 
 // ==================== DASHBOARD ====================

@@ -304,8 +304,13 @@ async function reloadOperationsList(page){
 }
 
 async function reloadVouchersList(page){
+  const from = document.getElementById('vcFrom')?.value || '';
+  const to = document.getElementById('vcTo')?.value || '';
   const p = page || tablePages.vouchers || 1;
-  const res = await fetchListPage('/vouchers', p, { type: vcTab });
+  const params = { type: vcTab };
+  if (from) params.from = from;
+  if (to) params.to = to;
+  const res = await fetchListPage('/vouchers', p, params);
   replaceArray(VOUCHERS, res.data || []);
   LIST_META.vouchers = res.meta || null;
   tablePages.vouchers = res.meta?.current_page || 1;
@@ -334,7 +339,8 @@ function paintClientsTable(){
     const b = formatBalance(bal);
     const ops = c.operations_count ?? 0;
     const editBtn = canDo('write_master') ? `<button class="btn btn-sm btn-outline" onclick="openEditClient(${c.id})">تعديل</button> ` : '';
-    return `<tr><td>${c.id}</td><td><b>${c.name}</b></td><td>${c.phone}</td><td>${displayVal(c.civil_id)}</td><td>${displayVal(c.nationality)}</td><td style="color:${b.color};font-weight:700">${b.text}</td><td><span class="badge badge-info">${ops}</span></td><td>${editBtn}<button class="btn btn-sm btn-outline" onclick="viewClientStmt(${c.id})">كشف حساب</button></td></tr>`;
+    const deleteBtn = canDo('write_master') ? `<button class="btn btn-sm btn-danger" onclick="deleteClient(${c.id})">حذف</button> ` : '';
+    return `<tr><td>${c.id}</td><td><b>${c.name}</b></td><td>${c.phone}</td><td>${displayVal(c.civil_id)}</td><td>${displayVal(c.nationality)}</td><td style="color:${b.color};font-weight:700">${b.text}</td><td><span class="badge badge-info">${ops}</span></td><td>${editBtn}${deleteBtn}<button class="btn btn-sm btn-outline" onclick="viewClientStmt(${c.id})">كشف حساب</button></td></tr>`;
   }).join('')||'<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-sm)">لا يوجد عملاء</td></tr>'}</tbody></table>${serverPagerHtml('clients', meta, 'reloadClientsList')}`;
 }
 
@@ -346,7 +352,8 @@ function paintVendorsTable(){
   <tbody>${VENDORS.map(v=>{
     const bal = typeof v.balance === 'number' ? v.balance : getVendorBalance(v.id);
     const editBtn = canDo('write_master') ? `<button class="btn btn-sm btn-outline" onclick="openEditVendor(${v.id})">تعديل</button> ` : '';
-    return `<tr><td>${v.id}</td><td><b>${v.name}</b></td><td>${categoryLabel[v.category]||v.category}</td><td>${v.phone||'—'}</td><td>${v.contact||'—'}</td><td style="color:${bal>0?'var(--warning)':'var(--success)'};font-weight:700">${fmt(bal)}</td><td>${editBtn}<button class="btn btn-sm btn-outline" onclick="viewVendorStmt(${v.id})">كشف حساب</button></td></tr>`;
+    const deleteBtn = canDo('write_master') ? `<button class="btn btn-sm btn-danger" onclick="deleteVendor(${v.id})">حذف</button> ` : '';
+    return `<tr><td>${v.id}</td><td><b>${v.name}</b></td><td>${categoryLabel[v.category]||v.category}</td><td>${v.phone||'—'}</td><td>${v.contact||'—'}</td><td style="color:${bal>0?'var(--warning)':'var(--success)'};font-weight:700">${fmt(bal)}</td><td>${editBtn}${deleteBtn}<button class="btn btn-sm btn-outline" onclick="viewVendorStmt(${v.id})">كشف حساب</button></td></tr>`;
   }).join('')}</tbody></table>${serverPagerHtml('vendors', meta, 'reloadVendorsList')}`;
 }
 
@@ -467,6 +474,10 @@ filterVendors = function(){
 filterOps = function(){
   clearTimeout(__listSearchTimer);
   __listSearchTimer = setTimeout(() => reloadOperationsList(1), 300);
+};
+filterVouchers = function(){
+  clearTimeout(__listSearchTimer);
+  __listSearchTimer = setTimeout(() => reloadVouchersList(1), 300);
 };
 switchVcTab = function(tab){ vcTab = tab; tablePages.vouchers = 1; navigate('vouchers'); };
 
@@ -775,30 +786,54 @@ exportClientStmt = async function(cid){
   }catch(e){ notify(e.message, 'error'); }
 };
 
-async function loadReport(type){
-  if(REPORT_CACHE[type]) return REPORT_CACHE[type];
-  const data = await apiFetch(`/reports/${type}`);
-  REPORT_CACHE[type] = data;
+async function loadReport(type, params = {}){
+  const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v));
+  const cacheKey = type + (qs.toString() ? '?' + qs.toString() : '');
+  if (REPORT_CACHE[cacheKey]) return REPORT_CACHE[cacheKey];
+  const path = `/reports/${type}${qs.toString() ? '?' + qs.toString() : ''}`;
+  const data = await apiFetch(path);
+  REPORT_CACHE[cacheKey] = data;
   return data;
 }
+
+function rptOpsDateParams(){
+  return {
+    from: document.getElementById('rptOpsFrom')?.value || '',
+    to: document.getElementById('rptOpsTo')?.value || '',
+  };
+}
+
+filterRptOps = function(){
+  renderRptContent();
+};
 
 renderRptContent = async function(){
   const wrap=document.getElementById('rptContent');
   if(!wrap)return;
   if(rptTab === 'ops'){
-    wrap.innerHTML='<p style="padding:20px;text-align:center;color:var(--text-sm)">جاري تحميل تقرير العمليات...</p>';
+    const dateParams = rptOpsDateParams();
+    wrap.innerHTML=`
+      <div class="filter-bar" style="margin-bottom:12px">
+        <input type="date" class="form-control filter-control" id="rptOpsFrom" value="${dateParams.from}" onchange="filterRptOps()" title="من تاريخ">
+        <input type="date" class="form-control filter-control" id="rptOpsTo" value="${dateParams.to}" onchange="filterRptOps()" title="إلى تاريخ">
+      </div>
+      <p style="padding:20px;text-align:center;color:var(--text-sm)">جاري تحميل تقرير العمليات...</p>`;
     try{
-      const data = await loadReport('operations');
+      const data = await loadReport('operations', dateParams);
       const rows = data.rows || [];
       const totals = data.totals || {};
       wrap.innerHTML=`
+        <div class="filter-bar" style="margin-bottom:12px">
+          <input type="date" class="form-control filter-control" id="rptOpsFrom" value="${dateParams.from}" onchange="filterRptOps()" title="من تاريخ">
+          <input type="date" class="form-control filter-control" id="rptOpsTo" value="${dateParams.to}" onchange="filterRptOps()" title="إلى تاريخ">
+        </div>
         <div class="grid-kpi-3">
           ${kpiCard('💰','إجمالي الإيرادات',fmt(totals.revenue||0),'var(--primary)','')}
           ${kpiCard('💸','إجمالي التكاليف',fmt(totals.cost||0),'var(--danger)','')}
           ${kpiCard('📈','صافي الربح',fmt(totals.profit||0),'var(--success)','')}
         </div>
         <div class="table-wrapper"><table class="table"><thead><tr><th>المرجع</th><th>التاريخ</th><th>العميل</th><th>الخدمة</th><th>الإيراد</th><th>التكلفة</th><th>الربح</th><th>الحالة</th></tr></thead>
-        <tbody>${rows.map(o=>`<tr><td><b>${o.ref}</b></td><td>${o.date}</td><td>${o.client||clientName(o.client_id)}</td><td>${o.service||serviceName(o.service_id)}</td><td>${fmt(o.client_price)}</td><td>${fmt(o.vendor_cost)}</td><td style="color:${o.profit>=0?'var(--success)':'var(--danger)'};font-weight:700">${fmt(o.profit)}</td><td><span class="badge ${statusClass[o.status]}">${statusLabel[o.status]}</span></td></tr>`).join('')}</tbody></table></div>`;
+        <tbody>${rows.map(o=>`<tr><td><b>${o.ref}</b></td><td>${o.date}</td><td>${o.client||clientName(o.client_id)}</td><td>${o.service||serviceName(o.service_id)}</td><td>${fmt(o.client_price)}</td><td>${fmt(o.vendor_cost)}</td><td style="color:${o.profit>=0?'var(--success)':'var(--danger)'};font-weight:700">${fmt(o.profit)}</td><td><span class="badge ${statusClass[o.status]}">${statusLabel[o.status]}</span></td></tr>`).join('')||'<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-sm)">لا توجد عمليات في هذه الفترة</td></tr>'}</tbody></table></div>`;
     }catch(e){ wrap.innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
     return;
   }
@@ -918,7 +953,12 @@ exportVendors = async function(){
 };
 exportVouchers = async function(){
   try {
-    const rows = await fetchAllPages('/vouchers');
+    const from = document.getElementById('vcFrom')?.value || '';
+    const to = document.getElementById('vcTo')?.value || '';
+    const params = { type: vcTab };
+    if (from) params.from = from;
+    if (to) params.to = to;
+    const rows = await fetchAllPages('/vouchers', params);
     toExcelAndDownload(rows.map(v=>({ref:v.ref,type:vcTypeLabel[v.type],date:v.date,party:partyLabel(v),amount:v.amount,method:methodLabel(v.method),safe:safeName(v.safe_id),status:v.reversed?'ملغى':'فعّال',desc:displayVal(v.desc)})),['الرقم','النوع','التاريخ','الطرف','المبلغ','الطريقة','الصندوق','الحالة','البيان'],'السندات');
   } catch (e) { notify(e.message, 'error'); }
 };
@@ -961,6 +1001,21 @@ saveClientEdit = async function(){
   }).catch(e=> showModalError('editClientModal', e.message));
 };
 
+deleteClient = async function(id){
+  let c = CLIENTS.find(x=>x.id===id);
+  if (!c) {
+    const res = await apiFetch('/clients?per_page=500');
+    c = (res.data||[]).find(x=>x.id===id);
+  }
+  if (!c) { notify('العميل غير موجود', 'error'); return; }
+  if (!confirm(`هل أنت متأكد من حذف العميل «${c.name}»؟\n\nلا يمكن الحذف إذا كان مرتبطاً بعمليات أو سندات أو قيود محاسبية.`)) return;
+  await withSaveGuard(null, async ()=>{
+    await apiFetch(`/clients/${id}`, {method:'DELETE'});
+    await refreshAfterMutation();
+    notify('تم حذف العميل بنجاح', 'success');
+  }).catch(e=> notify(e.message, 'error'));
+};
+
 openEditVendor = async function(id){
   let v = VENDORS.find(x=>x.id===id);
   if (!v) {
@@ -990,6 +1045,21 @@ saveVendorEdit = async function(){
     closeModal('editVendorModal');
     await refreshAfterMutation();
     notify('تم تحديث المورد', 'success');
+  }).catch(e=> notify(e.message, 'error'));
+};
+
+deleteVendor = async function(id){
+  let v = VENDORS.find(x=>x.id===id);
+  if (!v) {
+    const res = await apiFetch('/vendors?per_page=500');
+    v = (res.data||[]).find(x=>x.id===id);
+  }
+  if (!v) { notify('المكتب غير موجود', 'error'); return; }
+  if (!confirm(`هل أنت متأكد من حذف المكتب «${v.name}»؟\n\nلا يمكن الحذف إذا كان مرتبطاً بعمليات أو سندات أو قيود محاسبية.`)) return;
+  await withSaveGuard(null, async ()=>{
+    await apiFetch(`/vendors/${id}`, {method:'DELETE'});
+    await refreshAfterMutation();
+    notify('تم حذف المكتب بنجاح', 'success');
   }).catch(e=> notify(e.message, 'error'));
 };
 

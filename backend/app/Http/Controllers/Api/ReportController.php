@@ -11,16 +11,17 @@ use App\Models\User;
 use App\Models\Vendor;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 class ReportController extends ApiController
 {
-    public function show(string $type): JsonResponse
+    public function show(Request $request, string $type): JsonResponse
     {
         Gate::authorize('viewReports');
 
         return response()->json(match ($type) {
-            'operations' => $this->operations(),
+            'operations' => $this->operations($request),
             'profit' => $this->profit(),
             'aging' => $this->aging(),
             'employee' => $this->employee(),
@@ -31,9 +32,20 @@ class ReportController extends ApiController
         });
     }
 
-    private function operations(): array
+    private function operations(Request $request): array
     {
-        $data = Operation::with(['client', 'service', 'vendor'])->where('status', '!=', 'cancelled')->orderByDesc('id')->get();
+        $query = Operation::with(['client', 'service', 'vendor'])
+            ->where('status', '!=', 'cancelled')
+            ->orderByDesc('id');
+
+        if ($request->filled('from')) {
+            $query->whereDate('op_date', '>=', $request->from);
+        }
+        if ($request->filled('to')) {
+            $query->whereDate('op_date', '<=', $request->to);
+        }
+
+        $data = $query->get();
 
         return [
             'totals' => [

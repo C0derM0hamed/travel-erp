@@ -19,6 +19,12 @@ class VoucherController extends ApiController
         if ($request->filled('type')) {
             $query->where('type', $request->type);
         }
+        if ($request->filled('from')) {
+            $query->whereDate('voucher_date', '>=', $request->from);
+        }
+        if ($request->filled('to')) {
+            $query->whereDate('voucher_date', '<=', $request->to);
+        }
 
         return $this->paginatedResponse($request, $query, fn (Voucher $voucher) => $this->voucherPayload($voucher));
     }

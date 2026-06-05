@@ -7,10 +7,12 @@ use App\Http\Requests\UpdateClientRequest;
 use App\Models\Client;
 use App\Models\JournalEntry;
 use App\Models\Operation;
+use App\Models\Voucher;
 use App\Services\ActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 class ClientController extends ApiController
 {
@@ -44,6 +46,19 @@ class ClientController extends ApiController
         return response()->json($this->clientPayload($client->fresh()));
     }
 
+    public function destroy(Request $request, Client $client): JsonResponse
+    {
+        Gate::authorize('delete', $client);
+        $this->ensureClientDeletable($client);
+
+        $name = $client->name;
+        $clientId = $client->id;
+        $client->delete();
+        app(ActivityLogger::class)->log('client.deleted', null, ['id' => $clientId, 'name' => $name], $request->user()->id);
+
+        return response()->json(['message' => 'تم حذف العميل بنجاح']);
+    }
+
     public function statement(Client $client): JsonResponse
     {
         Gate::authorize('view', $client);
@@ -68,5 +83,32 @@ class ClientController extends ApiController
                 return $this->journalPayload($journal) + ['balance' => round($running, 3)];
             }),
         ]);
+    }
+
+    private function ensureClientDeletable(Client $client): void
+    {
+        if (Operation::where('client_id', $client->id)->exists()) {
+            throw ValidationException::withMessages([
+                'client' => 'لا يمكن حذف العميل لوجود عمليات مرتبطة به. ألغِ العمليات أولاً أو احتفظ بالسجل.',
+            ]);
+        }
+
+        if (Voucher::where('party_type', 'client')->where('party_id', $client->id)->exists()) {
+            throw ValidationException::withMessages([
+                'client' => 'لا يمكن حذف العميل لوجود سندات مالية مرتبطة به.',
+            ]);
+        }
+
+        if (JournalEntry::where('party_type', 'client')->where('party_id', $client->id)->exists()) {
+            throw ValidationException::withMessages([
+                'client' => 'لا يمكن حذف العميل لوجود قيود محاسبية مرتبطة به.',
+            ]);
+        }
+
+        if (abs($this->accounting->clientBalance($client->id)) > 0.001) {
+            throw ValidationException::withMessages([
+                'client' => 'لا يمكن حذف العميل لوجود رصيد غير مسدد.',
+            ]);
+        }
     }
 }

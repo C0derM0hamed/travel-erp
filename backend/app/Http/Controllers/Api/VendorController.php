@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Requests\StoreVendorRequest;
 use App\Http\Requests\UpdateVendorRequest;
 use App\Models\JournalEntry;
+use App\Models\Operation;
 use App\Models\Vendor;
+use App\Models\Voucher;
 use App\Services\ActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 class VendorController extends ApiController
 {
@@ -43,6 +46,19 @@ class VendorController extends ApiController
         return response()->json($this->vendorPayload($vendor->fresh()));
     }
 
+    public function destroy(Request $request, Vendor $vendor): JsonResponse
+    {
+        Gate::authorize('delete', $vendor);
+        $this->ensureVendorDeletable($vendor);
+
+        $name = $vendor->name;
+        $vendorId = $vendor->id;
+        $vendor->delete();
+        app(ActivityLogger::class)->log('vendor.deleted', null, ['id' => $vendorId, 'name' => $name], $request->user()->id);
+
+        return response()->json(['message' => 'تم حذف المكتب بنجاح']);
+    }
+
     public function statement(Vendor $vendor): JsonResponse
     {
         Gate::authorize('view', $vendor);
@@ -61,5 +77,32 @@ class VendorController extends ApiController
             'paid' => $this->accounting->vendorPaymentsTotal($vendor->id),
             'rows' => $rows->map(fn (JournalEntry $journal) => $this->journalPayload($journal)),
         ]);
+    }
+
+    private function ensureVendorDeletable(Vendor $vendor): void
+    {
+        if (Operation::where('vendor_id', $vendor->id)->exists()) {
+            throw ValidationException::withMessages([
+                'vendor' => 'لا يمكن حذف المكتب لوجود عمليات مرتبطة به. ألغِ العمليات أولاً أو احتفظ بالسجل.',
+            ]);
+        }
+
+        if (Voucher::where('party_type', 'vendor')->where('party_id', $vendor->id)->exists()) {
+            throw ValidationException::withMessages([
+                'vendor' => 'لا يمكن حذف المكتب لوجود سندات مالية مرتبطة به.',
+            ]);
+        }
+
+        if (JournalEntry::where('party_type', 'vendor')->where('party_id', $vendor->id)->exists()) {
+            throw ValidationException::withMessages([
+                'vendor' => 'لا يمكن حذف المكتب لوجود قيود محاسبية مرتبطة به.',
+            ]);
+        }
+
+        if (abs($this->accounting->vendorBalance($vendor->id)) > 0.001) {
+            throw ValidationException::withMessages([
+                'vendor' => 'لا يمكن حذف المكتب لوجود رصيد مستحق.',
+            ]);
+        }
     }
 }

@@ -6,7 +6,7 @@
 <title>نظام إدارة خدمات السفر | Travel ERP</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{--primary:#1E3A8A;--primary-light:#2563EB;--success:#059669;--danger:#DC2626;--warning:#D97706;--info:#0891B2;--bg:#F1F5F9;--white:#fff;--card:#fff;--text:#1e293b;--text-sm:#64748b;--border:#e2e8f0;--sidebar-w:260px;--radius:12px;--shadow:0 1px 3px rgba(0,0,0,.08),0 4px 12px rgba(0,0,0,.05)}
@@ -589,31 +589,50 @@ async function globalSearchFn(q){
 }
 
 // ==================== EXPORT ====================
+function escapeHtml(value){
+  return String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 function toExcelAndDownload(data,headers,filename){
   const ws=XLSX.utils.json_to_sheet(data.map(row=>Object.fromEntries(headers.map((h,i)=>[h,Object.values(row)[i]]))));
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'البيانات');
-  const cols=headers.map(h=>({wch:Math.max(h.length*2,14)}));
+  const cols=headers.map(h=>({wch:Math.max([...String(h)].length*2,14)}));
   ws['!cols']=cols;
   XLSX.writeFile(wb,filename+'.xlsx');
 }
-function toPDFAndDownload(title,headers,rows,filename){
-  const {jsPDF}=window.jspdf;
-  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
-  doc.setFont('helvetica');
-  doc.setFontSize(14);
-  doc.text(title,148,15,{align:'center'});
-  doc.setFontSize(8);
-  const colW=Math.min(35,260/headers.length);
-  const drawHeader=()=>headers.forEach((h,i)=>{doc.rect(10+i*colW,22,colW,7);doc.text(String(h),10+i*colW+colW/2,27,{align:'center'});});
-  drawHeader();
-  let y=29;
-  rows.forEach(row=>{
-    if(y>190){doc.addPage();drawHeader();y=29;}
-    row.forEach((cell,ci)=>{doc.rect(10+ci*colW,y,colW,7);doc.text(String(cell??''),10+ci*colW+colW/2,y+5,{align:'center'});});
-    y+=7;
-  });
-  doc.save(filename+'.pdf');
+async function toPDFAndDownload(title,headers,rows,filename){
+  if(typeof html2pdf!=='function'){notify('مكتبة PDF غير متوفرة','danger');return;}
+  const container=document.createElement('div');
+  container.setAttribute('dir','rtl');
+  container.setAttribute('lang','ar');
+  container.style.cssText="position:fixed;left:-10000px;top:0;width:1100px;padding:24px;background:#fff;color:#1e293b;font-family:'Tajawal',sans-serif;";
+  const tableRows=rows.map(row=>`<tr>${row.map(cell=>`<td style="padding:6px 8px;border:1px solid #e2e8f0;text-align:center;font-size:11px;word-break:break-word">${escapeHtml(cell)}</td>`).join('')}</tr>`).join('');
+  container.innerHTML=`
+    <div style="text-align:center;margin-bottom:16px">
+      <h1 style="font-size:18px;font-weight:800;color:#1E3A8A;margin:0">${escapeHtml(title)}</h1>
+      <div style="font-size:11px;color:#64748b;margin-top:4px">${escapeHtml(new Date().toLocaleDateString('ar-KW'))}</div>
+    </div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr>${headers.map(h=>`<th style="background:#1E3A8A;color:#fff;padding:8px;border:1px solid #1E3A8A;font-size:11px;text-align:center">${escapeHtml(h)}</th>`).join('')}</tr></thead>
+      <tbody>${tableRows}</tbody>
+    </table>`;
+  document.body.appendChild(container);
+  try{
+    if(document.fonts&&document.fonts.ready) await document.fonts.ready;
+    await html2pdf().set({
+      margin:[8,8,8,8],
+      filename:filename+'.pdf',
+      image:{type:'jpeg',quality:0.95},
+      html2canvas:{scale:2,useCORS:true,logging:false},
+      jsPDF:{unit:'mm',format:'a4',orientation:'landscape'},
+      pagebreak:{mode:['css','legacy']}
+    }).from(container).save();
+  }catch(err){
+    notify('تعذر إنشاء ملف PDF','danger');
+    console.error(err);
+  }finally{
+    document.body.removeChild(container);
+  }
 }
 
 // ==================== DASHBOARD ====================
@@ -813,12 +832,23 @@ function calcProfit(){
     `;
   }
 }
+function getFilteredOpsReport(){
+  const from=document.getElementById('rptOpsFrom')?.value||'';
+  const to=document.getElementById('rptOpsTo')?.value||'';
+  return OPS.filter(o=>{
+    if(o.status==='cancelled')return false;
+    if(from&&o.date<from)return false;
+    if(to&&o.date>to)return false;
+    return true;
+  }).slice().sort((a,b)=>b.id-a.id);
+}
+function filterRptOps(){renderRptContent();}
 function exportOps(){
-  const rows=(currentPage==='reports'&&rptTab==='ops'?OPS.filter(o=>o.status!=='cancelled').sort((a,b)=>b.id-a.id):getFilteredOps());
+  const rows=(currentPage==='reports'&&rptTab==='ops'?getFilteredOpsReport():getFilteredOps());
   toExcelAndDownload(rows.map(o=>({ref:o.ref,date:o.date,client:clientName(o.client_id),service:serviceName(o.service_id),vendor:vendorName(o.vendor_id),client_price:o.client_price,vendor_cost:o.vendor_cost,profit:o.profit,status:statusLabel[o.status]})),['المرجع','التاريخ','العميل','الخدمة','المورد','سعر العميل','التكلفة','الربح','الحالة'],'العمليات');
 }
 function exportOpsPDF(){
-  const rows=(currentPage==='reports'&&rptTab==='ops'?OPS.filter(o=>o.status!=='cancelled').sort((a,b)=>b.id-a.id):getFilteredOps());
+  const rows=(currentPage==='reports'&&rptTab==='ops'?getFilteredOpsReport():getFilteredOps());
   toPDFAndDownload('قائمة العمليات',['المرجع','التاريخ','العميل','الخدمة','المورد','سعر العميل','التكلفة','الربح','الحالة'],rows.map(o=>[o.ref,o.date,clientName(o.client_id),serviceName(o.service_id),vendorName(o.vendor_id),fmtN(o.client_price),fmtN(o.vendor_cost),fmtN(o.profit),statusLabel[o.status]]),'العمليات');
 }
 
@@ -851,7 +881,9 @@ function filterClients(){
     const bal=getClientBalance(c.id);
     const ops=OPS.filter(o=>o.client_id===c.id).length;
     const b=formatBalance(bal);
-    return `<tr><td>${c.id}</td><td><b>${c.name}</b></td><td>${c.phone}</td><td>${displayVal(c.civil_id)}</td><td>${displayVal(c.nationality)}</td><td style="color:${b.color};font-weight:700" title="${b.title}">${b.text}</td><td><span class="badge badge-info">${ops}</span></td><td><button class="btn btn-sm btn-outline" onclick="viewClientStmt(${c.id})">كشف حساب</button></td></tr>`;
+    const editBtn=canDo('write_master')?`<button class="btn btn-sm btn-outline" onclick="openEditClient(${c.id})">تعديل</button> `:'';
+    const deleteBtn=canDo('write_master')?`<button class="btn btn-sm btn-danger" onclick="deleteClient(${c.id})">حذف</button> `:'';
+    return `<tr><td>${c.id}</td><td><b>${c.name}</b></td><td>${c.phone}</td><td>${displayVal(c.civil_id)}</td><td>${displayVal(c.nationality)}</td><td style="color:${b.color};font-weight:700" title="${b.title}">${b.text}</td><td><span class="badge badge-info">${ops}</span></td><td>${editBtn}${deleteBtn}<button class="btn btn-sm btn-outline" onclick="viewClientStmt(${c.id})">كشف حساب</button></td></tr>`;
   }).join('')||'<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-sm)">لا يوجد عملاء</td></tr>'}</tbody></table></div>${tablePagerHtml('clients', page, totalPages, filtered.length)}`;
 }
 function exportClients(){
@@ -891,7 +923,9 @@ function filterVendors(){
   wrap.innerHTML=`<div class="table-wrapper"><table class="table"><thead><tr><th>#</th><th>الاسم</th><th>التصنيف</th><th>الهاتف</th><th>جهة الاتصال</th><th>الرصيد</th><th>إجراءات</th></tr></thead>
   <tbody>${slice.map(v=>{
     const bal=getVendorBalance(v.id);
-    return `<tr><td>${v.id}</td><td><b>${v.name}</b></td><td>${categoryLabel[v.category]||v.category}</td><td>${v.phone||'—'}</td><td>${v.contact||'—'}</td><td style="color:${bal>0?'var(--warning)':'var(--success)'};font-weight:700">${fmt(bal)}</td><td><button class="btn btn-sm btn-outline" onclick="viewVendorStmt(${v.id})">كشف حساب</button></td></tr>`;
+    const editBtn=canDo('write_master')?`<button class="btn btn-sm btn-outline" onclick="openEditVendor(${v.id})">تعديل</button> `:'';
+    const deleteBtn=canDo('write_master')?`<button class="btn btn-sm btn-danger" onclick="deleteVendor(${v.id})">حذف</button> `:'';
+    return `<tr><td>${v.id}</td><td><b>${v.name}</b></td><td>${categoryLabel[v.category]||v.category}</td><td>${v.phone||'—'}</td><td>${v.contact||'—'}</td><td style="color:${bal>0?'var(--warning)':'var(--success)'};font-weight:700">${fmt(bal)}</td><td>${editBtn}${deleteBtn}<button class="btn btn-sm btn-outline" onclick="viewVendorStmt(${v.id})">كشف حساب</button></td></tr>`;
   }).join('')}</tbody></table></div>${tablePagerHtml('vendors', page, totalPages, filtered.length)}`;
 }
 function exportVendors(){
@@ -918,6 +952,10 @@ function renderVouchers(pc){
           <button class="tab-btn ${vcTab==='receipt'?'active':''}" onclick="switchVcTab('receipt')">سندات القبض (${receipts.length})</button>
           <button class="tab-btn ${vcTab==='payment'?'active':''}" onclick="switchVcTab('payment')">سندات الصرف (${payments.length})</button>
         </div>
+        <div class="filter-bar" style="margin-bottom:16px">
+          <input type="date" class="form-control filter-control" id="vcFrom" onchange="filterVouchers()" title="من تاريخ">
+          <input type="date" class="form-control filter-control" id="vcTo" onchange="filterVouchers()" title="إلى تاريخ">
+        </div>
         <div id="vcTableWrap"></div>
       </div>
     </div>
@@ -925,8 +963,19 @@ function renderVouchers(pc){
   renderVcTable();
 }
 function switchVcTab(tab){vcTab=tab;tablePages.vouchers=1;navigate('vouchers');}
+function filterVouchers(){tablePages.vouchers=1;renderVcTable();}
+function getFilteredVouchers(){
+  const from=document.getElementById('vcFrom')?.value||'';
+  const to=document.getElementById('vcTo')?.value||'';
+  return VOUCHERS.filter(v=>{
+    if(v.type!==vcTab)return false;
+    if(from&&v.date<from)return false;
+    if(to&&v.date>to)return false;
+    return true;
+  }).sort((a,b)=>b.id-a.id);
+}
 function renderVcTable(){
-  const vcs=VOUCHERS.filter(v=>v.type===vcTab).sort((a,b)=>b.id-a.id);
+  const vcs=getFilteredVouchers();
   const {slice, page, totalPages} = paginateRows('vouchers', vcs);
   const wrap=document.getElementById('vcTableWrap');
   if(!wrap)return;
@@ -961,7 +1010,8 @@ function updateVoucherParties(){
   else sel.innerHTML='<option value="">-- عام --</option>';
 }
 function exportVouchers(){
-  toExcelAndDownload(VOUCHERS.map(v=>({ref:v.ref,type:vcTypeLabel[v.type],date:v.date,party:partyLabel(v),amount:v.amount,method:methodLabel(v.method),safe:safeName(v.safe_id),status:v.reversed?'ملغى':'فعّال',desc:displayVal(v.desc)})),['الرقم','النوع','التاريخ','الطرف','المبلغ','الطريقة','الصندوق','الحالة','البيان'],'السندات');
+  const rows=getFilteredVouchers();
+  toExcelAndDownload(rows.map(v=>({ref:v.ref,type:vcTypeLabel[v.type],date:v.date,party:partyLabel(v),amount:v.amount,method:methodLabel(v.method),safe:safeName(v.safe_id),status:v.reversed?'ملغى':'فعّال',desc:displayVal(v.desc)})),['الرقم','النوع','التاريخ','الطرف','المبلغ','الطريقة','الصندوق','الحالة','البيان'],'السندات');
 }
 function printVoucher(id){
   const v=VOUCHERS.find(x=>x.id===id);if(!v)return;
@@ -1194,11 +1244,17 @@ function renderRptContent(){
   const wrap=document.getElementById('rptContent');
   if(!wrap)return;
   if(rptTab==='ops'){
-    const data=OPS.filter(o=>o.status!=='cancelled').slice().sort((a,b)=>b.id-a.id);
+    const data=getFilteredOpsReport();
     const totRev=data.reduce((s,o)=>s+o.client_price,0);
     const totCost=data.reduce((s,o)=>s+o.vendor_cost,0);
     const totProfit=data.reduce((s,o)=>s+o.profit,0);
+    const fromVal=document.getElementById('rptOpsFrom')?.value||'';
+    const toVal=document.getElementById('rptOpsTo')?.value||'';
     wrap.innerHTML=`
+      <div class="filter-bar" style="margin-bottom:12px">
+        <input type="date" class="form-control filter-control" id="rptOpsFrom" value="${fromVal}" onchange="filterRptOps()" title="من تاريخ">
+        <input type="date" class="form-control filter-control" id="rptOpsTo" value="${toVal}" onchange="filterRptOps()" title="إلى تاريخ">
+      </div>
       <div class="grid-kpi-3">
         ${kpiCard('💰','إجمالي الإيرادات',fmt(totRev),'var(--primary)','')}
         ${kpiCard('💸','إجمالي التكاليف',fmt(totCost),'var(--danger)','')}
@@ -1206,7 +1262,7 @@ function renderRptContent(){
       </div>
       <div class="card-header-actions" style="margin-bottom:12px;justify-content:flex-end"><button class="btn btn-sm btn-outline" onclick="exportOps()">📥 Excel</button><button class="btn btn-sm btn-outline" onclick="exportOpsPDF()">📄 PDF</button></div>
       <div class="table-wrapper"><table class="table"><thead><tr><th>المرجع</th><th>التاريخ</th><th>العميل</th><th>الخدمة</th><th>الإيراد</th><th>التكلفة</th><th>الربح</th><th>الحالة</th></tr></thead>
-      <tbody>${data.map(o=>`<tr><td><b>${o.ref}</b></td><td>${o.date}</td><td>${clientName(o.client_id)}</td><td>${serviceName(o.service_id)}</td><td>${fmt(o.client_price)}</td><td>${fmt(o.vendor_cost)}</td><td style="color:${o.profit>=0?'var(--success)':'var(--danger)'};font-weight:700">${fmt(o.profit)}</td><td><span class="badge ${statusClass[o.status]}">${statusLabel[o.status]}</span></td></tr>`).join('')}</tbody></table></div>`;
+      <tbody>${data.map(o=>`<tr><td><b>${o.ref}</b></td><td>${o.date}</td><td>${clientName(o.client_id)}</td><td>${serviceName(o.service_id)}</td><td>${fmt(o.client_price)}</td><td>${fmt(o.vendor_cost)}</td><td style="color:${o.profit>=0?'var(--success)':'var(--danger)'};font-weight:700">${fmt(o.profit)}</td><td><span class="badge ${statusClass[o.status]}">${statusLabel[o.status]}</span></td></tr>`).join('')||'<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-sm)">لا توجد عمليات في هذه الفترة</td></tr>'}</tbody></table></div>`;
   } else if(rptTab==='profit'){
     const byService=SERVICES.map(s=>{
       const sOps=OPS.filter(o=>o.service_id===s.id&&o.status!=='cancelled');

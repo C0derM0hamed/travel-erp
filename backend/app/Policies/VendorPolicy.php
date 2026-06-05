@@ -26,4 +26,9 @@ class VendorPolicy
     {
         return in_array($user->role, ['admin', 'sales', 'accountant'], true);
     }
+
+    public function delete(User $user, Vendor $vendor): bool
+    {
+        return $this->update($user, $vendor);
+    }
 }

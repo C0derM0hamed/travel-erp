@@ -26,4 +26,9 @@ class ClientPolicy
     {
         return in_array($user->role, ['admin', 'sales', 'accountant'], true);
     }
+
+    public function delete(User $user, Client $client): bool
+    {
+        return $this->update($user, $client);
+    }
 }

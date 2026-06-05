@@ -133,4 +133,67 @@ class EntityDeliveryFeaturesTest extends TestCase
         $voucher = Voucher::first();
         $this->actingAs($auditor)->postJson("/api/vouchers/{$voucher->id}/void")->assertForbidden();
     }
+
+    public function test_client_without_links_can_be_deleted(): void
+    {
+        $sales = User::where('role', 'sales')->first();
+
+        $client = $this->actingAs($sales)->postJson('/api/clients', [
+            'name' => 'عميل للحذف',
+            'phone' => '90001234',
+        ])->assertCreated();
+
+        $clientId = $client->json('id');
+
+        $this->actingAs($sales)->deleteJson("/api/clients/{$clientId}")
+            ->assertOk()
+            ->assertJsonPath('message', 'تم حذف العميل بنجاح');
+
+        $this->assertDatabaseMissing('clients', ['id' => $clientId]);
+    }
+
+    public function test_client_with_operations_cannot_be_deleted(): void
+    {
+        $sales = User::where('role', 'sales')->first();
+
+        $this->actingAs($sales)->deleteJson('/api/clients/1')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['client']);
+    }
+
+    public function test_vendor_without_links_can_be_deleted(): void
+    {
+        $sales = User::where('role', 'sales')->first();
+
+        $vendor = $this->actingAs($sales)->postJson('/api/vendors', [
+            'name' => 'مكتب للحذف',
+            'category' => 'other',
+            'phone' => '90005678',
+        ])->assertCreated();
+
+        $vendorId = $vendor->json('id');
+
+        $this->actingAs($sales)->deleteJson("/api/vendors/{$vendorId}")
+            ->assertOk()
+            ->assertJsonPath('message', 'تم حذف المكتب بنجاح');
+
+        $this->assertDatabaseMissing('vendors', ['id' => $vendorId]);
+    }
+
+    public function test_vendor_with_operations_cannot_be_deleted(): void
+    {
+        $sales = User::where('role', 'sales')->first();
+
+        $this->actingAs($sales)->deleteJson('/api/vendors/1')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['vendor']);
+    }
+
+    public function test_auditor_cannot_delete_client_or_vendor(): void
+    {
+        $auditor = User::where('role', 'auditor')->first();
+
+        $this->actingAs($auditor)->deleteJson('/api/clients/1')->assertForbidden();
+        $this->actingAs($auditor)->deleteJson('/api/vendors/1')->assertForbidden();
+    }
 }

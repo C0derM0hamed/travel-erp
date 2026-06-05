@@ -23,11 +23,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/clients', [ClientController::class, 'index']);
     Route::post('/clients', [ClientController::class, 'store'])->middleware('idempotency');
     Route::patch('/clients/{client}', [ClientController::class, 'update']);
+    Route::delete('/clients/{client}', [ClientController::class, 'destroy']);
     Route::get('/clients/{client}/statement', [ClientController::class, 'statement']);
 
     Route::get('/vendors', [VendorController::class, 'index']);
     Route::post('/vendors', [VendorController::class, 'store'])->middleware('idempotency');
     Route::patch('/vendors/{vendor}', [VendorController::class, 'update']);
+    Route::delete('/vendors/{vendor}', [VendorController::class, 'destroy']);
     Route::get('/vendors/{vendor}/statement', [VendorController::class, 'statement']);
 
     Route::get('/operations', [OperationController::class, 'index']);

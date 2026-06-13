@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesOfficeScope;
 use App\Models\Vendor;
 use App\Support\PhoneNormalizer;
 use Illuminate\Foundation\Http\FormRequest;
@@ -9,6 +10,8 @@ use Illuminate\Validation\Rule;
 
 class UpdateVendorRequest extends FormRequest
 {
+    use ValidatesOfficeScope;
+
     public function authorize(): bool
     {
         $vendor = $this->route('vendor');
@@ -34,7 +37,7 @@ class UpdateVendorRequest extends FormRequest
         $vendor = $this->route('vendor');
 
         return [
-            'name' => ['sometimes', 'required', 'string', 'max:255', Rule::unique('vendors', 'name')->ignore($vendor->id)],
+            'name' => ['sometimes', 'required', 'string', 'max:255', $this->scopedUnique('vendors', 'name', $vendor->id)],
             'category' => ['sometimes', Rule::in(['airline', 'hotel', 'visa', 'transport', 'other'])],
             'phone' => ['nullable', 'string', 'max:50'],
             'contact' => ['nullable', 'string', 'max:255'],

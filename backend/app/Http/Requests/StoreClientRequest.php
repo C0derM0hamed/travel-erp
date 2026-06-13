@@ -2,12 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesOfficeScope;
 use App\Support\PhoneNormalizer;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreClientRequest extends FormRequest
 {
+    use ValidatesOfficeScope;
+
     public function authorize(): bool
     {
         return $this->user()?->role !== 'auditor';
@@ -29,9 +31,9 @@ class StoreClientRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'phone' => ['required', 'string', 'max:50', 'unique:clients,phone'],
+            'phone' => ['required', 'string', 'max:50', $this->scopedUnique('clients', 'phone')],
             'alt_phone' => ['nullable', 'string', 'max:50'],
-            'civil_id' => ['nullable', 'string', 'max:50', Rule::unique('clients', 'civil_id')],
+            'civil_id' => ['nullable', 'string', 'max:50', $this->scopedUnique('clients', 'civil_id')],
             'email' => ['nullable', 'email', 'max:255'],
             'nationality' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:2000'],

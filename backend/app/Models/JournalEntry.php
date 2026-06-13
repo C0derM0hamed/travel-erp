@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToOffice;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class JournalEntry extends Model
 {
-    use HasFactory;
+    use BelongsToOffice, HasFactory;
 
-    protected $fillable = ['entry_date', 'ref', 'source_type', 'source_id', 'operation_id', 'voucher_id', 'account_id', 'party_type', 'party_id', 'party_name', 'debit', 'credit', 'description'];
+    protected $fillable = ['office_id', 'entry_date', 'ref', 'source_type', 'source_id', 'operation_id', 'voucher_id', 'account_id', 'party_type', 'party_id', 'party_name', 'debit', 'credit', 'description'];
 
     protected function casts(): array
     {

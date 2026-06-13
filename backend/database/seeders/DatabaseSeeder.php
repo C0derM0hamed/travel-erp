@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\ChartOfAccount;
 use App\Models\Client;
 use App\Models\JournalEntry;
+use App\Models\Office;
 use App\Models\Operation;
 use App\Models\Safe;
 use App\Models\Service;
@@ -33,14 +34,21 @@ class DatabaseSeeder extends Seeder
 
         DB::transaction(function () use ($seedPassword) {
             $this->resetData();
+            $office = Office::firstOrCreate(
+                ['office_code' => 'MAIN'],
+                ['office_name' => 'المكتب الرئيسي', 'logo' => null, 'is_active' => true]
+            );
+            $officeId = $office->id;
             $date = fn (int $daysAgo): string => now()->subDays($daysAgo)->toDateString();
+
+            User::create(['id' => 5, 'name' => 'مدير النظام العام', 'email' => 'super@travel.kw', 'password' => Hash::make($seedPassword), 'role' => 'super_admin', 'role_label' => 'مدير عام', 'avatar' => 'م', 'office_id' => null]);
 
             collect([
                 [1, 'أحمد الكندري', 'admin@travel.kw', 'admin', 'مدير النظام', 'أ'],
                 [2, 'سارة العتيبي', 'accountant@travel.kw', 'accountant', 'محاسب', 'س'],
                 [3, 'فهد المطيري', 'sales@travel.kw', 'sales', 'موظف مبيعات', 'ف'],
                 [4, 'منى الرشيدي', 'auditor@travel.kw', 'auditor', 'مدقق', 'م'],
-            ])->each(fn ($u) => User::create(['id' => $u[0], 'name' => $u[1], 'email' => $u[2], 'password' => Hash::make($seedPassword), 'role' => $u[3], 'role_label' => $u[4], 'avatar' => $u[5]]));
+            ])->each(fn ($u) => User::create(['id' => $u[0], 'name' => $u[1], 'email' => $u[2], 'password' => Hash::make($seedPassword), 'role' => $u[3], 'role_label' => $u[4], 'avatar' => $u[5], 'office_id' => $officeId]));
 
             collect([
                 [1, 'تذكرة طيران', '✈️', true], [2, 'تأشيرة', '📋', true], [3, 'حجز فندق', '🏨', true], [4, 'باقة سياحية', '🌍', true], [5, 'نقل وسيارات', '🚌', true],
@@ -52,7 +60,7 @@ class DatabaseSeeder extends Seeder
                 [3, 'فندق الشيراتون الكويت', 'hotel', '22422055', 'مكتب الحجز', 'الكويت'],
                 [4, 'مكتب السفارة - تأشيرات', 'visa', '25715555', 'السيد محمد', 'الكويت'],
                 [5, 'شركة رحلات الخليج', 'transport', '97123456', 'أبو عبدالله', 'الكويت'],
-            ])->each(fn ($v) => Vendor::create(['id' => $v[0], 'name' => $v[1], 'category' => $v[2], 'phone' => $v[3], 'contact' => $v[4], 'address' => $v[5]]));
+            ])->each(fn ($v) => Vendor::withoutGlobalScopes()->create(['id' => $v[0], 'office_id' => $officeId, 'name' => $v[1], 'category' => $v[2], 'phone' => $v[3], 'contact' => $v[4], 'address' => $v[5]]));
 
             collect([
                 [1, 'محمد سالم الصبيح', '99001122', '65001122', '280123456789', 'm.alsabeeh@gmail.com', 'كويتي', 'عميل منذ 2020'],
@@ -63,10 +71,10 @@ class DatabaseSeeder extends Seeder
                 [6, 'لطيفة منصور الهاجري', '99556677', '', '305678901234', '', 'كويتية', ''],
                 [7, 'تركي سعد الدوسري', '99667788', '65667788', '284789012345', 't.aldosari@gmail.com', 'كويتي', ''],
                 [8, 'شركة الخليج للتجارة', '22345678', '22345679', '', 'info@gulfco.kw', 'شركة كويتية', 'اعتماد شهري'],
-            ])->each(fn ($c) => Client::create(['id' => $c[0], 'name' => $c[1], 'phone' => $c[2], 'alt_phone' => $c[3] ?: null, 'civil_id' => $c[4] ?: null, 'email' => $c[5] ?: null, 'nationality' => $c[6], 'notes' => $c[7] ?: null]));
+            ])->each(fn ($c) => Client::withoutGlobalScopes()->create(['id' => $c[0], 'office_id' => $officeId, 'name' => $c[1], 'phone' => $c[2], 'alt_phone' => $c[3] ?: null, 'civil_id' => $c[4] ?: null, 'email' => $c[5] ?: null, 'nationality' => $c[6], 'notes' => $c[7] ?: null]));
 
-            Safe::create(['id' => 1, 'name' => 'الصندوق الرئيسي', 'type' => 'cash', 'currency' => 'KWD', 'opening_balance' => 5000]);
-            Safe::create(['id' => 2, 'name' => 'البنك الأهلي الكويتي', 'type' => 'bank', 'currency' => 'KWD', 'opening_balance' => 25000]);
+            Safe::withoutGlobalScopes()->create(['id' => 1, 'office_id' => $officeId, 'name' => 'الصندوق الرئيسي', 'type' => 'cash', 'currency' => 'KWD', 'opening_balance' => 5000]);
+            Safe::withoutGlobalScopes()->create(['id' => 2, 'office_id' => $officeId, 'name' => 'البنك الأهلي الكويتي', 'type' => 'bank', 'currency' => 'KWD', 'opening_balance' => 25000]);
 
             collect([
                 ['1100', 'ذمم العملاء', 'asset', null],
@@ -76,8 +84,9 @@ class DatabaseSeeder extends Seeder
                 ['1001', 'الصندوق الرئيسي', 'asset', 1],
                 ['1002', 'البنك الأهلي الكويتي', 'asset', 2],
                 ['9999', 'حساب عام', 'asset', null],
-            ])->each(fn ($a) => ChartOfAccount::create(['code' => $a[0], 'name' => $a[1], 'type' => $a[2], 'safe_id' => $a[3]]));
+            ])->each(fn ($a) => ChartOfAccount::withoutGlobalScopes()->create(['office_id' => $officeId, 'code' => $a[0], 'name' => $a[1], 'type' => $a[2], 'safe_id' => $a[3]]));
 
+            app(\App\Support\OfficeContext::class)->setOfficeId($officeId);
             $accounting = app(AccountingService::class);
             collect([
                 [1, 'OP-001', 1, 1, 1, 'KWD', 450, 320, 130, 200, 'cash', 'تذكرة القاهرة ذهاب وإياب', 'processing', 3, $date(12)],
@@ -93,8 +102,8 @@ class DatabaseSeeder extends Seeder
                 [11, 'OP-011', 3, 2, 4, 'KWD', 95, 65, 30, 95, 'cash', 'تأشيرة كندا', 'processing', 3, $date(3)],
                 [12, 'OP-012', 5, 1, 2, 'KWD', 350, 260, 90, 175, 'bank', 'تذكرة فرنكفورت', 'processing', 3, $date(2)],
                 [13, 'OP-013', 4, 1, 2, 'KWD', 280, 200, 80, 150, 'cash', 'تذكرة دبي - اليوم', 'processing', 3, $date(0)],
-            ])->each(function ($o) use ($accounting) {
-                $operation = Operation::create(['id' => $o[0], 'ref' => $o[1], 'client_id' => $o[2], 'service_id' => $o[3], 'vendor_id' => $o[4], 'currency' => $o[5], 'client_price' => $o[6], 'vendor_cost' => $o[7], 'profit' => $o[8], 'initial_payment' => $o[9], 'payment_method' => $o[10], 'notes' => $o[11], 'status' => $o[12], 'created_by' => $o[13], 'op_date' => $o[14]]);
+            ])->each(function ($o) use ($accounting, $officeId) {
+                $operation = Operation::withoutGlobalScopes()->create(['id' => $o[0], 'office_id' => $officeId, 'ref' => $o[1], 'client_id' => $o[2], 'service_id' => $o[3], 'vendor_id' => $o[4], 'currency' => $o[5], 'client_price' => $o[6], 'vendor_cost' => $o[7], 'profit' => $o[8], 'initial_payment' => $o[9], 'payment_method' => $o[10], 'notes' => $o[11], 'status' => $o[12], 'created_by' => $o[13], 'op_date' => $o[14]]);
                 $accounting->postOperation($operation, $operation->status === 'cancelled' ? -1 : 1);
             });
 
@@ -109,12 +118,12 @@ class DatabaseSeeder extends Seeder
                 [8, 'RV-006', 'receipt', 'client', 8, 2000, 'KWD', 'bank', 2, 8, 'دفعة أولى OP-008', $date(5), 2],
                 [9, 'RV-007', 'receipt', 'client', 1, 400, 'KWD', 'knet', 1, 9, 'تحصيل كامل OP-009', $date(4), 2],
                 [10, 'PV-003', 'payment', 'vendor', 3, 450, 'KWD', 'bank', 2, 3, 'دفع مستحقات الشيراتون', $date(3), 2],
-            ])->each(function ($v) use ($accounting) {
-                $voucher = Voucher::create(['id' => $v[0], 'ref' => $v[1], 'type' => $v[2], 'party_type' => $v[3], 'party_id' => $v[4], 'amount' => $v[5], 'currency' => $v[6], 'method' => $v[7], 'safe_id' => $v[8], 'operation_id' => $v[9], 'description' => $v[10], 'voucher_date' => $v[11], 'created_by' => $v[12]]);
+            ])->each(function ($v) use ($accounting, $officeId) {
+                $voucher = Voucher::withoutGlobalScopes()->create(['id' => $v[0], 'office_id' => $officeId, 'ref' => $v[1], 'type' => $v[2], 'party_type' => $v[3], 'party_id' => $v[4], 'amount' => $v[5], 'currency' => $v[6], 'method' => $v[7], 'safe_id' => $v[8], 'operation_id' => $v[9], 'description' => $v[10], 'voucher_date' => $v[11], 'created_by' => $v[12]]);
                 $accounting->postVoucher($voucher);
             });
 
-            app(ReferenceService::class)->syncFromExisting();
+            app(ReferenceService::class)->syncFromExisting($officeId);
         });
     }
 
@@ -125,7 +134,7 @@ class DatabaseSeeder extends Seeder
         }
 
         foreach ([JournalEntry::class, Voucher::class, Operation::class, ChartOfAccount::class, Safe::class, Client::class, Vendor::class, Service::class, User::class] as $model) {
-            $model::query()->delete();
+            $model::query()->withoutGlobalScopes()->delete();
         }
 
         if (Schema::hasTable('reference_sequences')) {

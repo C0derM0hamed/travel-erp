@@ -60,6 +60,9 @@ abstract class ApiController extends Controller
 
     protected function userPayload(User $user): array
     {
+        $office = $user->relationLoaded('office') ? $user->office : $user->office()->first();
+        $context = app(\App\Support\OfficeContext::class);
+
         return [
             'id' => $user->id,
             'name' => $user->name,
@@ -69,6 +72,26 @@ abstract class ApiController extends Controller
             'avatar' => $user->avatar,
             'must_change_password' => (bool) ($user->must_change_password ?? false),
             'is_active' => (bool) ($user->is_active ?? true),
+            'office_id' => $user->office_id,
+            'office' => $office ? [
+                'id' => $office->id,
+                'office_code' => $office->office_code,
+                'office_name' => $office->office_name,
+                'logo' => $office->logo,
+                'is_active' => (bool) $office->is_active,
+            ] : null,
+            'current_office_id' => $context->id(),
+        ];
+    }
+
+    protected function officePayload(\App\Models\Office $office): array
+    {
+        return [
+            'id' => $office->id,
+            'office_code' => $office->office_code,
+            'office_name' => $office->office_name,
+            'logo' => $office->logo,
+            'is_active' => (bool) $office->is_active,
         ];
     }
 

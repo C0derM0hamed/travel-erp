@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\OfficeContext;
 use Closure;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -38,6 +39,7 @@ class EnsureIdempotency
             DB::table('idempotency_keys')->insert([
                 'key' => $key,
                 'user_id' => $request->user()?->id,
+                'office_id' => app(OfficeContext::class)->id(),
                 'method' => $method,
                 'path' => $path,
                 'expires_at' => now()->addDay(),

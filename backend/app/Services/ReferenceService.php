@@ -2,57 +2,78 @@
 
 namespace App\Services;
 
+use App\Support\OfficeContext;
 use Illuminate\Support\Facades\DB;
 
 class ReferenceService
 {
-    public function operationRef(): string
+    public function __construct(private OfficeContext $officeContext) {}
+
+    public function operationRef(?int $officeId = null): string
     {
-        return $this->next('operation', 'OP-');
+        return $this->next($officeId, 'operation', 'OP-');
     }
 
-    public function voucherRef(string $type): string
+    public function voucherRef(string $type, ?int $officeId = null): string
     {
         $key = $type === 'receipt' ? 'voucher_receipt' : 'voucher_payment';
         $prefix = $type === 'receipt' ? 'RV-' : 'PV-';
 
-        return $this->next($key, $prefix);
+        return $this->next($officeId, $key, $prefix);
     }
 
-    private function next(string $key, string $prefix): string
+    private function next(?int $officeId, string $key, string $prefix): string
     {
-        return DB::transaction(function () use ($key, $prefix) {
-            $row = DB::table('reference_sequences')->where('key', $key)->lockForUpdate()->first();
+        $officeId ??= $this->officeContext->requireId();
+
+        return DB::transaction(function () use ($officeId, $key, $prefix) {
+            $row = DB::table('reference_sequences')
+                ->where('office_id', $officeId)
+                ->where('key', $key)
+                ->lockForUpdate()
+                ->first();
 
             if (! $row) {
-                $this->syncFromExisting();
-                $row = DB::table('reference_sequences')->where('key', $key)->lockForUpdate()->first();
+                $this->syncFromExisting($officeId);
+                $row = DB::table('reference_sequences')
+                    ->where('office_id', $officeId)
+                    ->where('key', $key)
+                    ->lockForUpdate()
+                    ->first();
             }
 
             $next = (int) ($row->last_value ?? 0) + 1;
-            DB::table('reference_sequences')->updateOrInsert(['key' => $key], ['last_value' => $next]);
+            DB::table('reference_sequences')->updateOrInsert(
+                ['office_id' => $officeId, 'key' => $key],
+                ['last_value' => $next]
+            );
 
             return $prefix.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
         });
     }
 
-    public function syncFromExisting(): void
+    public function syncFromExisting(?int $officeId = null): void
     {
-        $this->setSequence('operation', $this->maxRefNumber('operations', 'OP-'));
-        $this->setSequence('voucher_receipt', $this->maxRefNumber('vouchers', 'RV-'));
-        $this->setSequence('voucher_payment', $this->maxRefNumber('vouchers', 'PV-'));
+        $officeId ??= $this->officeContext->requireId();
+
+        $this->setSequence($officeId, 'operation', $this->maxRefNumber($officeId, 'operations', 'OP-'));
+        $this->setSequence($officeId, 'voucher_receipt', $this->maxRefNumber($officeId, 'vouchers', 'RV-'));
+        $this->setSequence($officeId, 'voucher_payment', $this->maxRefNumber($officeId, 'vouchers', 'PV-'));
     }
 
-    private function setSequence(string $key, int $value): void
+    private function setSequence(int $officeId, string $key, int $value): void
     {
-        DB::table('reference_sequences')->updateOrInsert(['key' => $key], ['last_value' => $value]);
+        DB::table('reference_sequences')->updateOrInsert(
+            ['office_id' => $officeId, 'key' => $key],
+            ['last_value' => $value]
+        );
     }
 
-    private function maxRefNumber(string $table, string $prefix): int
+    private function maxRefNumber(int $officeId, string $table, string $prefix): int
     {
-        $max = (int) DB::table($table)->max('id');
+        $max = 0;
 
-        foreach (DB::table($table)->pluck('ref') as $ref) {
+        foreach (DB::table($table)->where('office_id', $officeId)->pluck('ref') as $ref) {
             if (is_string($ref) && str_starts_with($ref, $prefix)) {
                 $max = max($max, (int) substr($ref, strlen($prefix)));
             }

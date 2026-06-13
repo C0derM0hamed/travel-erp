@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToOffice;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Voucher extends Model
 {
-    use HasFactory;
+    use BelongsToOffice, HasFactory;
 
-    protected $fillable = ['ref', 'type', 'party_type', 'party_id', 'amount', 'currency', 'method', 'safe_id', 'operation_id', 'reference_number', 'description', 'voucher_date', 'created_by', 'voided_at'];
+    protected $fillable = ['office_id', 'ref', 'type', 'party_type', 'party_id', 'amount', 'currency', 'method', 'safe_id', 'operation_id', 'reference_number', 'description', 'voucher_date', 'created_by', 'voided_at'];
 
     protected function casts(): array
     {

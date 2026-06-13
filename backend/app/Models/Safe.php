@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToOffice;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Safe extends Model
 {
-    use HasFactory;
+    use BelongsToOffice, HasFactory;
 
-    protected $fillable = ['name', 'type', 'currency', 'opening_balance', 'is_active'];
+    protected $fillable = ['office_id', 'name', 'type', 'currency', 'opening_balance', 'is_active'];
 
     protected function casts(): array
     {

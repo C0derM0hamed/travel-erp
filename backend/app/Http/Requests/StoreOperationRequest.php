@@ -2,11 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesOfficeScope;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreOperationRequest extends FormRequest
 {
+    use ValidatesOfficeScope;
+
     public function authorize(): bool
     {
         return $this->user()?->canPerform('create_op') ?? false;
@@ -15,9 +18,9 @@ class StoreOperationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'client_id' => ['required', 'exists:clients,id'],
+            'client_id' => ['required', $this->scopedExists('clients')],
             'service_id' => ['required', Rule::exists('services', 'id')->where('active', true)],
-            'vendor_id' => ['required', 'exists:vendors,id'],
+            'vendor_id' => ['required', $this->scopedExists('vendors')],
             'currency' => ['nullable', Rule::in(['KWD'])],
             'client_price' => ['required', 'numeric', 'decimal:0,3', 'min:1', 'max:99999.999'],
             'vendor_cost' => ['required', 'numeric', 'decimal:0,3', 'min:0', 'lte:client_price', 'max:99999.999'],

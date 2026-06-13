@@ -2,12 +2,15 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesOfficeScope;
 use App\Support\PhoneNormalizer;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreVendorRequest extends FormRequest
 {
+    use ValidatesOfficeScope;
+
     public function authorize(): bool
     {
         return $this->user()?->role !== 'auditor';
@@ -24,7 +27,7 @@ class StoreVendorRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255', 'unique:vendors,name'],
+            'name' => ['required', 'string', 'max:255', $this->scopedUnique('vendors', 'name')],
             'category' => ['nullable', Rule::in(['airline', 'hotel', 'visa', 'transport', 'other'])],
             'phone' => ['nullable', 'string', 'max:50'],
             'contact' => ['nullable', 'string', 'max:255'],

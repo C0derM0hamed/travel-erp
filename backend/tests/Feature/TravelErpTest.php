@@ -65,7 +65,7 @@ class TravelErpTest extends TestCase
 
         $response->assertCreated()->assertJsonPath('profit', 25);
         $this->assertDatabaseHas('operations', ['ref' => 'OP-014', 'profit' => 25]);
-        $this->assertDatabaseHas('vouchers', ['ref' => 'RV-011', 'type' => 'receipt', 'amount' => 50]);
+        $this->assertDatabaseHas('vouchers', ['ref' => 'RV-008', 'type' => 'receipt', 'amount' => 50]);
         $this->assertSame($beforeJournal + 6, JournalEntry::count());
         $this->assertEquals(JournalEntry::sum('debit'), JournalEntry::sum('credit'));
     }
@@ -99,7 +99,7 @@ class TravelErpTest extends TestCase
             'method' => 'bank',
             'safe_id' => 2,
             'description' => 'Test payment',
-        ])->assertCreated()->assertJsonPath('ref', 'PV-011');
+        ])->assertCreated()->assertJsonPath('ref', 'PV-004');
 
         $this->actingAs($accountant)->getJson('/api/reports/clients-debt')->assertOk()->assertJsonStructure(['rows', 'totalDebt']);
         $this->actingAs($accountant)->getJson('/api/journal')->assertOk()->assertJsonPath('totals.balanced', true);

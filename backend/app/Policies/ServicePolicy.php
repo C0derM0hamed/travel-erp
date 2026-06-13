@@ -9,6 +9,6 @@ class ServicePolicy
 {
     public function update(User $user, Service $service): bool
     {
-        return $user->role === 'admin';
+        return in_array($user->role, ['super_admin', 'admin'], true);
     }
 }

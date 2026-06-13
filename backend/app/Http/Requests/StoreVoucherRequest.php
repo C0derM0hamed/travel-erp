@@ -2,17 +2,21 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesOfficeScope;
 use App\Models\Client;
 use App\Models\Operation;
 use App\Models\Safe;
 use App\Models\Vendor;
 use App\Services\AccountingService;
+use App\Support\OfficeContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class StoreVoucherRequest extends FormRequest
 {
+    use ValidatesOfficeScope;
+
     public function authorize(): bool
     {
         return $this->user()?->canPerform('create_voucher') ?? false;
@@ -31,9 +35,9 @@ class StoreVoucherRequest extends FormRequest
             'amount' => ['required', 'numeric', 'decimal:0,3', 'gt:0', 'min:1', 'max:99999.999'],
             'currency' => ['nullable', Rule::in(['KWD'])],
             'method' => ['nullable', Rule::in(['cash', 'bank', 'knet', 'check'])],
-            'safe_id' => ['required', 'exists:safes,id'],
-            'operation_id' => ['nullable', 'exists:operations,id'],
-            'ref' => ['nullable', 'string', 'max:50', 'unique:vouchers,ref'],
+            'safe_id' => ['required', $this->scopedExists('safes')],
+            'operation_id' => ['nullable', $this->scopedExists('operations')],
+            'ref' => ['nullable', 'string', 'max:50', $this->scopedUnique('vouchers', 'ref')],
             'reference_number' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
             'date' => ['nullable', 'date', 'before_or_equal:today'],
@@ -43,6 +47,7 @@ class StoreVoucherRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
+            $officeId = app(OfficeContext::class)->requireId();
             $partyType = $this->input('party_type', 'general');
             $partyId = $this->input('party_id');
             $amount = (float) $this->input('amount');
@@ -50,7 +55,7 @@ class StoreVoucherRequest extends FormRequest
             $accounting = app(AccountingService::class);
 
             if ($type === 'payment' && $this->filled('safe_id') && Safe::whereKey($this->input('safe_id'))->exists()) {
-                $safeBalance = $accounting->safeBalance((int) $this->input('safe_id'));
+                $safeBalance = $accounting->safeBalance((int) $this->input('safe_id'), $officeId);
                 if ($amount > $safeBalance + 0.001) {
                     $validator->errors()->add('amount', 'المبلغ يتجاوز رصيد الصندوق/البنك المتاح ('.number_format($safeBalance, 3).' د.ك)');
                 }
@@ -77,8 +82,8 @@ class StoreVoucherRequest extends FormRequest
 
             if ($type === 'receipt' && $partyType === 'client' && $partyId) {
                 $outstanding = $this->filled('operation_id')
-                    ? $accounting->operationClientOutstanding((int) $this->input('operation_id'))
-                    : $accounting->clientBalance((int) $partyId);
+                    ? $accounting->operationClientOutstanding((int) $this->input('operation_id'), $officeId)
+                    : $accounting->clientBalance((int) $partyId, $officeId);
 
                 if ($outstanding <= 0) {
                     $validator->errors()->add('amount', 'لا يوجد رصيد مستحق على هذا العميل');
@@ -89,8 +94,8 @@ class StoreVoucherRequest extends FormRequest
 
             if ($type === 'payment' && $partyType === 'vendor' && $partyId) {
                 $owed = $this->filled('operation_id')
-                    ? $accounting->operationVendorOutstanding((int) $this->input('operation_id'))
-                    : $accounting->vendorBalance((int) $partyId);
+                    ? $accounting->operationVendorOutstanding((int) $this->input('operation_id'), $officeId)
+                    : $accounting->vendorBalance((int) $partyId, $officeId);
 
                 if ($owed <= 0) {
                     $validator->errors()->add('amount', 'لا يوجد رصيد مستحق لهذا المورد');

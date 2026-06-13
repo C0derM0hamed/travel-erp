@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Middleware\EnsureIdempotency;
+use App\Http\Middleware\EnsureOfficeContext;
 use App\Http\Middleware\EnsureStatefulApiRequests;
+use App\Http\Middleware\EnsureUserActive;
 use App\Http\Middleware\TrustForwardedHost;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -30,6 +32,8 @@ return Application::configure(basePath: dirname(__DIR__))
         );
         $middleware->alias([
             'idempotency' => EnsureIdempotency::class,
+            'office.context' => EnsureOfficeContext::class,
+            'user.active' => EnsureUserActive::class,
         ]);
         $middleware->validateCsrfTokens(except: [
             'api/login',

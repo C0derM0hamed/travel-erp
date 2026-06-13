@@ -5,6 +5,8 @@ let __saveInFlight = false;
 let BOOTSTRAP_METRICS = {};
 let DASHBOARD_DATA = null;
 let REPORT_CACHE = {};
+let OFFICES = [];
+let currentOffice = null;
 const __originalNavigate = navigate;
 const __originalRenderRptContent = renderRptContent;
 const PAGE_RENDERERS = {
@@ -147,6 +149,7 @@ async function apiFetch(path, options = {}){
     opts.headers['Idempotency-Key']=(crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`);
   }
   if(needsCsrf(opts.method) && !opts.headers['X-XSRF-TOKEN']) opts.headers['X-XSRF-TOKEN']=csrfToken();
+  if(currentOffice?.id) opts.headers['X-Office-Id'] = String(currentOffice.id);
   const res = await fetch(API_BASE + path, opts);
   if(res.status === 419 && retryOnCsrf && needsCsrf(opts.method)){
     await refreshCsrfCookie();
@@ -185,7 +188,7 @@ async function fetchAllPages(path, params = {}){
 }
 
 function clearLocalState(){
-  currentUser=null; __apiBootstrapped=false; __journalLoaded=false; JOURNAL_CACHE=[]; BOOTSTRAP_METRICS={}; DASHBOARD_DATA=null; REPORT_CACHE={};
+  currentUser=null; currentOffice=null; OFFICES=[]; __apiBootstrapped=false; __journalLoaded=false; JOURNAL_CACHE=[]; BOOTSTRAP_METRICS={}; DASHBOARD_DATA=null; REPORT_CACHE={};
   if(typeof vcTab!=='undefined') vcTab='receipt';
   if(typeof currentPage!=='undefined') currentPage='dashboard';
   Object.values(charts).forEach(c=>{try{c.destroy();}catch(e){}});
@@ -202,6 +205,7 @@ function showLogin(){
 
 function enterApp(user){
   currentUser = user;
+  currentOffice = user.current_office_id ? { id: user.current_office_id, ...(user.office || {}) } : (user.office || null);
   AppShell.setAuthMode('app');
   document.getElementById('loginPage').style.display='none';
   document.getElementById('appLayout').style.display='flex';
@@ -210,7 +214,105 @@ function enterApp(user){
   document.getElementById('userAvatar').textContent=currentUser.avatar;
   document.getElementById('loginError').style.display='none';
   if(typeof applyRoleUi==='function')applyRoleUi();
+  renderOfficeSwitcher();
 }
+
+function renderOfficeSwitcher(){
+  const el = document.getElementById('officeSwitcher');
+  if(!el) return;
+  const offices = OFFICES.length ? OFFICES : (currentOffice ? [currentOffice] : []);
+  if(offices.length <= 1 && currentUser?.role !== 'super_admin'){
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = '';
+  el.innerHTML = offices.map(o => `<option value="${o.id}" ${String(o.id)===String(currentOffice?.id)?'selected':''}>${o.office_name || o.office_code}</option>`).join('');
+}
+
+async function switchOffice(officeId){
+  if(!officeId) return;
+  try{
+    const data = await apiFetch('/session/office', {method:'POST', body:JSON.stringify({office_id:+officeId})});
+    currentOffice = data.office;
+    currentUser = data.user;
+    OFFICES.forEach(o => { if(+o.id === +officeId) Object.assign(o, data.office); });
+    renderOfficeSwitcher();
+    replaceArray(CLIENTS, []); replaceArray(VENDORS, []); replaceArray(OPS, []); replaceArray(VOUCHERS, []);
+    JOURNAL_CACHE=[]; __journalLoaded=false; DASHBOARD_DATA=null; REPORT_CACHE={};
+    await loadAllData();
+    if(typeof PAGE_RENDERERS !== 'undefined' && typeof window[PAGE_RENDERERS[currentPage]] === 'function'){
+      window[PAGE_RENDERERS[currentPage]](document.getElementById('pageContent'));
+    }
+    notify('تم التبديل إلى: ' + (currentOffice.office_name || currentOffice.office_code), 'success');
+  }catch(e){ notify(e.message, 'error'); }
+}
+
+async function saveOffice(){
+  const code = document.getElementById('office_code')?.value?.trim();
+  const name = document.getElementById('office_name')?.value?.trim();
+  if(!code || !name){ notify('يرجى إدخال رمز واسم المكتب', 'warning'); return; }
+  await withSaveGuard('#saveOfficeBtn', async () => {
+    await apiFetch('/offices', {method:'POST', body:JSON.stringify({office_code:code, office_name:name, is_active:true})});
+    closeModal('newOfficeModal');
+    await refreshBootstrap();
+    renderSettings(document.getElementById('pageContent'));
+    notify('تم إنشاء المكتب بنجاح', 'success');
+  });
+}
+
+async function toggleOfficeActive(officeId, active){
+  await apiFetch(`/offices/${officeId}`, {method:'PATCH', body:JSON.stringify({is_active:active})});
+  await refreshBootstrap();
+  renderSettings(document.getElementById('pageContent'));
+  notify(active ? 'تم تفعيل المكتب' : 'تم تعطيل المكتب', 'success');
+}
+
+function populateUserForm(){
+  const sel = document.getElementById('usr_office_id');
+  const roleSel = document.getElementById('usr_role');
+  if(!sel || !roleSel) return;
+  const offices = OFFICES.length ? OFFICES : (currentOffice ? [currentOffice] : []);
+  sel.innerHTML = '<option value="">-- اختر المكتب --</option>' + offices.map(o => `<option value="${o.id}">${o.office_name || o.office_code}</option>`).join('');
+  if(currentUser?.role === 'admin' && currentUser?.office_id){
+    sel.value = String(currentUser.office_id);
+    sel.disabled = true;
+  } else {
+    sel.disabled = false;
+  }
+  if(currentUser?.role === 'super_admin' && !roleSel.querySelector('option[value="super_admin"]')){
+    roleSel.insertAdjacentHTML('beforeend', '<option value="super_admin">مدير عام</option>');
+  }
+  roleSel.onchange = () => {
+    const row = document.getElementById('usr_office_row');
+    if(row) row.style.display = roleSel.value === 'super_admin' ? 'none' : '';
+  };
+  roleSel.onchange();
+}
+
+async function saveUser(){
+  const name = document.getElementById('usr_name')?.value?.trim();
+  const email = document.getElementById('usr_email')?.value?.trim();
+  const password = document.getElementById('usr_password')?.value;
+  const role = document.getElementById('usr_role')?.value;
+  const officeId = document.getElementById('usr_office_id')?.value;
+  if(!name || !email || !password || !role){ notify('يرجى تعبئة جميع الحقول المطلوبة', 'warning'); return; }
+  if(role !== 'super_admin' && !officeId){ notify('يرجى اختيار المكتب', 'warning'); return; }
+  await withSaveGuard('#saveUserBtn', async () => {
+    const body = { name, email, password, role };
+    if(role !== 'super_admin') body.office_id = +officeId;
+    await apiFetch('/users', { method:'POST', body: JSON.stringify(body) });
+    closeModal('newUserModal');
+    await refreshBootstrap();
+    renderSettings(document.getElementById('pageContent'));
+    notify('تم إنشاء المستخدم بنجاح', 'success');
+  }).catch(e => showModalError('newUserModal', e.message));
+}
+
+const __showModal = typeof showModal === 'function' ? showModal : (id) => document.getElementById(id)?.classList.add('open');
+showModal = function(id){
+  __showModal(id);
+  if(id === 'newUserModal') populateUserForm();
+};
 
 function handleSessionExpired(message){
   showLogin();
@@ -245,9 +347,12 @@ async function refreshBootstrap(){
   replaceArray(USERS, data.users);
   replaceArray(SERVICES, data.services);
   replaceArray(SAFES, data.safes);
+  replaceArray(OFFICES, data.offices || []);
+  currentOffice = data.current_office || currentOffice;
   BOOTSTRAP_METRICS = data.metrics || {};
   const safesPayload = await apiFetch('/safes').catch(() => ({ data: data.safes }));
   replaceArray(SAFES, safesPayload.data || data.safes);
+  renderOfficeSwitcher();
 }
 
 async function fetchListPage(path, page = 1, params = {}){
@@ -1216,6 +1321,23 @@ renderDashboard = function(pc){
     return;
   }
   __originalRenderDashboard(pc);
+};
+
+const __originalRenderSettings = renderSettings;
+renderSettings = function(pc){
+  __originalRenderSettings(pc);
+  if(currentUser?.role !== 'super_admin') return;
+  const shell = pc.querySelector('.page-shell .grid-2') || pc.querySelector('.grid-2');
+  if(!shell) return;
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `<div class="card-header"><h3>🏢 فروع الوكالة</h3><button class="btn btn-primary btn-sm" onclick="showModal('newOfficeModal')">➕ مكتب جديد</button></div>
+    <div class="card-body" style="padding:0"><div class="table-wrapper">
+      <table class="table"><thead><tr><th>الرمز</th><th>الاسم</th><th>الحالة</th><th>إجراء</th></tr></thead>
+      <tbody>${OFFICES.map(o=>`<tr><td><b>${o.office_code}</b></td><td>${o.office_name}</td><td><span class="badge ${o.is_active?'badge-success':'badge-danger'}">${o.is_active?'مفعل':'معطل'}</span></td><td><button class="btn btn-sm btn-outline" onclick="toggleOfficeActive(${o.id},${o.is_active?0:1})">${o.is_active?'تعطيل':'تفعيل'}</button></td></tr>`).join('')}</tbody>
+    </table></div></div>`;
+  shell.prepend(card);
+  renderOfficeSwitcher();
 };
 
 async function restoreSession(){

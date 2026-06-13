@@ -70,7 +70,7 @@ class OperationService
             }
 
             if ($status === 'processing') {
-                if ($user->role !== 'admin' && $user->role !== 'sales') {
+                if (! in_array($user->role, ['super_admin', 'admin', 'sales'], true)) {
                     throw ValidationException::withMessages(['status' => ['ليست لديك صلاحية نقل العملية إلى قيد التنفيذ']]);
                 }
                 if ($operation->status !== 'new') {
@@ -79,7 +79,7 @@ class OperationService
             }
 
             if ($status === 'completed') {
-                if ($user->role !== 'admin' && $user->role !== 'accountant') {
+                if (! in_array($user->role, ['super_admin', 'admin', 'accountant'], true)) {
                     throw ValidationException::withMessages(['status' => ['ليست لديك صلاحية إكمال العملية']]);
                 }
                 if ($operation->status !== 'processing') {

@@ -2,13 +2,15 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesOfficeScope;
 use App\Models\Client;
 use App\Support\PhoneNormalizer;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateClientRequest extends FormRequest
 {
+    use ValidatesOfficeScope;
+
     public function authorize(): bool
     {
         $client = $this->route('client');
@@ -39,9 +41,9 @@ class UpdateClientRequest extends FormRequest
 
         return [
             'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'phone' => ['sometimes', 'required', 'string', 'max:50', Rule::unique('clients', 'phone')->ignore($client->id)],
+            'phone' => ['sometimes', 'required', 'string', 'max:50', $this->scopedUnique('clients', 'phone', $client->id)],
             'alt_phone' => ['nullable', 'string', 'max:50'],
-            'civil_id' => ['nullable', 'string', 'max:50', Rule::unique('clients', 'civil_id')->ignore($client->id)],
+            'civil_id' => ['nullable', 'string', 'max:50', $this->scopedUnique('clients', 'civil_id', $client->id)],
             'email' => ['nullable', 'email', 'max:255'],
             'nationality' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:2000'],

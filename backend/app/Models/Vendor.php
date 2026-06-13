@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToOffice;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Vendor extends Model
 {
-    use HasFactory;
+    use BelongsToOffice, HasFactory;
 
-    protected $fillable = ['name', 'category', 'phone', 'contact', 'address'];
+    protected $fillable = ['office_id', 'name', 'category', 'phone', 'contact', 'address'];
 
     public function operations()
     {

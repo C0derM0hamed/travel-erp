@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToOffice;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Client extends Model
 {
-    use HasFactory;
+    use BelongsToOffice, HasFactory;
 
-    protected $fillable = ['name', 'phone', 'alt_phone', 'civil_id', 'email', 'nationality', 'notes'];
+    protected $fillable = ['office_id', 'name', 'phone', 'alt_phone', 'civil_id', 'email', 'nationality', 'notes'];
 
     public function operations()
     {

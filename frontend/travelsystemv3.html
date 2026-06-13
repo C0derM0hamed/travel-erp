@@ -294,6 +294,7 @@ body[data-auth="app"] #loginPage{display:none!important}
   <main class="main-content">
     <div class="topbar">
       <button type="button" class="btn-menu" id="sidebarMenuBtn" onclick="toggleMobileSidebar()" aria-label="فتح القائمة">&#9776;</button>
+      <select class="form-control" id="officeSwitcher" style="max-width:180px;display:none" onchange="switchOffice(this.value)" title="المكتب الحالي"></select>
       <div class="search-box"><span class="search-icon">&#x1F50D;</span><input type="text" placeholder="بحث برقم عملية أو اسم عميل..." id="globalSearch" oninput="globalSearchFn(this.value)"></div>
       <div class="topbar-actions">
         <div class="btn-icon" id="topbarNewOpBtn" onclick="showModal('newOpModal');populateOpForm()" title="عملية جديدة">&#x2795;</div>
@@ -360,6 +361,27 @@ body[data-auth="app"] #loginPage{display:none!important}
     <div class="form-row full"><div class="form-group"><label>العنوان</label><input type="text" class="form-control" id="vn_address"></div></div>
   </div>
   <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('newVendorModal')">إلغاء</button><button class="btn btn-primary" onclick="saveVendor()">حفظ المكتب</button></div>
+</div>
+</div>
+<div class="modal-overlay" id="newOfficeModal">
+<div class="modal">
+  <div class="modal-header"><h3>🏢 إنشاء فرع جديد</h3><button class="modal-close" onclick="closeModal('newOfficeModal')">&#x2715;</button></div>
+  <div class="modal-body">
+    <div class="form-row"><div class="form-group"><label>رمز المكتب *</label><input type="text" class="form-control" id="office_code" placeholder="مثال: JAH"></div><div class="form-group"><label>اسم المكتب *</label><input type="text" class="form-control" id="office_name" placeholder="مثال: فرع الجهراء"></div></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('newOfficeModal')">إلغاء</button><button class="btn btn-primary" id="saveOfficeBtn" onclick="saveOffice()">حفظ المكتب</button></div>
+</div>
+</div>
+<div class="modal-overlay" id="newUserModal">
+<div class="modal">
+  <div class="modal-header"><h3>👤 إضافة مستخدم</h3><button class="modal-close" onclick="closeModal('newUserModal')">&#x2715;</button></div>
+  <div class="modal-body">
+    <div id="newUserModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
+    <div class="form-row"><div class="form-group"><label>الاسم *</label><input type="text" class="form-control" id="usr_name"></div><div class="form-group"><label>البريد *</label><input type="email" class="form-control" id="usr_email"></div></div>
+    <div class="form-row"><div class="form-group"><label>كلمة المرور *</label><input type="password" class="form-control" id="usr_password"></div><div class="form-group"><label>الدور *</label><select class="form-control" id="usr_role"><option value="sales">موظف مبيعات</option><option value="accountant">محاسب</option><option value="auditor">مدقق</option><option value="admin">مدير مكتب</option></select></div></div>
+    <div class="form-row" id="usr_office_row"><div class="form-group"><label>المكتب *</label><select class="form-control" id="usr_office_id"><option value="">-- اختر المكتب --</option></select></div></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('newUserModal')">إلغاء</button><button class="btn btn-primary" id="saveUserBtn" onclick="saveUser()">حفظ المستخدم</button></div>
 </div>
 </div>
 <div class="modal-overlay" id="editClientModal">
@@ -761,7 +783,7 @@ function getFilteredOps(){
 }
 function canViewPage(page){
   const r=currentUser?.role;
-  if(r==='admin')return true;
+  if(r==='super_admin'||r==='admin')return true;
   const access={
     dashboard:['sales','accountant','auditor'],
     operations:['sales','accountant','auditor'],
@@ -777,7 +799,7 @@ function canViewPage(page){
 }
 function canDo(action){
   const r=currentUser?.role;
-  if(r==='admin')return true;
+  if(r==='super_admin'||r==='admin')return true;
   if(r==='auditor')return false;
   if(action==='create_op'&&r==='sales')return true;
   if(action==='update_op_status'&&(r==='sales'||r==='accountant'))return true;
@@ -1498,18 +1520,18 @@ function renderSettings(pc){
   pc.innerHTML=`
   <div class="page-shell">
     <div class="grid-2">
-      ${currentUser?.role==='admin'?`<div class="card">
-        <div class="card-header"><h3>👤 المستخدمون</h3></div>
+      ${currentUser?.role==='admin'||currentUser?.role==='super_admin'?`<div class="card">
+        <div class="card-header"><h3>👤 المستخدمون</h3><button class="btn btn-primary btn-sm" onclick="showModal('newUserModal')">➕ مستخدم جديد</button></div>
         <div class="card-body" style="padding:0"><div class="table-wrapper">
-          <table class="table"><thead><tr><th>الاسم</th><th>البريد</th><th>الدور</th></tr></thead>
-          <tbody>${USERS.map(u=>`<tr><td><div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">${u.avatar}</div><b>${u.name}</b></div></td><td style="font-size:13px">${u.email}</td><td><span class="badge badge-info">${u.roleLabel}</span></td></tr>`).join('')}</tbody></table>
+          <table class="table"><thead><tr><th>الاسم</th><th>البريد</th><th>الدور</th><th>المكتب</th></tr></thead>
+          <tbody>${USERS.map(u=>`<tr><td><div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">${u.avatar}</div><b>${u.name}</b></div></td><td style="font-size:13px">${u.email}</td><td><span class="badge badge-info">${u.roleLabel}</span></td><td>${u.office?.office_name||u.office?.office_code||'—'}</td></tr>`).join('')}</tbody></table>
         </div></div>
       </div>`:''}
       <div class="card">
         <div class="card-header"><h3>🛎️ الخدمات</h3></div>
         <div class="card-body" style="padding:0"><div class="table-wrapper">
           <table class="table"><thead><tr><th>الخدمة</th><th>الحالة</th><th>تبديل</th></tr></thead>
-          <tbody id="svcSettings">${SERVICES.map(s=>`<tr><td>${s.icon} ${s.name}</td><td><span class="badge ${s.active?'badge-success':'badge-danger'}">${s.active?'نشطة':'معطلة'}</span></td><td>${currentUser?.role==='admin'?`<button class="btn btn-sm btn-outline" onclick="toggleService(${s.id})">${s.active?'تعطيل':'تفعيل'}</button>`:'—'}</td></tr>`).join('')}</tbody></table>
+          <tbody id="svcSettings">${SERVICES.map(s=>`<tr><td>${s.icon} ${s.name}</td><td><span class="badge ${s.active?'badge-success':'badge-danger'}">${s.active?'نشطة':'معطلة'}</span></td><td>${(currentUser?.role==='admin'||currentUser?.role==='super_admin')?`<button class="btn btn-sm btn-outline" onclick="toggleService(${s.id})">${s.active?'تعطيل':'تفعيل'}</button>`:'—'}</td></tr>`).join('')}</tbody></table>
         </div></div>
       </div>
       <div class="card">

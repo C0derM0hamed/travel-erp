@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToOffice;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ChartOfAccount extends Model
 {
-    use HasFactory;
+    use BelongsToOffice, HasFactory;
 
-    protected $fillable = ['code', 'name', 'type', 'safe_id'];
+    protected $fillable = ['office_id', 'code', 'name', 'type', 'safe_id'];
 
     public function safe()
     {

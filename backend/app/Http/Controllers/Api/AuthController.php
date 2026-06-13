@@ -52,11 +52,36 @@ class AuthController extends ApiController
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return response()->json(['message' => 'Logged out']);
+        return response()->json(['message' => 'تم تسجيل الخروج بنجاح.']);
     }
 
     public function me(Request $request): JsonResponse
     {
+        $this->applyOfficeContext($request);
+
         return response()->json(['user' => $this->userPayload($request->user()->load('office'))]);
+    }
+
+    private function applyOfficeContext(Request $request): void
+    {
+        $context = app(OfficeContext::class);
+        if ($context->id() !== null) {
+            return;
+        }
+
+        $user = $request->user();
+        $officeId = $request->session()->get('current_office_id');
+
+        if (! $officeId && $user->role !== 'super_admin') {
+            $officeId = $user->office_id;
+        }
+
+        if (! $officeId && $user->role === 'super_admin') {
+            $officeId = Office::where('is_active', true)->orderBy('id')->value('id');
+        }
+
+        if ($officeId) {
+            $context->setOfficeId((int) $officeId);
+        }
     }
 }

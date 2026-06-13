@@ -32,7 +32,7 @@ abstract class ApiController extends Controller
 
     protected function paginate(Request $request, Builder $query): LengthAwarePaginator
     {
-        $perPage = min(max((int) $request->query('per_page', 50), 1), 500);
+        $perPage = min(max((int) $request->query('per_page', 25), 1), 500);
 
         return $query->paginate($perPage)->appends($request->query());
     }
@@ -45,6 +45,15 @@ abstract class ApiController extends Controller
             'per_page' => $paginated->perPage(),
             'total' => $paginated->total(),
         ];
+    }
+
+    protected function applyHiddenFilter(Request $request, Builder $query): Builder
+    {
+        if ($request->boolean('hidden')) {
+            return $query->hidden();
+        }
+
+        return $query->visible();
     }
 
     protected function metricsPayload(): array
@@ -78,6 +87,7 @@ abstract class ApiController extends Controller
                 'office_code' => $office->office_code,
                 'office_name' => $office->office_name,
                 'logo' => $office->logo,
+                'logo_url' => app(\App\Services\OfficeLogoService::class)->url($office->logo),
                 'is_active' => (bool) $office->is_active,
             ] : null,
             'current_office_id' => $context->id(),
@@ -86,11 +96,14 @@ abstract class ApiController extends Controller
 
     protected function officePayload(\App\Models\Office $office): array
     {
+        $logos = app(\App\Services\OfficeLogoService::class);
+
         return [
             'id' => $office->id,
             'office_code' => $office->office_code,
             'office_name' => $office->office_name,
             'logo' => $office->logo,
+            'logo_url' => $logos->url($office->logo),
             'is_active' => (bool) $office->is_active,
         ];
     }
@@ -141,6 +154,7 @@ abstract class ApiController extends Controller
             'payment_method' => $operation->payment_method,
             'notes' => $operation->notes,
             'status' => $operation->status,
+            'is_hidden' => (bool) $operation->is_hidden,
             'created_by' => $operation->created_by,
             'date' => $operation->op_date?->toDateString(),
             'client' => $operation->client?->name,

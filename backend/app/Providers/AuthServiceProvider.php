@@ -5,6 +5,8 @@ namespace App\Providers;
 use App\Models\Client;
 use App\Models\Office;
 use App\Models\Operation;
+use App\Models\Safe;
+use App\Models\SafeTransfer;
 use App\Models\Service;
 use App\Models\User;
 use App\Models\Vendor;
@@ -12,6 +14,8 @@ use App\Models\Voucher;
 use App\Policies\ClientPolicy;
 use App\Policies\OfficePolicy;
 use App\Policies\OperationPolicy;
+use App\Policies\SafePolicy;
+use App\Policies\SafeTransferPolicy;
 use App\Policies\ServicePolicy;
 use App\Policies\UserPolicy;
 use App\Policies\VendorPolicy;
@@ -26,6 +30,8 @@ class AuthServiceProvider extends ServiceProvider
         Client::class => ClientPolicy::class,
         Office::class => OfficePolicy::class,
         Operation::class => OperationPolicy::class,
+        Safe::class => SafePolicy::class,
+        SafeTransfer::class => SafeTransferPolicy::class,
         Service::class => ServicePolicy::class,
         User::class => UserPolicy::class,
         Vendor::class => VendorPolicy::class,

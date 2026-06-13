@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\HasArabicValidation;
 use Illuminate\Foundation\Http\FormRequest;
 
 class LoginRequest extends FormRequest
 {
+    use HasArabicValidation;
+
     public function authorize(): bool
     {
         return true;
@@ -18,10 +21,10 @@ class LoginRequest extends FormRequest
 
     public function messages(): array
     {
-        return [
+        return $this->arabicMessages([
             'email.required' => 'البريد الإلكتروني مطلوب',
             'email.email' => 'يرجى إدخال بريد إلكتروني صحيح',
             'password.required' => 'كلمة المرور مطلوبة',
-        ];
+        ]);
     }
 }

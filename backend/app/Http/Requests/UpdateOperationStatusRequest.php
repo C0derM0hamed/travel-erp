@@ -2,11 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\HasArabicValidation;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class UpdateOperationStatusRequest extends FormRequest
 {
+    use HasArabicValidation;
+
     public function authorize(): bool
     {
         return $this->user()?->canPerform('update_op_status') ?? false;
@@ -21,8 +24,9 @@ class UpdateOperationStatusRequest extends FormRequest
 
     public function messages(): array
     {
-        return [
-            'status.in' => 'الحالة المطلوبة غير مسموحة',
-        ];
+        return $this->arabicMessages([
+            'status.required' => 'يرجى تحديد الحالة الجديدة.',
+            'status.in' => 'الحالة المطلوبة غير مسموحة.',
+        ]);
     }
 }

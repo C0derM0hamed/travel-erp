@@ -25,6 +25,20 @@ class VoucherController extends ApiController
         if ($request->filled('to')) {
             $query->whereDate('voucher_date', '<=', $request->to);
         }
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(fn ($q) => $q
+                ->where('ref', 'like', "%$search%")
+                ->orWhere('description', 'like', "%$search%")
+                ->orWhere(function ($partyQuery) use ($search) {
+                    $partyQuery->where('party_type', 'client')
+                        ->whereIn('party_id', fn ($sub) => $sub->select('id')->from('clients')->where('name', 'like', "%$search%"))
+                        ->orWhere(function ($inner) use ($search) {
+                            $inner->where('party_type', 'vendor')
+                                ->whereIn('party_id', fn ($sub) => $sub->select('id')->from('vendors')->where('name', 'like', "%$search%"));
+                        });
+                }));
+        }
 
         return $this->paginatedResponse($request, $query, fn (Voucher $voucher) => $this->voucherPayload($voucher));
     }

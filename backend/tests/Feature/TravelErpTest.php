@@ -51,7 +51,7 @@ class TravelErpTest extends TestCase
         $sales = User::where('role', 'sales')->first();
         $beforeJournal = JournalEntry::count();
 
-        $response = $this->actingAs($sales)->postJson('/api/operations', [
+        $response = $this->actingAsWithOffice($sales)->postJson('/api/operations', [
             'client_id' => 1,
             'service_id' => 1,
             'vendor_id' => 1,

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\PublicInvoiceController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -20,3 +21,7 @@ Route::get('/travel-erp-api-bridge.js', function () {
 
 Route::post('/api/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 Route::post('/api/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+
+Route::get('/invoice/{operation}', [PublicInvoiceController::class, 'show'])
+    ->middleware('signed')
+    ->name('invoice.public');

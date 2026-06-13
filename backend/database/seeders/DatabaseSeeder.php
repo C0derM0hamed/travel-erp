@@ -71,7 +71,7 @@ class DatabaseSeeder extends Seeder
                 [6, 'لطيفة منصور الهاجري', '99556677', '', '305678901234', '', 'كويتية', ''],
                 [7, 'تركي سعد الدوسري', '99667788', '65667788', '284789012345', 't.aldosari@gmail.com', 'كويتي', ''],
                 [8, 'شركة الخليج للتجارة', '22345678', '22345679', '', 'info@gulfco.kw', 'شركة كويتية', 'اعتماد شهري'],
-            ])->each(fn ($c) => Client::withoutGlobalScopes()->create(['id' => $c[0], 'office_id' => $officeId, 'name' => $c[1], 'phone' => $c[2], 'alt_phone' => $c[3] ?: null, 'civil_id' => $c[4] ?: null, 'email' => $c[5] ?: null, 'nationality' => $c[6], 'notes' => $c[7] ?: null]));
+            ])->each(fn ($c) => Client::withoutGlobalScopes()->create(['id' => $c[0], 'office_id' => $officeId, 'name' => $c[1], 'phone' => $c[2], 'alt_phone' => $c[3] ?: null, 'civil_id' => $c[4] ?: null, 'email' => $c[5] ?: null, 'nationality' => $c[6], 'notes' => $c[7] ?: null, 'is_hidden' => false]));
 
             Safe::withoutGlobalScopes()->create(['id' => 1, 'office_id' => $officeId, 'name' => 'الصندوق الرئيسي', 'type' => 'cash', 'currency' => 'KWD', 'opening_balance' => 5000]);
             Safe::withoutGlobalScopes()->create(['id' => 2, 'office_id' => $officeId, 'name' => 'البنك الأهلي الكويتي', 'type' => 'bank', 'currency' => 'KWD', 'opening_balance' => 25000]);
@@ -103,7 +103,7 @@ class DatabaseSeeder extends Seeder
                 [12, 'OP-012', 5, 1, 2, 'KWD', 350, 260, 90, 175, 'bank', 'تذكرة فرنكفورت', 'processing', 3, $date(2)],
                 [13, 'OP-013', 4, 1, 2, 'KWD', 280, 200, 80, 150, 'cash', 'تذكرة دبي - اليوم', 'processing', 3, $date(0)],
             ])->each(function ($o) use ($accounting, $officeId) {
-                $operation = Operation::withoutGlobalScopes()->create(['id' => $o[0], 'office_id' => $officeId, 'ref' => $o[1], 'client_id' => $o[2], 'service_id' => $o[3], 'vendor_id' => $o[4], 'currency' => $o[5], 'client_price' => $o[6], 'vendor_cost' => $o[7], 'profit' => $o[8], 'initial_payment' => $o[9], 'payment_method' => $o[10], 'notes' => $o[11], 'status' => $o[12], 'created_by' => $o[13], 'op_date' => $o[14]]);
+                $operation = Operation::withoutGlobalScopes()->create(['id' => $o[0], 'office_id' => $officeId, 'ref' => $o[1], 'client_id' => $o[2], 'service_id' => $o[3], 'vendor_id' => $o[4], 'currency' => $o[5], 'client_price' => $o[6], 'vendor_cost' => $o[7], 'profit' => $o[8], 'initial_payment' => $o[9], 'payment_method' => $o[10], 'notes' => $o[11], 'status' => $o[12], 'created_by' => $o[13], 'op_date' => $o[14], 'is_hidden' => false]);
                 $accounting->postOperation($operation, $operation->status === 'cancelled' ? -1 : 1);
             });
 

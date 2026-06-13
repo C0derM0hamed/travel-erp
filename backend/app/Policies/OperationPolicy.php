@@ -42,4 +42,15 @@ class OperationPolicy
         return in_array($user->role, ['super_admin', 'admin', 'sales'], true)
             && $this->sameOffice($user, $operation->office_id);
     }
+
+    public function hide(User $user, Operation $operation): bool
+    {
+        return in_array($user->role, ['super_admin', 'admin', 'sales', 'accountant'], true)
+            && $this->sameOffice($user, $operation->office_id);
+    }
+
+    public function restore(User $user, Operation $operation): bool
+    {
+        return $this->hide($user, $operation);
+    }
 }

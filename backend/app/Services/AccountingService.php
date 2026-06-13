@@ -7,6 +7,7 @@ use App\Models\Client;
 use App\Models\JournalEntry;
 use App\Models\Operation;
 use App\Models\Safe;
+use App\Models\SafeTransfer;
 use App\Models\Vendor;
 use App\Models\Voucher;
 use App\Support\OfficeContext;
@@ -59,6 +60,20 @@ class AccountingService
 
         $this->line($officeId, $voucher->voucher_date->toDateString(), $voucher->ref, 'voucher', $voucher->id, $voucher->operation_id, $voucher->id, $partyAccount, $voucher->party_type, $partyId, $partyName, $amount, 0, $voucher->description);
         $this->line($officeId, $voucher->voucher_date->toDateString(), $voucher->ref, 'voucher', $voucher->id, $voucher->operation_id, $voucher->id, $safeAccount, $voucher->party_type, $partyId, $partyName, 0, $amount, $voucher->description);
+    }
+
+    public function postTransfer(SafeTransfer $transfer, int $multiplier = 1): void
+    {
+        $transfer->load(['fromSafe.account', 'toSafe.account']);
+        $officeId = (int) $transfer->office_id;
+        $amount = $multiplier * (float) $transfer->amount;
+        $date = $transfer->transfer_date->toDateString();
+        $from = $transfer->fromSafe;
+        $to = $transfer->toSafe;
+        $description = $transfer->notes ?: "تحويل من {$from->name} إلى {$to->name}";
+
+        $this->line($officeId, $date, $transfer->ref, 'transfer', $transfer->id, null, null, $to->account, 'none', null, null, $amount, 0, $description);
+        $this->line($officeId, $date, $transfer->ref, 'transfer', $transfer->id, null, null, $from->account, 'none', null, null, 0, $amount, $description);
     }
 
     public function clientBalance(int $clientId, ?int $officeId = null): float

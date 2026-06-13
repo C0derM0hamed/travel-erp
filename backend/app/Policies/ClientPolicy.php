@@ -35,4 +35,14 @@ class ClientPolicy
     {
         return $this->update($user, $client);
     }
+
+    public function hide(User $user, Client $client): bool
+    {
+        return $this->update($user, $client);
+    }
+
+    public function restore(User $user, Client $client): bool
+    {
+        return $this->update($user, $client);
+    }
 }

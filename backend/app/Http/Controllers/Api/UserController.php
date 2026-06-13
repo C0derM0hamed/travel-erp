@@ -86,6 +86,16 @@ class UserController extends ApiController
 
         if ($authUser->role === 'admin') {
             $data['office_id'] = $authUser->office_id;
+        } elseif (isset($data['role']) && $data['role'] === 'super_admin') {
+            $data['office_id'] = null;
+        } elseif (isset($data['role']) && ($data['role'] ?? $user->role) !== 'super_admin') {
+            if ($authUser->role === 'super_admin' && array_key_exists('office_id', $data) && empty($data['office_id'])) {
+                return response()->json(['message' => 'يجب تحديد المكتب للمستخدم'], 422);
+            }
+        }
+
+        if (array_key_exists('is_active', $data) && $data['is_active'] === false && $user->id === $authUser->id) {
+            return response()->json(['message' => 'لا يمكن تعطيل حسابك الشخصي'], 422);
         }
 
         if (empty($data['password'])) {
@@ -98,5 +108,26 @@ class UserController extends ApiController
         app(ActivityLogger::class)->log('user.updated', $user, array_keys($data), $request->user()->id);
 
         return response()->json($this->userPayload($user->fresh(['office'])));
+    }
+
+    public function resetPassword(Request $request, User $user): JsonResponse
+    {
+        Gate::authorize('update', $user);
+
+        $data = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'max:255'],
+        ]);
+
+        $user->update([
+            'password' => $data['password'],
+            'must_change_password' => true,
+        ]);
+
+        app(ActivityLogger::class)->log('user.password_reset', $user, ['email' => $user->email], $request->user()->id);
+
+        return response()->json([
+            'message' => 'تم إعادة تعيين كلمة المرور',
+            'user' => $this->userPayload($user->fresh(['office'])),
+        ]);
     }
 }

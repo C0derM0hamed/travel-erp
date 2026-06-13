@@ -21,8 +21,13 @@ class ClientController extends ApiController
         Gate::authorize('viewAny', Client::class);
 
         $q = strtolower((string) $request->query('search', ''));
-        $query = Client::query()
-            ->when($q, fn ($query) => $query->where('name', 'like', "%$q%")->orWhere('phone', 'like', "%$q%")->orWhere('civil_id', 'like', "%$q%"))
+        $query = Client::query();
+        $this->applyHiddenFilter($request, $query);
+        $query->when($q, fn ($query) => $query->where('name', 'like', "%$q%")
+                ->orWhere('phone', 'like', "%$q%")
+                ->orWhere('civil_id', 'like', "%$q%")
+                ->orWhere('email', 'like', "%$q%")
+                ->orWhere('nationality', 'like', "%$q%"))
             ->orderBy('id');
 
         return $this->paginatedResponse($request, $query, fn (Client $client) => $this->clientPayload($client));
@@ -59,22 +64,66 @@ class ClientController extends ApiController
         return response()->json(['message' => 'تم حذف العميل بنجاح']);
     }
 
-    public function statement(Client $client): JsonResponse
+    public function hide(Request $request, Client $client): JsonResponse
+    {
+        Gate::authorize('hide', $client);
+
+        if ($client->is_hidden) {
+            return response()->json($this->clientPayload($client));
+        }
+
+        $client->update(['is_hidden' => true]);
+        app(ActivityLogger::class)->log('client.hidden', $client, ['name' => $client->name], $request->user()->id);
+
+        return response()->json($this->clientPayload($client->fresh()));
+    }
+
+    public function restore(Request $request, Client $client): JsonResponse
+    {
+        Gate::authorize('restore', $client);
+
+        if (! $client->is_hidden) {
+            return response()->json($this->clientPayload($client));
+        }
+
+        $client->update(['is_hidden' => false]);
+        app(ActivityLogger::class)->log('client.restored', $client, ['name' => $client->name], $request->user()->id);
+
+        return response()->json($this->clientPayload($client->fresh()));
+    }
+
+    public function statement(Request $request, Client $client): JsonResponse
     {
         Gate::authorize('view', $client);
 
-        $rows = JournalEntry::with('account')
+        $rowsQuery = JournalEntry::with('account')
             ->whereHas('account', fn ($query) => $query->where('code', '1100'))
             ->where('party_type', 'client')
             ->where('party_id', $client->id)
             ->orderBy('entry_date')
-            ->orderBy('id')
-            ->get();
+            ->orderBy('id');
+
+        if ($request->filled('from')) {
+            $rowsQuery->whereDate('entry_date', '>=', $request->from);
+        }
+        if ($request->filled('to')) {
+            $rowsQuery->whereDate('entry_date', '<=', $request->to);
+        }
+
+        $rows = $rowsQuery->get();
         $running = 0;
+
+        $opsQuery = Operation::where('client_id', $client->id)->where('status', '!=', 'cancelled');
+        if ($request->filled('from')) {
+            $opsQuery->whereDate('op_date', '>=', $request->from);
+        }
+        if ($request->filled('to')) {
+            $opsQuery->whereDate('op_date', '<=', $request->to);
+        }
 
         return response()->json([
             'client' => $this->clientPayload($client),
-            'total_purchases' => (float) Operation::where('client_id', $client->id)->where('status', '!=', 'cancelled')->sum('client_price'),
+            'total_purchases' => (float) (clone $opsQuery)->sum('client_price'),
             'paid' => $this->accounting->clientReceiptsTotal($client->id),
             'balance' => $this->accounting->clientBalance($client->id),
             'rows' => $rows->map(function (JournalEntry $journal) use (&$running) {

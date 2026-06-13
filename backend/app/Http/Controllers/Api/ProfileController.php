@@ -21,7 +21,12 @@ class ProfileController extends ApiController
     {
         $data = $request->validate([
             'current_password' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
+        ], [
+            'current_password.required' => 'كلمة المرور الحالية مطلوبة',
+            'password.required' => 'كلمة المرور الجديدة مطلوبة',
+            'password.min' => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
+            'password.confirmed' => 'تأكيد كلمة المرور غير متطابق',
         ]);
 
         if (! Hash::check($data['current_password'], $request->user()->password)) {
@@ -33,6 +38,6 @@ class ProfileController extends ApiController
             'must_change_password' => false,
         ]);
 
-        return response()->json(['message' => 'Password updated']);
+        return response()->json(['message' => 'تم تحديث كلمة المرور بنجاح']);
     }
 }

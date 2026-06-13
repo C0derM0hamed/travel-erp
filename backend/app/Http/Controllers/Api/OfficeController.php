@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\Office;
 use App\Models\User;
 use App\Services\ActivityLogger;
+use App\Services\OfficeLogoService;
 use App\Services\OfficeProvisioningService;
 use App\Support\OfficeContext;
 use Illuminate\Http\JsonResponse;
@@ -23,21 +24,26 @@ class OfficeController extends ApiController
         ]);
     }
 
-    public function store(Request $request, OfficeProvisioningService $provisioning): JsonResponse
+    public function store(Request $request, OfficeProvisioningService $provisioning, OfficeLogoService $logos): JsonResponse
     {
         Gate::authorize('create', Office::class);
 
         $data = $request->validate([
             'office_code' => ['required', 'string', 'max:50', 'unique:offices,office_code'],
             'office_name' => ['required', 'string', 'max:255'],
-            'logo' => ['nullable', 'string', 'max:500'],
             'is_active' => ['sometimes', 'boolean'],
+            'logo' => OfficeLogoService::validationRules(),
         ]);
 
-        $office = $provisioning->createOffice($data);
+        $office = $provisioning->createOffice(collect($data)->except('logo')->all());
+
+        if ($request->hasFile('logo')) {
+            $office->update(['logo' => $logos->upload($office, $request->file('logo'))]);
+        }
+
         app(ActivityLogger::class)->log('office.created', $office, ['office_code' => $office->office_code], $request->user()->id);
 
-        return response()->json($this->officePayload($office), 201);
+        return response()->json($this->officePayload($office->fresh()), 201);
     }
 
     public function update(Request $request, Office $office): JsonResponse
@@ -47,12 +53,39 @@ class OfficeController extends ApiController
         $data = $request->validate([
             'office_code' => ['sometimes', 'required', 'string', 'max:50', Rule::unique('offices', 'office_code')->ignore($office->id)],
             'office_name' => ['sometimes', 'required', 'string', 'max:255'],
-            'logo' => ['nullable', 'string', 'max:500'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
         $office->update($data);
         app(ActivityLogger::class)->log('office.updated', $office, array_keys($data), $request->user()->id);
+
+        return response()->json($this->officePayload($office->fresh()));
+    }
+
+    public function uploadLogo(Request $request, Office $office, OfficeLogoService $logos): JsonResponse
+    {
+        Gate::authorize('update', $office);
+
+        $request->validate([
+            'logo' => OfficeLogoService::validationRules(true),
+        ]);
+
+        $path = $logos->upload($office, $request->file('logo'));
+        $office->update(['logo' => $path]);
+
+        app(ActivityLogger::class)->log('office.logo_updated', $office, ['office_code' => $office->office_code], $request->user()->id);
+
+        return response()->json($this->officePayload($office->fresh()));
+    }
+
+    public function deleteLogo(Office $office, OfficeLogoService $logos): JsonResponse
+    {
+        Gate::authorize('update', $office);
+
+        $logos->deleteStoredFile($office->logo);
+        $office->update(['logo' => null]);
+
+        app(ActivityLogger::class)->log('office.logo_removed', $office, ['office_code' => $office->office_code], auth()->id());
 
         return response()->json($this->officePayload($office->fresh()));
     }
@@ -85,11 +118,14 @@ class OfficeController extends ApiController
 
     protected function officePayload(Office $office): array
     {
+        $logos = app(OfficeLogoService::class);
+
         return [
             'id' => $office->id,
             'office_code' => $office->office_code,
             'office_name' => $office->office_name,
             'logo' => $office->logo,
+            'logo_url' => $logos->url($office->logo),
             'is_active' => (bool) $office->is_active,
             'users_count' => User::where('office_id', $office->id)->count(),
         ];

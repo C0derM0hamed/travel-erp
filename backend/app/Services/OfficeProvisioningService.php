@@ -57,7 +57,7 @@ class OfficeProvisioningService
                 ]);
             }
 
-            foreach (['operation', 'voucher_receipt', 'voucher_payment'] as $key) {
+            foreach (['operation', 'voucher_receipt', 'voucher_payment', 'safe_transfer'] as $key) {
                 DB::table('reference_sequences')->insert([
                     'office_id' => $office->id,
                     'key' => $key,

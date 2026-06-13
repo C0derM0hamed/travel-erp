@@ -3,14 +3,15 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToOffice;
+use App\Models\Concerns\HasHiddenState;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Operation extends Model
 {
-    use BelongsToOffice, HasFactory;
+    use BelongsToOffice, HasFactory, HasHiddenState;
 
-    protected $fillable = ['office_id', 'ref', 'client_id', 'service_id', 'vendor_id', 'currency', 'client_price', 'vendor_cost', 'profit', 'initial_payment', 'payment_method', 'notes', 'status', 'created_by', 'op_date', 'cancelled_at'];
+    protected $fillable = ['office_id', 'ref', 'client_id', 'service_id', 'vendor_id', 'currency', 'client_price', 'vendor_cost', 'profit', 'initial_payment', 'payment_method', 'notes', 'status', 'created_by', 'op_date', 'cancelled_at', 'is_hidden'];
 
     protected function casts(): array
     {
@@ -21,6 +22,7 @@ class Operation extends Model
             'initial_payment' => 'decimal:3',
             'op_date' => 'date:Y-m-d',
             'cancelled_at' => 'datetime',
+            'is_hidden' => 'boolean',
         ];
     }
 

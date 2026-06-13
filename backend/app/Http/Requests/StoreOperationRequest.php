@@ -2,13 +2,15 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\HasArabicValidation;
 use App\Http\Requests\Concerns\ValidatesOfficeScope;
+use App\Support\ArabicMessages;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreOperationRequest extends FormRequest
 {
-    use ValidatesOfficeScope;
+    use HasArabicValidation, ValidatesOfficeScope;
 
     public function authorize(): bool
     {
@@ -33,15 +35,6 @@ class StoreOperationRequest extends FormRequest
 
     public function messages(): array
     {
-        return [
-            'service_id.exists' => 'الخدمة غير موجودة أو غير مفعّلة',
-            'initial_payment.lte' => 'الدفعة الأولى لا يمكن أن تتجاوز سعر العميل',
-            'vendor_cost.lte' => 'تكلفة المورد لا يمكن أن تتجاوز سعر العميل',
-            'date.before_or_equal' => 'تاريخ العملية لا يمكن أن يكون في المستقبل',
-            'currency.in' => 'النظام المحاسبي يدعم الدينار الكويتي فقط حالياً',
-            'client_price.min' => 'الحد الأدنى لسعر العميل 1 د.ك',
-            'client_price.max' => 'الحد الأقصى للمبلغ 99,999.999 د.ك',
-            'vendor_cost.max' => 'الحد الأقصى للتكلفة 99,999.999 د.ك',
-        ];
+        return ArabicMessages::operationMessages();
     }
 }

@@ -2,14 +2,19 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\HasArabicValidation;
+use App\Http\Requests\Concerns\ValidatesOfficeScope;
 use App\Models\Operation;
 use App\Models\Voucher;
+use App\Support\ArabicMessages;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class UpdateOperationRequest extends FormRequest
 {
+    use HasArabicValidation, ValidatesOfficeScope;
+
     public function authorize(): bool
     {
         $operation = $this->route('operation');
@@ -30,9 +35,9 @@ class UpdateOperationRequest extends FormRequest
 
         if ($financial) {
             $rules += [
-                'client_id' => ['sometimes', 'required', 'exists:clients,id'],
+                'client_id' => ['sometimes', 'required', $this->scopedExists('clients')],
                 'service_id' => ['sometimes', 'required', Rule::exists('services', 'id')->where('active', true)],
-                'vendor_id' => ['sometimes', 'required', 'exists:vendors,id'],
+                'vendor_id' => ['sometimes', 'required', $this->scopedExists('vendors')],
                 'currency' => ['nullable', Rule::in(['KWD'])],
                 'client_price' => ['sometimes', 'required', 'numeric', 'decimal:0,3', 'min:1', 'max:99999.999'],
                 'vendor_cost' => ['sometimes', 'required', 'numeric', 'decimal:0,3', 'min:0', 'max:99999.999'],
@@ -101,11 +106,6 @@ class UpdateOperationRequest extends FormRequest
 
     public function messages(): array
     {
-        return [
-            'service_id.exists' => 'الخدمة غير موجودة أو غير مفعّلة',
-            'vendor_cost.lte' => 'تكلفة المورد لا يمكن أن تتجاوز سعر العميل',
-            'date.before_or_equal' => 'تاريخ العملية لا يمكن أن يكون في المستقبل',
-            'currency.in' => 'النظام المحاسبي يدعم الدينار الكويتي فقط حالياً',
-        ];
+        return ArabicMessages::operationMessages();
     }
 }

@@ -22,6 +22,11 @@ class ReferenceService
         return $this->next($officeId, $key, $prefix);
     }
 
+    public function transferRef(?int $officeId = null): string
+    {
+        return $this->next($officeId, 'safe_transfer', 'TR-');
+    }
+
     private function next(?int $officeId, string $key, string $prefix): string
     {
         $officeId ??= $this->officeContext->requireId();
@@ -59,6 +64,7 @@ class ReferenceService
         $this->setSequence($officeId, 'operation', $this->maxRefNumber($officeId, 'operations', 'OP-'));
         $this->setSequence($officeId, 'voucher_receipt', $this->maxRefNumber($officeId, 'vouchers', 'RV-'));
         $this->setSequence($officeId, 'voucher_payment', $this->maxRefNumber($officeId, 'vouchers', 'PV-'));
+        $this->setSequence($officeId, 'safe_transfer', $this->maxRefNumber($officeId, 'safe_transfers', 'TR-'));
     }
 
     private function setSequence(int $officeId, string $key, int $value): void

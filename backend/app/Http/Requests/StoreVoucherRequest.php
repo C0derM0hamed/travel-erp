@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\HasArabicValidation;
 use App\Http\Requests\Concerns\ValidatesOfficeScope;
 use App\Models\Client;
 use App\Models\Operation;
@@ -15,7 +16,7 @@ use Illuminate\Validation\Validator;
 
 class StoreVoucherRequest extends FormRequest
 {
-    use ValidatesOfficeScope;
+    use HasArabicValidation, ValidatesOfficeScope;
 
     public function authorize(): bool
     {
@@ -108,11 +109,15 @@ class StoreVoucherRequest extends FormRequest
 
     public function messages(): array
     {
-        return [
-            'party_id.required' => 'يجب تحديد الطرف عند اختيار عميل أو مورد',
-            'date.before_or_equal' => 'تاريخ السند لا يمكن أن يكون في المستقبل',
-            'currency.in' => 'النظام المحاسبي يدعم الدينار الكويتي فقط حالياً',
-            'amount.min' => 'الحد الأدنى للمبلغ 1 د.ك',
-        ];
+        return $this->arabicMessages([
+            'type.required' => 'يرجى تحديد نوع السند (قبض أو صرف).',
+            'party_id.required' => 'يجب تحديد الطرف عند اختيار عميل أو مورد.',
+            'amount.required' => 'يرجى إدخال مبلغ السند.',
+            'amount.gt' => 'يجب أن يكون مبلغ السند أكبر من صفر.',
+            'amount.min' => 'الحد الأدنى للمبلغ 1 د.ك.',
+            'safe_id.required' => 'يرجى اختيار الصندوق أو الحساب البنكي.',
+            'date.before_or_equal' => 'تاريخ السند لا يمكن أن يكون في المستقبل.',
+            'currency.in' => 'النظام المحاسبي يدعم الدينار الكويتي فقط حالياً.',
+        ]);
     }
 }

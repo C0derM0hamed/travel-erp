@@ -22,7 +22,10 @@ class VendorController extends ApiController
 
         $q = strtolower((string) $request->query('search', ''));
         $query = Vendor::query()
-            ->when($q, fn ($query) => $query->where('name', 'like', "%$q%")->orWhere('phone', 'like', "%$q%"))
+            ->when($q, fn ($query) => $query->where('name', 'like', "%$q%")
+                ->orWhere('phone', 'like', "%$q%")
+                ->orWhere('contact', 'like', "%$q%")
+                ->orWhere('category', 'like', "%$q%"))
             ->orderBy('id');
 
         return $this->paginatedResponse($request, $query, fn (Vendor $vendor) => $this->vendorPayload($vendor));
@@ -59,23 +62,29 @@ class VendorController extends ApiController
         return response()->json(['message' => 'تم حذف المكتب بنجاح']);
     }
 
-    public function statement(Vendor $vendor): JsonResponse
+    public function statement(Request $request, Vendor $vendor): JsonResponse
     {
         Gate::authorize('view', $vendor);
 
-        $rows = JournalEntry::with('account')
+        $rowsQuery = JournalEntry::with('account')
             ->whereHas('account', fn ($query) => $query->where('code', '2100'))
             ->where('party_type', 'vendor')
             ->where('party_id', $vendor->id)
             ->orderBy('entry_date')
-            ->orderBy('id')
-            ->get();
+            ->orderBy('id');
+
+        if ($request->filled('from')) {
+            $rowsQuery->whereDate('entry_date', '>=', $request->from);
+        }
+        if ($request->filled('to')) {
+            $rowsQuery->whereDate('entry_date', '<=', $request->to);
+        }
 
         return response()->json([
             'vendor' => $this->vendorPayload($vendor),
             'balance' => $this->accounting->vendorBalance($vendor->id),
             'paid' => $this->accounting->vendorPaymentsTotal($vendor->id),
-            'rows' => $rows->map(fn (JournalEntry $journal) => $this->journalPayload($journal)),
+            'rows' => $rowsQuery->get()->map(fn (JournalEntry $journal) => $this->journalPayload($journal)),
         ]);
     }
 

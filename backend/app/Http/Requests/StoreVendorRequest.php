@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\HasArabicValidation;
 use App\Http\Requests\Concerns\ValidatesOfficeScope;
 use App\Support\PhoneNormalizer;
 use Illuminate\Foundation\Http\FormRequest;
@@ -9,7 +10,7 @@ use Illuminate\Validation\Rule;
 
 class StoreVendorRequest extends FormRequest
 {
-    use ValidatesOfficeScope;
+    use HasArabicValidation, ValidatesOfficeScope;
 
     public function authorize(): bool
     {
@@ -37,8 +38,9 @@ class StoreVendorRequest extends FormRequest
 
     public function messages(): array
     {
-        return [
-            'name.unique' => 'اسم المورد مسجل مسبقاً',
-        ];
+        return $this->arabicMessages([
+            'name.required' => 'اسم المورد مطلوب.',
+            'name.unique' => 'اسم المورد مسجل مسبقاً.',
+        ]);
     }
 }

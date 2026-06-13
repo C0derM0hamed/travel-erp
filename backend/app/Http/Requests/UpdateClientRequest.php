@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\HasArabicValidation;
 use App\Http\Requests\Concerns\ValidatesOfficeScope;
 use App\Models\Client;
 use App\Support\PhoneNormalizer;
@@ -9,7 +10,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateClientRequest extends FormRequest
 {
-    use ValidatesOfficeScope;
+    use HasArabicValidation, ValidatesOfficeScope;
 
     public function authorize(): bool
     {
@@ -52,9 +53,11 @@ class UpdateClientRequest extends FormRequest
 
     public function messages(): array
     {
-        return [
-            'phone.unique' => 'رقم الهاتف مسجل مسبقاً لعميل آخر',
-            'civil_id.unique' => 'الرقم المدني مسجل مسبقاً لعميل آخر',
-        ];
+        return $this->arabicMessages([
+            'name.required' => 'اسم العميل مطلوب.',
+            'phone.required' => 'رقم هاتف العميل مطلوب.',
+            'phone.unique' => 'رقم الهاتف مسجل مسبقاً لعميل آخر.',
+            'civil_id.unique' => 'الرقم المدني مسجل مسبقاً لعميل آخر.',
+        ]);
     }
 }

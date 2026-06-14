@@ -19,7 +19,9 @@ class EnsureOfficeContext
             return $next($request);
         }
 
-        if (in_array($user->role, ['super_admin', 'admin'], true)) {
+        // Only super_admin can switch offices dynamically.
+        // All other roles (including admin) are locked to their assigned office.
+        if ($user->role === 'super_admin') {
             $officeId = $this->resolveOfficeId($request, $user);
             if ($officeId) {
                 $this->officeContext->setOfficeId($officeId);
@@ -35,6 +37,7 @@ class EnsureOfficeContext
                 return response()->json(['message' => 'المكتب غير مفعل'], 403);
             }
 
+            // Force the user's assigned office — ignore any header/query attempts
             $this->officeContext->setOfficeId((int) $user->office_id);
             $request->session()->put('current_office_id', (int) $user->office_id);
         }

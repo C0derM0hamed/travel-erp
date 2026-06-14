@@ -430,8 +430,9 @@ body[data-auth="app"] #loginPage{display:none!important}
   <div class="modal-header"><h3>إنشاء عملية جديدة</h3><button class="modal-close" onclick="closeModal('newOpModal')"><i class='bx bx-x'></i></button></div>
   <div class="modal-body">
     <div id="newOpModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
-    <div class="form-row">
-      <div class="form-group"><label>العميل *</label><select class="form-control" id="op_client"><option value="">-- اختر عميل --</option></select></div>
+    <div class="form-row three">
+      <div class="form-group"><label>العميل *</label><select class="form-control" id="op_client" onchange="document.getElementById('op_client_phone_search').value = this.options[this.selectedIndex].getAttribute('data-phone') || ''"><option value="">-- اختر عميل --</option></select></div>
+      <div class="form-group"><label>بحث برقم الهاتف</label><input type="text" class="form-control" id="op_client_phone_search" list="op_client_phones_list" placeholder="أدخل رقم الهاتف..." oninput="selectClientByPhone(this.value)"><datalist id="op_client_phones_list"></datalist></div>
       <div class="form-group"><label>الخدمة *</label><select class="form-control" id="op_service"><option value="">-- اختر خدمة --</option></select></div>
     </div>
     <div class="form-row">

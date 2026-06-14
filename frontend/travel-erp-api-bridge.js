@@ -1572,7 +1572,7 @@ function setOpFormLoading(loading){
 }
 
 function resetOpFormFields(){
-  ['op_client_price','op_vendor_cost','op_profit','op_initial_payment','op_notes'].forEach(id=>{
+  ['op_client_price','op_vendor_cost','op_profit','op_initial_payment','op_notes', 'op_client_phone_search'].forEach(id=>{
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -1601,7 +1601,9 @@ populateOpForm = async function(){
     opFormState.vendors = vendorsRes.data || [];
     const cs = document.getElementById('op_client');
     const vn = document.getElementById('op_vendor');
-    if (cs) cs.innerHTML = '<option value="">-- اختر عميل --</option>' + opFormState.clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+    const dl = document.getElementById('op_client_phones_list');
+    if (cs) cs.innerHTML = '<option value="">-- اختر عميل --</option>' + opFormState.clients.map(c=>`<option value="${c.id}" data-phone="${escapeHtml(c.phone||'')}">${c.name} ${c.phone ? ' - '+escapeHtml(c.phone) : ''}</option>`).join('');
+    if (dl) dl.innerHTML = opFormState.clients.filter(c=>c.phone).map(c=>`<option value="${escapeHtml(c.phone)}">${c.name}</option>`).join('');
     if (vn) vn.innerHTML = '<option value="">-- اختر مورد --</option>' + opFormState.vendors.map(v=>`<option value="${v.id}">${v.name}</option>`).join('');
     opFormState.ready = true;
     if (!opFormState.clients.length) showModalError('newOpModal', 'لا يوجد عملاء في المكتب الحالي. أضف عميلاً أولاً.');
@@ -1619,6 +1621,14 @@ populateOpForm = async function(){
     notify(e.message, 'error');
   } finally {
     setOpFormLoading(false);
+  }
+};
+
+window.selectClientByPhone = function(phone) {
+  if (!phone) return;
+  const client = opFormState.clients.find(c => c.phone === phone);
+  if (client) {
+    document.getElementById('op_client').value = client.id;
   }
 };
 

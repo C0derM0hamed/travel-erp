@@ -18,8 +18,10 @@ class ActivityLogController extends ApiController
         $user = $request->user();
         $query = ActivityLog::with(['user', 'office'])->orderByDesc('id');
 
-        if ($user->role !== 'super_admin') {
-            $officeId = app(OfficeContext::class)->id() ?? $user->office_id;
+        // BelongsToOffice global scope handles non-super_admin automatically.
+        // For super_admin, scope to selected office if one is set.
+        if ($user->role === 'super_admin') {
+            $officeId = app(OfficeContext::class)->id();
             if ($officeId) {
                 $query->where('office_id', $officeId);
             }
@@ -57,8 +59,10 @@ class ActivityLogController extends ApiController
         $user = auth()->user();
         $query = ActivityLog::query()->select('action')->distinct()->orderBy('action');
 
-        if ($user->role !== 'super_admin') {
-            $officeId = app(OfficeContext::class)->id() ?? $user->office_id;
+        // BelongsToOffice global scope handles non-super_admin automatically.
+        // For super_admin, scope to selected office if one is set.
+        if ($user->role === 'super_admin') {
+            $officeId = app(OfficeContext::class)->id();
             if ($officeId) {
                 $query->where('office_id', $officeId);
             }

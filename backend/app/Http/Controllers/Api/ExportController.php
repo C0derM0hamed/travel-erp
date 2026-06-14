@@ -13,6 +13,7 @@ use App\Services\Exports\ExportLabels;
 use App\Services\Exports\ExportQueryService;
 use App\Services\Exports\ExportReportService;
 use App\Services\Exports\PdfExportService;
+use App\Support\OfficeContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -26,6 +27,7 @@ class ExportController extends ApiController
         private ExportReportService $reports,
         private PdfExportService $pdf,
         private ExcelExportService $excel,
+        private OfficeContext $officeContext,
     ) {
         parent::__construct($accounting);
     }
@@ -147,7 +149,9 @@ class ExportController extends ApiController
             ['label' => 'الرصيد المتبقي', 'value' => ExportLabels::formatAmount($this->accounting->clientBalance($client->id))],
         ];
 
-        return $this->statementExport(
+        $branding = $this->brandingForOffice($client->office_id);
+
+        return $this->withOfficeContext($client->office_id, fn () => $this->statementExport(
             $format,
             'كشف حساب - '.$client->name,
             ['التاريخ', 'المرجع', 'البيان', 'مدين', 'دائن', 'الرصيد'],
@@ -155,7 +159,8 @@ class ExportController extends ApiController
             'كشف_حساب_'.$client->name,
             $summary,
             $request->boolean('inline'),
-        );
+            $branding
+        ));
     }
 
     public function vendors(Request $request): Response
@@ -202,7 +207,9 @@ class ExportController extends ApiController
             ['label' => 'الرصيد الحالي', 'value' => ExportLabels::formatAmount($this->accounting->vendorBalance($vendor->id))],
         ];
 
-        return $this->statementExport(
+        $branding = $this->brandingForOffice($vendor->office_id);
+
+        return $this->withOfficeContext($vendor->office_id, fn () => $this->statementExport(
             $format,
             'كشف حساب مورد - '.$vendor->name,
             ['التاريخ', 'المرجع', 'البيان', 'مدين', 'دائن'],
@@ -210,7 +217,8 @@ class ExportController extends ApiController
             'كشف_مورد_'.$vendor->name,
             $summary,
             $request->boolean('inline'),
-        );
+            $branding
+        ));
     }
 
     public function vouchers(Request $request): Response
@@ -258,10 +266,34 @@ class ExportController extends ApiController
             ['label' => 'الحالة', 'value' => $voucher->voided_at ? 'ملغى' : 'فعّال'],
         ];
 
-        return $this->pdf->download('exports.detail', [
+        $branding = $this->brandingForOffice($voucher->office_id);
+
+        return $this->withOfficeContext($voucher->office_id, fn () => $this->pdf->download('exports.detail', [
             'title' => 'سند '.$voucher->ref,
             'fields' => $fields,
-        ], 'سند_'.$voucher->ref, $request->boolean('inline'));
+            'branding' => $branding,
+        ], 'سند_'.$voucher->ref, $request->boolean('inline')));
+    }
+
+    private function withOfficeContext(?int $officeId, callable $callback): Response
+    {
+        if (! $officeId) return $callback();
+        $previous = $this->officeContext->id();
+        $this->officeContext->setOfficeId($officeId);
+        try { return $callback(); } finally { $this->officeContext->setOfficeId($previous); }
+    }
+
+    private function brandingForOffice(?int $officeId): array
+    {
+        $office = $officeId ? \App\Models\Office::find($officeId) : null;
+        if (! $office) return app(\App\Services\Exports\ExportContext::class)->branding();
+        
+        return [
+            'id' => $office->id,
+            'office_code' => $office->office_code,
+            'office_name' => $office->office_name,
+            'logo_url' => app(\App\Services\Exports\ExportContext::class)->logoAbsoluteUrl($office),
+        ];
     }
 
     public function journal(Request $request): Response
@@ -355,13 +387,13 @@ class ExportController extends ApiController
     }
 
     /** @param list<string> $headers @param list<list<mixed>> $rows @param list<array{label:string,value:string}> $summary */
-    private function statementExport(string $format, string $title, array $headers, array $rows, string $filename, array $summary, bool $inline): Response
+    private function statementExport(string $format, string $title, array $headers, array $rows, string $filename, array $summary, bool $inline, array $branding = []): Response
     {
         if ($format === 'xlsx') {
             return $this->excel->download($headers, $rows, $filename);
         }
 
-        return $this->pdf->download('exports.detail', [
+        $payload = [
             'title' => $title,
             'summary' => $summary,
             'sections' => [[
@@ -370,7 +402,13 @@ class ExportController extends ApiController
                 'rows' => $rows,
             ]],
             'rowCount' => count($rows),
-        ], $filename, $inline);
+        ];
+
+        if (!empty($branding)) {
+            $payload['branding'] = $branding;
+        }
+
+        return $this->pdf->download('exports.detail', $payload, $filename, $inline);
     }
 
     private function clientPurchases(Client $client, Request $request): float

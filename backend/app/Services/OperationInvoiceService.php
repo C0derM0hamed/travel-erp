@@ -62,7 +62,7 @@ class OperationInvoiceService
     {
         return $this->withOperationOffice($operation, fn () => $this->pdf->download(
             'exports.invoice',
-            $this->viewData($operation),
+            array_merge($this->viewData($operation), ['branding' => $this->brandingForOperation($operation)]),
             'فاتورة_'.$operation->ref,
             $inline,
         ));

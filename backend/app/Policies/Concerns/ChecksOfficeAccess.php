@@ -9,7 +9,8 @@ trait ChecksOfficeAccess
 {
     protected function sameOffice(User $user, ?int $officeId): bool
     {
-        if (in_array($user->role, ['super_admin', 'admin'], true)) {
+        // Only super_admin bypasses office isolation
+        if ($user->role === 'super_admin') {
             return true;
         }
 

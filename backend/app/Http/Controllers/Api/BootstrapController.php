@@ -29,7 +29,8 @@ class BootstrapController extends ApiController
             : [$this->userPayload($user)];
 
         $offices = $context->withoutScope(function () use ($user) {
-            if (in_array($user->role, ['super_admin', 'admin'], true)) {
+            // Only super_admin can see all offices (for switching)
+            if ($user->role === 'super_admin') {
                 return Office::orderBy('id')->get()->map(fn (Office $office) => $this->officePayload($office));
             }
 

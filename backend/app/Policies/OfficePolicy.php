@@ -9,26 +9,37 @@ class OfficePolicy
 {
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['super_admin', 'admin'], true);
+        // Only super_admin can view all offices
+        return $user->role === 'super_admin';
     }
 
     public function view(User $user, Office $office): bool
     {
-        return in_array($user->role, ['super_admin', 'admin'], true);
+        if ($user->role === 'super_admin') {
+            return true;
+        }
+
+        return $user->role === 'admin' && (int) $user->office_id === (int) $office->id;
     }
 
     public function create(User $user): bool
     {
-        return in_array($user->role, ['super_admin', 'admin'], true);
+        // Only super_admin can create new offices
+        return $user->role === 'super_admin';
     }
 
     public function update(User $user, Office $office): bool
     {
-        return in_array($user->role, ['super_admin', 'admin'], true);
+        if ($user->role === 'super_admin') {
+            return true;
+        }
+
+        return $user->role === 'admin' && (int) $user->office_id === (int) $office->id;
     }
 
     public function delete(User $user, Office $office): bool
     {
-        return in_array($user->role, ['super_admin', 'admin'], true);
+        // Only super_admin can delete offices
+        return $user->role === 'super_admin';
     }
 }

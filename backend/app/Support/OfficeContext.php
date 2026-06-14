@@ -74,7 +74,8 @@ class OfficeContext
             return false;
         }
 
-        if (in_array($user->role, ['super_admin', 'admin'], true)) {
+        // Only super_admin can access any office
+        if ($user->role === 'super_admin') {
             return true;
         }
 

@@ -13,10 +13,10 @@ class PdfExportService
     /** @param array<string, mixed> $data */
     public function download(string $view, array $data, string $filename, bool $inline = false): BaseResponse
     {
-        $payload = array_merge($data, [
+        $payload = array_merge([
             'branding' => $this->context->branding(),
             'generatedAt' => now()->timezone('Asia/Kuwait')->format('Y-m-d H:i'),
-        ]);
+        ], $data);
 
         $landscape = (bool) ($data['landscape'] ?? false);
         $html = View::make($view, $payload)->render();

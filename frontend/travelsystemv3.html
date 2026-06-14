@@ -309,10 +309,78 @@ body[data-auth="app"] #loginPage{display:none!important}
   </div>
   <div id="loginError" class="alert alert-danger" style="display:none"></div>
   <div class="form-group"><label>البريد الإلكتروني</label><input type="email" class="form-control" id="loginEmail" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
-  <div class="form-group"><label>كلمة المرور</label><input type="password" class="form-control" id="loginPass" autocomplete="new-password"></div>
+  <div class="form-group">
+    <label>كلمة المرور</label>
+    <input type="password" class="form-control" id="loginPass" autocomplete="new-password">
+    <div style="text-align:left;margin-top:8px;">
+      <a href="javascript:void(0)" onclick="showForgotPasswordModal()" style="font-size:13px;color:var(--primary);text-decoration:none;">نسيت كلمة المرور؟</a>
+    </div>
+  </div>
   <button class="btn-login" onclick="doLogin()">تسجيل الدخول &rarr;</button>
 </div>
 </div>
+
+<div id="resetPasswordPage" style="display:none;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#696CFF 0%,#5F61E6 50%,#4a4de0 100%);padding:16px;z-index:2000;position:relative;">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="icon"><img src="logo.png" alt="Logo" onerror="this.src='logo.png'; this.onerror=null;"></div>
+      <h1>إعادة تعيين كلمة المرور</h1>
+      <p>أدخل كلمة المرور الجديدة لحسابك</p>
+    </div>
+    <div id="resetError" class="alert alert-danger" style="display:none"></div>
+    <div id="resetSuccess" class="alert alert-success" style="display:none;background:rgba(113,221,55,.1);color:var(--success);border:1px solid rgba(113,221,55,.2);padding:12px 16px;border-radius:10px;font-size:13px;font-weight:500;margin-bottom:12px;"></div>
+    
+    <div id="resetFormArea">
+      <div class="form-group">
+        <label>كلمة المرور الجديدة</label>
+        <div class="password-field">
+          <input type="password" class="form-control" id="resetPass" oninput="checkResetPasswordStrength()" autocomplete="new-password">
+          <button type="button" class="password-toggle" onclick="togglePasswordVisibility('resetPass', this)" tabindex="-1">
+            <i class='bx bx-show eye-open'></i><i class='bx bx-hide eye-closed'></i>
+          </button>
+        </div>
+        <div id="resetPassStrength" style="font-size:11px;margin-top:4px;height:14px"></div>
+      </div>
+      <div class="form-group">
+        <label>تأكيد كلمة المرور</label>
+        <div class="password-field">
+          <input type="password" class="form-control" id="resetPassConfirm" autocomplete="new-password">
+          <button type="button" class="password-toggle" onclick="togglePasswordVisibility('resetPassConfirm', this)" tabindex="-1">
+            <i class='bx bx-show eye-open'></i><i class='bx bx-hide eye-closed'></i>
+          </button>
+        </div>
+      </div>
+      <button class="btn-login" onclick="doResetPassword()" id="btnResetPass">تغيير كلمة المرور</button>
+    </div>
+    
+    <div style="text-align:center;margin-top:16px;">
+      <a href="?" style="font-size:13px;color:var(--text-sm);text-decoration:none;">العودة لتسجيل الدخول</a>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="forgotPasswordModal" style="z-index: 3000;" onclick="if(event.target===this)closeModal('forgotPasswordModal')">
+<div class="modal">
+  <div class="modal-header">
+    <h3>نسيت كلمة المرور</h3>
+    <button class="btn-close" onclick="closeModal('forgotPasswordModal')">&times;</button>
+  </div>
+  <div class="modal-body">
+    <div id="forgotError" class="alert alert-danger" style="display:none"></div>
+    <div id="forgotSuccess" class="alert alert-success" style="display:none;background:rgba(113,221,55,.1);color:var(--success);border:1px solid rgba(113,221,55,.2);"></div>
+    <p style="font-size:13px;color:var(--text-sm);margin-bottom:16px;">أدخل البريد الإلكتروني المسجل في النظام وسنرسل لك رابطاً لإعادة تعيين كلمة المرور.</p>
+    <div class="form-group">
+      <label>البريد الإلكتروني <span class="required">*</span></label>
+      <input type="email" class="form-control" id="forgotEmail" required autocomplete="off" autocapitalize="off" spellcheck="false" dir="ltr" style="text-align:left">
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-outline" onclick="closeModal('forgotPasswordModal')">إلغاء</button>
+    <button class="btn btn-primary" onclick="doForgotPassword()" id="btnForgotPass">إرسال الرابط</button>
+  </div>
+</div>
+</div>
+
 <div id="appLayout">
   <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeMobileSidebar()" aria-hidden="true"></div>
   <aside class="sidebar" id="appSidebar">
@@ -357,7 +425,7 @@ body[data-auth="app"] #loginPage{display:none!important}
   </main>
 <div id="appChrome" aria-hidden="false">
 <!-- MODALS -->
-<div class="modal-overlay" id="newOpModal">
+<div class="modal-overlay" id="newOpModal" onclick="if(event.target===this)closeModal('newOpModal')">
 <div class="modal modal-lg">
   <div class="modal-header"><h3>إنشاء عملية جديدة</h3><button class="modal-close" onclick="closeModal('newOpModal')"><i class='bx bx-x'></i></button></div>
   <div class="modal-body">
@@ -1754,6 +1822,6 @@ document.querySelectorAll('.modal-overlay').forEach(el=>{
 
 
 <!-- API INTEGRATION BRIDGE -->
-<script src="./travel-erp-api-bridge.js"></script>
+<script src="./travel-erp-api-bridge.js?v=2.1"></script>
 </body>
 </html>

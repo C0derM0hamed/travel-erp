@@ -42,4 +42,9 @@ class User extends Authenticatable
             default => false,
         };
     }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new \App\Notifications\ResetPasswordNotification($token));
+    }
 }

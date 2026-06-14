@@ -1219,6 +1219,110 @@ doLogout = async function(){
   showLogin();
 };
 
+window.showForgotPasswordModal = function() {
+  document.getElementById('forgotError').style.display = 'none';
+  document.getElementById('forgotSuccess').style.display = 'none';
+  document.getElementById('forgotEmail').value = '';
+  showModal('forgotPasswordModal');
+};
+
+window.doForgotPassword = async function() {
+  const email = document.getElementById('forgotEmail').value.trim();
+  const err = document.getElementById('forgotError');
+  const suc = document.getElementById('forgotSuccess');
+  const btn = document.getElementById('btnForgotPass');
+  err.style.display = 'none';
+  suc.style.display = 'none';
+  
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    err.textContent = 'يرجى إدخال بريد إلكتروني صحيح.';
+    err.style.display = 'block';
+    return;
+  }
+  
+  try {
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+    await refreshCsrfCookie();
+    const res = await apiFetch('/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    });
+    suc.textContent = res.message || 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.';
+    suc.style.display = 'block';
+  } catch (e) {
+    err.textContent = e.message || 'البريد الإلكتروني غير مسجل في النظام.';
+    err.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+  }
+};
+
+window.checkResetPasswordStrength = function() {
+  const val = document.getElementById('resetPass').value;
+  const ind = document.getElementById('resetPassStrength');
+  if(!val){ ind.textContent=''; return; }
+  let score = 0;
+  if(val.length >= 8) score++;
+  if(/[A-Z]/.test(val)) score++;
+  if(/[0-9]/.test(val)) score++;
+  if(/[^A-Za-z0-9]/.test(val)) score++;
+  
+  if(score < 2) { ind.textContent='ضعيفة'; ind.style.color='var(--danger)'; }
+  else if(score === 2) { ind.textContent='متوسطة'; ind.style.color='var(--warning)'; }
+  else { ind.textContent='قوية'; ind.style.color='var(--success)'; }
+};
+
+window.doResetPassword = async function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('reset');
+  const email = urlParams.get('email');
+  
+  const password = document.getElementById('resetPass').value;
+  const password_confirmation = document.getElementById('resetPassConfirm').value;
+  const err = document.getElementById('resetError');
+  const suc = document.getElementById('resetSuccess');
+  const btn = document.getElementById('btnResetPass');
+  
+  err.style.display = 'none';
+  suc.style.display = 'none';
+  
+  if (!password || password.length < 8) {
+    err.textContent = 'يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.';
+    err.style.display = 'block';
+    return;
+  }
+  if (password !== password_confirmation) {
+    err.textContent = 'كلمتا المرور غير متطابقتين.';
+    err.style.display = 'block';
+    return;
+  }
+  
+  try {
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+    await refreshCsrfCookie();
+    const res = await apiFetch('/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, email, password, password_confirmation })
+    });
+    
+    document.getElementById('resetFormArea').style.display = 'none';
+    suc.textContent = res.message || 'تم تغيير كلمة المرور بنجاح.';
+    suc.style.display = 'block';
+    
+    setTimeout(() => {
+      window.location.href = window.location.pathname;
+    }, 3000);
+  } catch (e) {
+    err.textContent = e.message || 'رابط إعادة تعيين كلمة المرور غير صالح أو منتهي الصلاحية.';
+    err.style.display = 'block';
+    btn.disabled = false;
+    btn.style.opacity = '1';
+  }
+};
+
 navigate = async function(page){
   if(currentUser && typeof canViewPage==='function' && !canViewPage(page)){
     notify('ليس لديك صلاحية للوصول إلى هذه الصفحة', 'warning');
@@ -2660,6 +2764,16 @@ window.renderOffices = function(pc){
 };
 
 async function restoreSession(){
+  const urlParams = new URLSearchParams(window.location.search);
+  const resetToken = urlParams.get('reset');
+  if (resetToken) {
+    AppShell.setAuthMode('login');
+    document.getElementById('appLayout').style.display='none';
+    document.getElementById('loginPage').style.display='none';
+    document.getElementById('resetPasswordPage').style.display='flex';
+    return;
+  }
+
   AppShell.setAuthMode('login');
   document.getElementById('appLayout').style.display='none';
   document.getElementById('loginPage').style.display='flex';

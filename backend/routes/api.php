@@ -17,7 +17,12 @@ use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VendorController;
 use App\Http\Controllers\Api\VoucherController;
+use App\Http\Controllers\Api\ForgotPasswordController;
+use App\Http\Controllers\Api\ResetPasswordController;
 use Illuminate\Support\Facades\Route;
+
+Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->middleware('throttle:5,1');
+Route::post('/reset-password', [ResetPasswordController::class, 'reset'])->middleware('throttle:5,1');
 
 Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);

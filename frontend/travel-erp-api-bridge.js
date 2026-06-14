@@ -593,7 +593,7 @@ function previewOfficeLogo(inputId, previewId, clearBtnId){
   const file = input.files[0];
   const allowed = ['image/jpeg','image/jpg','image/png','image/webp'];
   if(!allowed.includes(file.type)){ notify('نوع الملف غير مدعوم. المسموح: JPG, PNG, WEBP', 'warning'); input.value=''; return; }
-  if(file.size > 2 * 1024 * 1024){ notify('حجم الشعار يجب ألا يتجاوز 2MB', 'warning'); input.value=''; return; }
+  if(file.size > 5 * 1024 * 1024){ notify('حجم الشعار يجب ألا يتجاوز 5MB', 'warning'); input.value=''; return; }
   const reader = new FileReader();
   reader.onload = () => { preview.innerHTML = `<img src="${reader.result}" alt="معاينة الشعار">`; };
   reader.readAsDataURL(file);

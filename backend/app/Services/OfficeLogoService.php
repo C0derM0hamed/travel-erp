@@ -17,7 +17,7 @@ class OfficeLogoService
     /** @var list<string> */
     public const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
 
-    public const MAX_KILOBYTES = 2048;
+    public const MAX_KILOBYTES = 5120;
 
     public function upload(Office $office, UploadedFile $file): string
     {
@@ -71,7 +71,7 @@ class OfficeLogoService
 
         if ($file->getSize() > self::MAX_KILOBYTES * 1024) {
             throw ValidationException::withMessages([
-                'logo' => 'حجم الشعار يجب ألا يتجاوز 2 ميجابايت',
+                'logo' => 'حجم الشعار يجب ألا يتجاوز 5 ميجابايت',
             ]);
         }
     }

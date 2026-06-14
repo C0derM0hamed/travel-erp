@@ -16,6 +16,21 @@ const PAGE_RENDERERS = {
   safes: 'renderSafes', reports: 'renderReports', activity: 'renderActivityLogs', settings: 'renderSettings',
 };
 
+const _avatarColors = ['#696CFF', '#71DD37', '#03C3EC', '#FFAB00', '#FF3E1D', '#8592A3', '#E83E8C', '#20C997'];
+function getInitialsAvatar(name) {
+  if(!name) return '';
+  const n = String(name).trim();
+  const parts = n.split(' ').filter(Boolean);
+  const init = parts.length > 1 ? (parts[0][0] + parts[1][0]) : (n.substring(0, 2));
+  const charSum = n.split('').reduce((sum, c) => sum + c.charCodeAt(0), 0);
+  const color = _avatarColors[charSum % _avatarColors.length];
+  return `<div class="avatar-circle" style="background:${color};box-shadow:0 2px 6px ${color}40">${init}</div>`;
+}
+
+function emptyStateHtml(icon, title, desc) {
+  return `<div class="empty-state"><i class="${icon}"></i><h4>${title}</h4><p>${desc}</p></div>`;
+}
+
 /** Central UI lifecycle: overlays, auth isolation, post-mutation sync */
 const AppShell = {
   authMode: 'login',
@@ -202,9 +217,9 @@ function exportCtxArg(ctx){
 function exportActionBar(handler, { excel = true, pdf = true, print = false, ctx = null } = {}){
   const ctxJson = exportCtxArg(ctx);
   const parts = [];
-  if (excel) parts.push(`<button type="button" class="btn btn-sm btn-outline" onclick="runBackendExport('${handler}','xlsx', false${ctxJson})">📥 Excel</button>`);
-  if (pdf) parts.push(`<button type="button" class="btn btn-sm btn-outline" onclick="runBackendExport('${handler}','pdf', false${ctxJson})">📄 PDF</button>`);
-  if (print) parts.push(`<button type="button" class="btn btn-sm btn-outline" onclick="runBackendExport('${handler}','pdf', true${ctxJson})">🖨️ طباعة</button>`);
+  if (excel) parts.push(`<button type="button" class="btn btn-sm btn-outline" onclick="runBackendExport('${handler}','xlsx', false${ctxJson})"><i class='bx bx-download'></i> Excel</button>`);
+  if (pdf) parts.push(`<button type="button" class="btn btn-sm btn-outline" onclick="runBackendExport('${handler}','pdf', false${ctxJson})"><i class='bx bx-file'></i> PDF</button>`);
+  if (print) parts.push(`<button type="button" class="btn btn-sm btn-outline" onclick="runBackendExport('${handler}','pdf', true${ctxJson})"><i class='bx bx-printer'></i> طباعة</button>`);
   return parts.join('');
 }
 
@@ -544,18 +559,18 @@ function renderOfficeBranding(){
   const url = officeLogoUrl(office);
   if(iconEl){
     iconEl.innerHTML = url
-      ? `<img src="${url}" alt="${office?.office_name || 'شعار المكتب'}">`
-      : '&#x2708;&#xFE0F;';
+      ? `<img src="${url}" alt="${office?.office_name || 'شعار المكتب'}" onerror="this.src='logo.png'; this.onerror=null;">`
+      : '<img src="logo.png" alt="Logo" onerror="this.src=\'logo.png\'; this.onerror=null;">';
   }
   if(nameEl){
     const subtitle = office?.office_code ? `<small style="font-size:10px;opacity:.6">${office.office_code}</small>` : '<small style="font-size:10px;opacity:.6">ERP للوكالات</small>';
     nameEl.innerHTML = `${office?.office_name || 'نظام السفر'}<br>${subtitle}`;
   }
   if(topbarEl){
-    topbarEl.style.display = office ? 'flex' : 'none';
+    topbarEl.style.display = 'flex';
     topbarEl.innerHTML = url
-      ? `<img src="${url}" alt="">`
-      : '🏢';
+      ? `<img src="${url}" alt="" onerror="this.src='logo.png'; this.onerror=null;">`
+      : '<img src="logo.png" alt="Logo" onerror="this.src=\'logo.png\'; this.onerror=null;">';
   }
 }
 
@@ -565,9 +580,9 @@ function officeBrandBlock(subtitle=''){
   const name = office?.office_name || 'نظام إدارة خدمات السفر';
   const esc = typeof escapeHtml === 'function' ? escapeHtml : (v) => String(v ?? '');
   const logoHtml = url
-    ? `<img src="${esc(url)}" alt="" style="width:56px;height:56px;object-fit:contain;border-radius:8px">`
-    : `<div style="width:56px;height:56px;background:#1e3a8a;color:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px">✈️</div>`;
-  return `<div style="display:flex;align-items:center;gap:12px">${logoHtml}<div><h1 style="font-size:18px;font-weight:800;color:#1e3a8a;margin:0">${esc(name)}</h1>${subtitle ? `<div style="font-size:13px;color:#64748b;margin-top:4px;font-weight:700">${esc(subtitle)}</div>` : `<div style="font-size:12px;color:#64748b;margin-top:2px">Travel Services Management System</div>`}</div></div>`;
+    ? `<img src="${esc(url)}" alt="" style="width:56px;height:56px;object-fit:contain;border-radius:8px" onerror="this.src='logo.png'; this.onerror=null;">`
+    : `<img src="logo.png" alt="" style="width:56px;height:56px;object-fit:contain;border-radius:8px" onerror="this.src='logo.png'; this.onerror=null;">`;
+  return `<div style="display:flex;align-items:center;gap:12px">${logoHtml}<div><h1 style="font-size:18px;font-weight:800;color:var(--primary);margin:0">${esc(name)}</h1>${subtitle ? `<div style="font-size:13px;color:var(--text-sm);margin-top:4px;font-weight:700">${esc(subtitle)}</div>` : `<div style="font-size:12px;color:var(--text-sm);margin-top:2px">Travel Services Management System</div>`}</div></div>`;
 }
 
 function previewOfficeLogo(inputId, previewId, clearBtnId){
@@ -590,7 +605,7 @@ function clearOfficeLogoPick(inputId, previewId, clearBtnId){
   const preview = document.getElementById(previewId);
   const clearBtn = clearBtnId ? document.getElementById(clearBtnId) : null;
   if(input) input.value = '';
-  if(preview) preview.innerHTML = '<span class="office-logo-fallback">🏢</span>';
+  if(preview) preview.innerHTML = '<span class="office-logo-fallback"><i class="bx bx-building"></i></span>';
   if(clearBtn) clearBtn.style.display = 'none';
 }
 
@@ -614,8 +629,8 @@ function openEditOffice(id){
   const url = officeLogoUrl(office);
   if(preview){
     preview.innerHTML = url
-      ? `<img src="${url}" alt="شعار المكتب">`
-      : '<span class="office-logo-fallback">🏢</span>';
+      ? `<img src="${url}" alt="شعار المكتب" onerror="this.src='logo.png'; this.onerror=null;">`
+      : '<img src="logo.png" alt="Logo" style="width:100%;height:100%;object-fit:contain" onerror="this.src=\'logo.png\'; this.onerror=null;">';
   }
   clearOfficeLogoPick('eoffice_logo','eoffice_logo_preview','eoffice_logo_clear');
   const removeBtn = document.getElementById('eoffice_logo_remove');
@@ -684,7 +699,7 @@ async function removeOfficeLogo(){
   await withSaveGuard(null, async () => {
     await apiFetch(`/offices/${id}/logo`, { method:'DELETE' });
     __editOfficeHasLogo = false;
-    document.getElementById('eoffice_logo_preview').innerHTML = '<span class="office-logo-fallback">🏢</span>';
+    document.getElementById('eoffice_logo_preview').innerHTML = '<span class="office-logo-fallback"><i class="bx bx-building"></i></span>';
     document.getElementById('eoffice_logo_remove').style.display = 'none';
     await refreshBootstrap();
     renderSettings(document.getElementById('pageContent'));
@@ -755,11 +770,11 @@ function usersSettingsRows(){
       <button class="btn btn-sm btn-outline" onclick="resetUserPassword(${u.id})">إعادة كلمة المرور</button>
     ` : '—';
     return `<tr>
-      <td><div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">${u.avatar || '?'}</div><b>${u.name}</b></div></td>
-      <td style="font-size:13px">${u.email}</td>
-      <td><span class="badge badge-info">${u.roleLabel || u.role}</span></td>
-      <td>${u.office?.office_name || u.office?.office_code || '—'}</td>
-      <td><span class="badge ${active ? 'badge-success' : 'badge-danger'}">${active ? 'مفعل' : 'معطل'}</span></td>
+      <td style="white-space:nowrap"><div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">${u.avatar || '?'}</div><b>${u.name}</b></div></td>
+      <td style="font-size:13px;white-space:nowrap">${u.email}</td>
+      <td style="white-space:nowrap"><span class="badge badge-info">${u.roleLabel || u.role}</span></td>
+      <td style="white-space:nowrap">${u.office?.office_name || u.office?.office_code || '—'}</td>
+      <td style="white-space:nowrap"><span class="badge ${active ? 'badge-success' : 'badge-danger'}">${active ? 'مفعل' : 'معطل'}</span></td>
       <td style="white-space:nowrap">${actions}</td>
     </tr>`;
   }).join('');
@@ -950,7 +965,7 @@ async function reloadClientsList(page){
   LIST_META.clients = res.meta || null;
   tablePages.clients = res.meta?.current_page || 1;
   const h3 = document.querySelector('#pageContent h3');
-  if (h3 && currentPage === 'clients') h3.textContent = `👤 إدارة العملاء (${res.meta?.total ?? CLIENTS.length})`;
+  if (h3 && currentPage === 'clients') h3.innerHTML = `<i class='bx bx-user'></i> إدارة العملاء (${res.meta?.total ?? CLIENTS.length})`;
   paintClientsTable();
 }
 
@@ -964,7 +979,7 @@ async function reloadVendorsList(page){
   LIST_META.vendors = res.meta || null;
   tablePages.vendors = res.meta?.current_page || 1;
   const h3 = document.querySelector('#pageContent h3');
-  if (h3 && currentPage === 'vendors') h3.textContent = `🏢 الموردون والمكاتب (${res.meta?.total ?? VENDORS.length})`;
+  if (h3 && currentPage === 'vendors') h3.innerHTML = `<i class='bx bx-building'></i> الموردون والمكاتب (${res.meta?.total ?? VENDORS.length})`;
   paintVendorsTable();
 }
 
@@ -987,7 +1002,7 @@ async function reloadOperationsList(page){
   LIST_META.operations = res.meta || null;
   tablePages.ops = res.meta?.current_page || 1;
   const h3 = document.querySelector('#pageContent h3');
-  if (h3 && currentPage === 'operations') h3.textContent = `📋 إدارة العمليات (${res.meta?.total ?? OPS.length})`;
+  if (h3 && currentPage === 'operations') h3.innerHTML = `<i class='bx bx-briefcase'></i> إدارة العمليات (${res.meta?.total ?? OPS.length})`;
   paintOperationsTable();
 }
 
@@ -1031,8 +1046,8 @@ function paintClientsTable(){
     const editBtn = canDo('write_master') ? `<button class="btn btn-sm btn-outline" onclick="openEditClient(${c.id})">تعديل</button> ` : '';
     const hideBtn = canDo('write_master') ? `<button class="btn btn-sm btn-outline" onclick="hideClient(${c.id})">إخفاء</button> ` : '';
     const deleteBtn = canDo('write_master') ? `<button class="btn btn-sm btn-danger" onclick="deleteClient(${c.id})">حذف</button> ` : '';
-    return `<tr><td>${c.id}</td><td><b>${c.name}</b></td><td>${c.phone}</td><td>${displayVal(c.civil_id)}</td><td>${displayVal(c.nationality)}</td><td style="color:${b.color};font-weight:700">${b.text}</td><td><span class="badge badge-info">${ops}</span></td><td>${editBtn}${hideBtn}${deleteBtn}<button class="btn btn-sm btn-outline" onclick="viewClientStmt(${c.id})">كشف حساب</button></td></tr>`;
-  }).join('')||'<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-sm)">لا يوجد عملاء</td></tr>'}</tbody></table>${serverPagerHtml('clients', meta, 'reloadClientsList')}`;
+    return `<tr><td>${c.id}</td><td><div class="client-cell">${getInitialsAvatar(c.name)}<div><span>${c.name}</span></div></div></td><td>${c.phone}</td><td>${displayVal(c.civil_id)}</td><td>${displayVal(c.nationality)}</td><td style="color:${b.color};font-weight:700">${b.text}</td><td><span class="badge badge-info">${ops}</span></td><td>${editBtn}${hideBtn}${deleteBtn}<button class="btn btn-sm btn-outline" onclick="viewClientStmt(${c.id})">كشف حساب</button></td></tr>`;
+  }).join('')||`<tr>${emptyStateHtml('bx bx-user-x', 'لا يوجد عملاء', 'لم يتم إضافة أي عملاء بعد، قم بإضافة عميل جديد للبدء', 8)}</tr>`}</tbody></table>${serverPagerHtml('clients', meta, 'reloadClientsList')}`;
 }
 
 function paintVendorsTable(){
@@ -1044,8 +1059,8 @@ function paintVendorsTable(){
     const bal = typeof v.balance === 'number' ? v.balance : getVendorBalance(v.id);
     const editBtn = canDo('write_master') ? `<button class="btn btn-sm btn-outline" onclick="openEditVendor(${v.id})">تعديل</button> ` : '';
     const deleteBtn = canDo('write_master') ? `<button class="btn btn-sm btn-danger" onclick="deleteVendor(${v.id})">حذف</button> ` : '';
-    return `<tr><td>${v.id}</td><td><b>${v.name}</b></td><td>${categoryLabel[v.category]||v.category}</td><td>${v.phone||'—'}</td><td>${v.contact||'—'}</td><td style="color:${bal>0?'var(--warning)':'var(--success)'};font-weight:700">${fmt(bal)}</td><td>${editBtn}${deleteBtn}<button class="btn btn-sm btn-outline" onclick="viewVendorStmt(${v.id})">كشف حساب</button></td></tr>`;
-  }).join('')}</tbody></table>${serverPagerHtml('vendors', meta, 'reloadVendorsList')}`;
+    return `<tr><td>${v.id}</td><td><div class="client-cell">${getInitialsAvatar(v.name)}<div><span>${v.name}</span><small>${categoryLabel[v.category]||v.category}</small></div></div></td><td>${categoryLabel[v.category]||v.category}</td><td>${v.phone||'—'}</td><td>${v.contact||'—'}</td><td style="color:${bal>0?'var(--warning)':'var(--success)'};font-weight:700">${fmt(bal)}</td><td>${editBtn}${deleteBtn}<button class="btn btn-sm btn-outline" onclick="viewVendorStmt(${v.id})">كشف حساب</button></td></tr>`;
+  }).join('')||`<tr>${emptyStateHtml('bx bx-store-alt', 'لا يوجد موردون', 'قم بإضافة مورد أو مكتب وكيل جديد لتتمكن من إسناد العمليات إليهم', 7)}</tr>`}</tbody></table>${serverPagerHtml('vendors', meta, 'reloadVendorsList')}`;
 }
 
 function paintOperationsTable(){
@@ -1120,8 +1135,8 @@ function paintJournalTable(){
   const totalC = JOURNAL_TOTALS.credit ?? je.reduce((s,j)=>s+j.credit,0);
   const balanced = JOURNAL_TOTALS.filtered ? Math.abs(totalD-totalC) < 0.01 : (JOURNAL_TOTALS.balanced ?? Math.abs(totalD-totalC) < 0.01);
   wrap.innerHTML = `<div class="table-wrapper"><table class="table"><thead><tr><th>#</th><th>التاريخ</th><th>المرجع</th><th>الحساب</th><th>البيان</th><th>مدين</th><th>دائن</th></tr></thead>
-  <tbody>${je.map(j=>`<tr><td>${j.id}</td><td>${j.date}</td><td>${j.ref}</td><td><b>${j.account}</b></td><td style="font-size:12px">${j.desc}</td><td style="color:var(--danger);font-weight:700">${j.debit!==0?fmt(j.debit):'—'}</td><td style="color:var(--success);font-weight:700">${j.credit!==0?fmt(j.credit):'—'}</td></tr>`).join('')||'<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-sm)">لا توجد قيود</td></tr>'}
-  <tr style="background:#F1F5F9;font-weight:800"><td colspan="5" style="text-align:center;padding:10px 16px;color:var(--text-sm)">الإجمالي (${meta?.total ?? je.length} قيد)</td><td style="color:var(--danger);padding:10px 16px">${fmt(totalD)}</td><td style="color:var(--success);padding:10px 16px">${fmt(totalC)} ${balanced?'✅':'❌'}</td></tr>
+  <tbody>${je.map(j=>`<tr><td>${j.id}</td><td>${j.date}</td><td>${j.ref}</td><td><b>${j.account}</b></td><td style="font-size:12px">${j.desc}</td><td style="color:var(--danger);font-weight:700">${j.debit!==0?fmt(j.debit):'—'}</td><td style="color:var(--success);font-weight:700">${j.credit!==0?fmt(j.credit):'—'}</td></tr>`).join('')||`<tr>${emptyStateHtml('bx bx-book-content', 'دفتر الأستاذ فارغ', 'لا توجد أي قيود مالية مسجلة حالياً', 7)}</tr>`}
+  <tr style="background:#F1F5F9;font-weight:800"><td colspan="5" style="text-align:center;padding:10px 16px;color:var(--text-sm)">الإجمالي (${meta?.total ?? je.length} قيد)</td><td style="color:var(--danger);padding:10px 16px">${fmt(totalD)}</td><td style="color:var(--success);padding:10px 16px">${fmt(totalC)} ${balanced?'<span style="color:var(--success)"><i class="bx bx-check-circle"></i></span>':'<span style="color:var(--danger)"><i class="bx bx-x-circle"></i></span>'}</td></tr>
   </tbody></table></div>${serverPagerHtml('journal', meta, 'reloadJournalList')}`;
 }
 
@@ -1130,7 +1145,7 @@ function paintActivityTable(){
   if (!wrap) return;
   const meta = LIST_META.activity;
   wrap.innerHTML = `<div class="table-wrapper"><table class="table"><thead><tr><th>#</th><th>التاريخ</th><th>المستخدم</th><th>المكتب</th><th>الإجراء</th><th>مرجع العملية</th><th>التفاصيل</th><th>IP</th></tr></thead>
-  <tbody>${ACTIVITY_LOGS.map(l=>`<tr><td>${l.id}</td><td>${(l.created_at||'').slice(0,19).replace('T',' ')}</td><td>${l.user_name||'—'}</td><td>${l.office_name||'—'}</td><td><span class="badge badge-info">${activityActionLabel(l.action, l.action_label)}</span></td><td>${l.operation_ref?`<b style="color:var(--primary)">${l.operation_ref}</b>`:'—'}</td><td style="font-size:12px">${formatActivityDetails(l)}</td><td>${l.ip||'—'}</td></tr>`).join('')||'<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-sm)">لا توجد سجلات</td></tr>'}</tbody></table></div>${serverPagerHtml('activity', meta, 'reloadActivityLogs')}`;
+  <tbody>${ACTIVITY_LOGS.map(l=>`<tr><td>${l.id}</td><td>${(l.created_at||'').slice(0,19).replace('T',' ')}</td><td>${l.user_name||'—'}</td><td>${l.office_name||'—'}</td><td><span class="badge badge-info">${activityActionLabel(l.action, l.action_label)}</span></td><td>${l.operation_ref?`<b style="color:var(--primary)">${l.operation_ref}</b>`:'—'}</td><td style="font-size:12px">${formatActivityDetails(l)}</td><td>${l.ip||'—'}</td></tr>`).join('')||`<tr>${emptyStateHtml('bx bx-history', 'لا يوجد نشاط', 'سجل النشاطات للمستخدمين فارغ حتى الآن', 8)}</tr>`}</tbody></table></div>${serverPagerHtml('activity', meta, 'reloadActivityLogs')}`;
 }
 
 async function loadPageList(page){
@@ -1274,10 +1289,10 @@ renderClients = function(pc){
   <div class="page-shell">
     <div class="card">
       <div class="card-header">
-        <h3>👤 إدارة العملاء</h3>
+        <h3><i class='bx bx-user'></i> إدارة العملاء</h3>
         <div class="card-header-actions">
           ${searchFilterBar('clSearch', 'بحث (اسم، هاتف، مدني...)', 'filterClients')}
-          ${canDo('write_master')?`<button class="btn btn-primary" onclick="showModal('newClientModal')">➕ عميل جديد</button>`:''}
+          ${canDo('write_master')?`<button class="btn btn-primary" onclick="showModal('newClientModal')"><i class='bx bx-plus'></i> عميل جديد</button>`:''}
           ${exportActionBar('clients')}
         </div>
       </div>
@@ -1292,10 +1307,10 @@ renderVendors = function(pc){
   <div class="page-shell">
     <div class="card">
       <div class="card-header">
-        <h3>🏢 الموردون والمكاتب</h3>
+        <h3><i class='bx bx-building'></i> الموردون والمكاتب</h3>
         <div class="card-header-actions">
           ${searchFilterBar('vnSearch', 'بحث (اسم، هاتف...)', 'filterVendors')}
-          ${canDo('write_master')?`<button class="btn btn-primary" onclick="showModal('newVendorModal')">➕ مورد جديد</button>`:''}
+          ${canDo('write_master')?`<button class="btn btn-primary" onclick="showModal('newVendorModal')"><i class='bx bx-plus'></i> مورد جديد</button>`:''}
           ${exportActionBar('vendors')}
         </div>
       </div>
@@ -1310,7 +1325,7 @@ renderOperations = function(pc){
   <div class="page-shell">
     <div class="card">
       <div class="card-header">
-        <h3>📋 إدارة العمليات</h3>
+        <h3><i class='bx bx-briefcase'></i> إدارة العمليات</h3>
         <div class="card-header-actions">
           ${searchFilterBar('opSearchInput', 'بحث (رقم، عميل، هاتف، مورد، خدمة، ملاحظات...)', 'filterOps')}
           <select class="form-control filter-control" id="opStatusFilter" onchange="filterOps()">
@@ -1326,7 +1341,7 @@ renderOperations = function(pc){
           </select>
           <input type="date" class="form-control filter-control" id="opFrom" onchange="filterOps()" title="من تاريخ">
           <input type="date" class="form-control filter-control" id="opTo" onchange="filterOps()" title="إلى تاريخ">
-          ${canDo('create_op')?`<button class="btn btn-primary" onclick="showModal('newOpModal');populateOpForm()">➕ عملية جديدة</button>`:''}
+          ${canDo('create_op')?`<button class="btn btn-primary" onclick="showModal('newOpModal');populateOpForm()"><i class='bx bx-plus'></i> عملية جديدة</button>`:''}
           ${exportActionBar('operations')}
         </div>
       </div>
@@ -1342,9 +1357,9 @@ renderVouchers = function(pc){
   <div class="page-shell">
     <div class="card">
       <div class="card-header">
-        <h3>🧾 السندات المالية</h3>
+        <h3><i class='bx bx-receipt'></i> السندات المالية</h3>
         <div class="card-header-actions">
-          ${canDo('create_voucher')?`<button class="btn btn-success" onclick="openNewVoucher('receipt')">➕ سند قبض</button><button class="btn btn-danger" onclick="openNewVoucher('payment')">➕ سند صرف</button>`:''}
+          ${canDo('create_voucher')?`<button class="btn btn-success" onclick="openNewVoucher('receipt')"><i class='bx bx-plus'></i> سند قبض</button><button class="btn btn-danger" onclick="openNewVoucher('payment')"><i class='bx bx-plus'></i> سند صرف</button>`:''}
           ${exportActionBar('vouchers')}
         </div>
       </div>
@@ -1373,7 +1388,7 @@ renderJournal = function(pc){
     <div class="grid-kpi-3" id="jeKpiRow"></div>
     <div class="card">
       <div class="card-header">
-        <h3>📒 دفتر الأستاذ</h3>
+        <h3><i class='bx bx-book'></i> دفتر الأستاذ</h3>
         <div class="card-header-actions">
           ${searchFilterBar('jeSearch', 'بحث (مرجع، بيان، حساب)...', 'filterJournal')}
           <select class="form-control filter-control" id="jeAccFilter" onchange="filterJournal()"><option value="all">كل الحسابات</option></select>
@@ -1392,7 +1407,7 @@ renderActivityLogs = async function(pc){
   pc.innerHTML=`
   <div class="page-shell">
     <div class="card">
-      <div class="card-header"><h3>📝 سجل النشاط</h3><div class="card-header-actions">${exportActionBar('activity_logs')}</div></div>
+      <div class="card-header"><h3><i class='bx bx-history'></i> سجل النشاط</h3><div class="card-header-actions">${exportActionBar('activity_logs')}</div></div>
       <div class="card-body">
         <div class="filter-bar" style="margin-bottom:16px">
           ${searchFilterBar('actSearch', 'بحث (إجراء، مستخدم، تفاصيل)...', 'filterActivityLogs')}
@@ -1428,8 +1443,8 @@ renderVcTable = function(){
     const opRef = v.operation_id ? (OPS.find(o=>o.id===v.operation_id)?.ref || '—') : '—';
     const reversed = v.reversed;
     const voidBtn = canDo('void_voucher') && !reversed ? `<button class="btn btn-xs btn-danger" onclick="voidVoucher(${v.id})">إلغاء</button> ` : '';
-    return `<tr style="${reversed?'opacity:.65':''}"><td><b style="color:var(--primary)">${v.ref}</b></td><td>${v.date}</td><td>${party}</td><td style="font-weight:700;color:${vcTab==='receipt'?'var(--success)':'var(--danger)'}">${fmt(v.amount)}</td><td>${reversed?'<span class="badge badge-danger">ملغى</span>':'<span class="badge badge-success">فعّال</span>'}</td><td>${methodLabel(v.method)}</td><td>${safeName(v.safe_id)}</td><td>${opRef}</td><td style="font-size:12px">${displayVal(v.desc)}</td><td>${voidBtn}<button class="btn btn-xs btn-outline" onclick="printVoucherExport(${v.id})">🖨️</button></td></tr>`;
-  }).join('')||'<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-sm)">لا توجد سندات</td></tr>'}</tbody></table>${serverPagerHtml('vouchers', meta, 'reloadVouchersList')}`;
+    return `<tr style="${reversed?'opacity:.65':''}"><td><b style="color:var(--primary)">${v.ref}</b></td><td>${v.date}</td><td>${party}</td><td style="font-weight:700;color:${vcTab==='receipt'?'var(--success)':'var(--danger)'}">${fmt(v.amount)}</td><td>${reversed?'<span class="badge badge-danger">ملغى</span>':'<span class="badge badge-success">فعّال</span>'}</td><td>${methodLabel(v.method)}</td><td>${safeName(v.safe_id)}</td><td>${opRef}</td><td style="font-size:12px">${displayVal(v.desc)}</td><td>${voidBtn}<button class="btn btn-xs btn-outline" onclick="printVoucherExport(${v.id})"><i class='bx bx-printer'></i> طباعة</button></td></tr>`;
+  }).join('')||`<tr>${emptyStateHtml('bx bx-receipt', 'لا توجد سندات مالية', 'لم يتم إنشاء أي سندات قبض أو صرف في النظام', 10)}</tr>`}</tbody></table>${serverPagerHtml('vouchers', meta, 'reloadVouchersList')}`;
 };
 
 function setOpFormLoading(loading){
@@ -1501,7 +1516,7 @@ populateOpForm = async function(){
 
 openNewVoucher = async function(type){
   vcTab = type;
-  document.getElementById('voucherModalTitle').textContent = type==='receipt'?'🧾 سند قبض جديد':'💸 سند صرف جديد';
+  document.getElementById('voucherModalTitle').innerHTML = type==='receipt'?"<i class='bx bx-receipt'></i> سند قبض جديد":"<i class='bx bx-money'></i> سند صرف جديد";
   document.getElementById('voucherSaveBtn').style.background = type==='receipt'?'var(--success)':'var(--danger)';
   updateVoucherParties();
   const vcSafe = document.getElementById('vc_safe');
@@ -1693,9 +1708,9 @@ viewOp = async function(id, opts = {}){
     document.getElementById('drawerTitle').textContent=`تفاصيل العملية - ${op.ref}`;
     document.getElementById('drawerBody').innerHTML=`
       <div class="drawer-actions" style="margin-bottom:12px;justify-content:flex-end;flex-wrap:wrap;gap:8px">
-        <button type="button" class="btn btn-sm btn-outline" onclick="exportOperationInvoicePDF(${op.id})">🧾 فاتورة PDF</button>
-        <button type="button" class="btn btn-sm btn-outline" onclick="printOperationInvoicePDF(${op.id})">🖨️ طباعة فاتورة</button>
-        <button type="button" class="btn btn-sm btn-success" onclick="sendWhatsAppInvoice(${op.id})" title="إرسال عبر واتساب">💬 واتساب</button>
+        <button type="button" class="btn btn-sm btn-outline" onclick="exportOperationInvoicePDF(${op.id})"><i class='bx bx-receipt'></i> فاتورة PDF</button>
+        <button type="button" class="btn btn-sm btn-outline" onclick="printOperationInvoicePDF(${op.id})"><i class='bx bx-printer'></i> طباعة فاتورة</button>
+        <button type="button" class="btn btn-sm btn-success" onclick="sendWhatsAppInvoice(${op.id})" title="إرسال عبر واتساب"><i class='bx bxl-whatsapp'></i> واتساب</button>
         ${exportActionBar('operation_detail', { excel: false, pdf: true, print: true, ctx: { id: op.id } })}
       </div>
       <div style="margin-bottom:16px">
@@ -1760,9 +1775,9 @@ viewClientStmt = async function(cid, opts = {}){
         <h4 style="margin:0">حركات الحساب</h4>
         <input type="date" class="form-control filter-control" id="stmtFrom" onchange="viewClientStmt(${cid})" title="من تاريخ">
         <input type="date" class="form-control filter-control" id="stmtTo" onchange="viewClientStmt(${cid})" title="إلى تاريخ">
-        <button class="btn btn-sm btn-outline" onclick="exportClientStmtPDF(${cid})">📄 PDF</button>
-        <button class="btn btn-sm btn-outline" onclick="runBackendExport('client_statement','pdf',true,{id:${cid}})">🖨️ طباعة</button>
-        <button class="btn btn-sm btn-outline" onclick="exportClientStmt(${cid})">📥 Excel</button></div>
+        <button class="btn btn-sm btn-outline" onclick="exportClientStmtPDF(${cid})"><i class='bx bx-file'></i> PDF</button>
+        <button class="btn btn-sm btn-outline" onclick="runBackendExport('client_statement','pdf',true,{id:${cid}})"><i class='bx bx-printer'></i> طباعة</button>
+        <button class="btn btn-sm btn-outline" onclick="exportClientStmt(${cid})"><i class='bx bx-download'></i> Excel</button></div>
       <div class="table-wrapper"><table class="table"><thead><tr><th>التاريخ</th><th>المرجع</th><th>البيان</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead>
       <tbody>${rows.map(j=>`<tr><td>${j.date}</td><td>${j.ref}</td><td style="font-size:12px">${j.desc||''}</td><td>${signedAmount(j.debit,'var(--danger)','var(--success)')}</td><td>${signedAmount(j.credit,'var(--success)','var(--danger)')}</td><td style="font-weight:700;color:${j.balance>0?'var(--danger)':'var(--success)'}">${fmt(j.balance)}</td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--text-sm)">لا توجد حركات</td></tr>'}</tbody></table></div>`;
   }catch(e){ document.getElementById('stmtBody').innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
@@ -1797,25 +1812,25 @@ viewVendorStmt = async function(vid, opts = {}){
         <h4 style="margin:0">حركات الحساب</h4>
         <input type="date" class="form-control filter-control" id="vstmtFrom" onchange="viewVendorStmt(${vid})" title="من تاريخ">
         <input type="date" class="form-control filter-control" id="vstmtTo" onchange="viewVendorStmt(${vid})" title="إلى تاريخ">
-        <button class="btn btn-sm btn-outline" onclick="exportVendorStmtPDF(${vid})">📄 PDF</button>
-        <button class="btn btn-sm btn-outline" onclick="runBackendExport('vendor_statement','pdf',true,{id:${vid}})">🖨️ طباعة</button>
-        <button class="btn btn-sm btn-outline" onclick="exportVendorStmt(${vid})">📥 Excel</button>
+        <button class="btn btn-sm btn-outline" onclick="exportVendorStmtPDF(${vid})"><i class='bx bx-file'></i> PDF</button>
+        <button class="btn btn-sm btn-outline" onclick="runBackendExport('vendor_statement','pdf',true,{id:${vid}})"><i class='bx bx-printer'></i> طباعة</button>
+        <button class="btn btn-sm btn-outline" onclick="exportVendorStmt(${vid})"><i class='bx bx-download'></i> Excel</button>
       </div>
       <div class="drawer-actions" style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <h4 style="margin:0">حركات الحساب</h4>
         <input type="date" class="form-control filter-control" id="vstmtFrom" onchange="viewVendorStmt(${vid})" title="من تاريخ">
         <input type="date" class="form-control filter-control" id="vstmtTo" onchange="viewVendorStmt(${vid})" title="إلى تاريخ">
-        <button class="btn btn-sm btn-outline" onclick="exportVendorStmtPDF(${vid})">📄 PDF</button>
-        <button class="btn btn-sm btn-outline" onclick="runBackendExport('vendor_statement','pdf',true,{id:${vid}})">🖨️ طباعة</button>
-        <button class="btn btn-sm btn-outline" onclick="exportVendorStmt(${vid})">📥 Excel</button>
+        <button class="btn btn-sm btn-outline" onclick="exportVendorStmtPDF(${vid})"><i class='bx bx-file'></i> PDF</button>
+        <button class="btn btn-sm btn-outline" onclick="runBackendExport('vendor_statement','pdf',true,{id:${vid}})"><i class='bx bx-printer'></i> طباعة</button>
+        <button class="btn btn-sm btn-outline" onclick="exportVendorStmt(${vid})"><i class='bx bx-download'></i> Excel</button>
       </div>
       <div class="drawer-actions" style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <h4 style="margin:0">حركات الحساب</h4>
         <input type="date" class="form-control filter-control" id="vstmtFrom" onchange="viewVendorStmt(${vid})" title="من تاريخ">
         <input type="date" class="form-control filter-control" id="vstmtTo" onchange="viewVendorStmt(${vid})" title="إلى تاريخ">
-        <button class="btn btn-sm btn-outline" onclick="exportVendorStmtPDF(${vid})">📄 PDF</button>
-        <button class="btn btn-sm btn-outline" onclick="runBackendExport('vendor_statement','pdf',true,{id:${vid}})">🖨️ طباعة</button>
-        <button class="btn btn-sm btn-outline" onclick="exportVendorStmt(${vid})">📥 Excel</button>
+        <button class="btn btn-sm btn-outline" onclick="exportVendorStmtPDF(${vid})"><i class='bx bx-file'></i> PDF</button>
+        <button class="btn btn-sm btn-outline" onclick="runBackendExport('vendor_statement','pdf',true,{id:${vid}})"><i class='bx bx-printer'></i> طباعة</button>
+        <button class="btn btn-sm btn-outline" onclick="exportVendorStmt(${vid})"><i class='bx bx-download'></i> Excel</button>
       </div>
       <div class="table-wrapper"><table class="table"><thead><tr><th>التاريخ</th><th>المرجع</th><th>البيان</th><th>مدين</th><th>دائن</th></tr></thead>
       <tbody>${rows.map(j=>`<tr><td>${j.date}</td><td>${j.ref}</td><td style="font-size:12px">${j.desc||''}</td><td>${signedAmount(j.debit,'var(--success)','var(--danger)')}</td><td>${signedAmount(j.credit,'var(--danger)','var(--success)')}</td></tr>`).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--text-sm)">لا توجد حركات</td></tr>'}</tbody></table></div>`;
@@ -1859,9 +1874,9 @@ renderRptContent = async function(){
         ${rptDateBarHtml()}
         <div style="margin-bottom:12px;display:flex;justify-content:flex-end">${exportActionBar('report', { ctx: { type: 'operations' } })}</div>
         <div class="grid-kpi-3">
-          ${kpiCard('💰','إجمالي الإيرادات',fmt(totals.revenue||0),'var(--primary)','')}
-          ${kpiCard('💸','إجمالي التكاليف',fmt(totals.cost||0),'var(--danger)','')}
-          ${kpiCard('📈','صافي الربح',fmt(totals.profit||0),'var(--success)','')}
+          ${kpiCard('<i class="bx bxs-dollar-circle" style="font-size:24px"></i>','إجمالي الإيرادات',fmt(totals.revenue||0),'var(--primary)','')}
+          ${kpiCard('<i class="bx bxs-credit-card" style="font-size:24px"></i>','إجمالي التكاليف',fmt(totals.cost||0),'var(--danger)','')}
+          ${kpiCard('<i class="bx bxs-wallet" style="font-size:24px"></i>','صافي الربح',fmt(totals.profit||0),'var(--success)','')}
         </div>
         <div class="table-wrapper"><table class="table"><thead><tr><th>المرجع</th><th>التاريخ</th><th>العميل</th><th>الخدمة</th><th>الإيراد</th><th>التكلفة</th><th>الربح</th><th>الحالة</th></tr></thead>
         <tbody>${rows.map(o=>`<tr><td><b>${o.ref}</b></td><td>${o.date}</td><td>${o.client||clientName(o.client_id)}</td><td>${o.service||serviceName(o.service_id)}</td><td>${fmt(o.client_price)}</td><td>${fmt(o.vendor_cost)}</td><td style="color:${o.profit>=0?'var(--success)':'var(--danger)'};font-weight:700">${fmt(o.profit)}</td><td><span class="badge ${statusClass[o.status]}">${statusLabel[o.status]}</span></td></tr>`).join('')||'<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-sm)">لا توجد عمليات في هذه الفترة</td></tr>'}</tbody></table></div>
@@ -2240,7 +2255,7 @@ function paintSafesTable(){
     const toggleBtn = manage ? `<button class="btn btn-sm ${active ? 'btn-danger' : 'btn-success'}" onclick="toggleSafeActive(${s.id}, ${active ? 0 : 1})">${active ? 'تعطيل' : 'تفعيل'}</button> ` : '';
     return `<tr>
       <td>${s.id}</td>
-      <td><b>${s.type==='cash'?'💵':'🏦'} ${s.name}</b></td>
+      <td><b>${s.type==='cash'?"<i class='bx bx-wallet'></i>":"<i class='bx bxs-bank'></i>"} ${s.name}</b></td>
       <td>${s.type==='cash'?'صندوق':'بنك'}</td>
       <td>${s.account_code||'—'}</td>
       <td style="font-weight:700;color:${bal>=0?'var(--success)':'var(--danger)'}">${fmt(bal)}</td>
@@ -2258,8 +2273,8 @@ function paintTransfersTable(){
   <tbody>${SAFE_TRANSFERS.map(t=>`<tr>
     <td><b style="color:var(--primary)">${t.ref}</b></td>
     <td>${t.date||t.transfer_date||'—'}</td>
-    <td>${t.from_type==='bank'?'🏦':'💵'} ${t.from_safe||'—'}</td>
-    <td>${t.to_type==='bank'?'🏦':'💵'} ${t.to_safe||'—'}</td>
+    <td>${t.from_type==='bank'?"<i class='bx bxs-bank'></i>":"<i class='bx bx-wallet'></i>"} ${t.from_safe||'—'}</td>
+    <td>${t.to_type==='bank'?"<i class='bx bxs-bank'></i>":"<i class='bx bx-wallet'></i>"} ${t.to_safe||'—'}</td>
     <td style="font-weight:700">${fmt(t.amount)}</td>
     <td>${t.creator||'—'}</td>
     <td style="font-size:12px">${displayVal(t.notes)}</td>
@@ -2268,7 +2283,7 @@ function paintTransfersTable(){
 
 function populateTransferForm(){
   const activeSafes = SAFES.filter(s => s.is_active !== false);
-  const opts = activeSafes.map(s=>`<option value="${s.id}">${s.type==='bank'?'🏦':'💵'} ${s.name} (${fmt(typeof s.balance==='number'?s.balance:getSafeBalance(s.id))})</option>`).join('');
+  const opts = activeSafes.map(s=>`<option value="${s.id}">${s.type==='bank'?"<i class='bx bxs-bank'></i>":"<i class='bx bx-wallet'></i>"} ${s.name} (${fmt(typeof s.balance==='number'?s.balance:getSafeBalance(s.id))})</option>`).join('');
   const from = document.getElementById('tr_from');
   const to = document.getElementById('tr_to');
   if (from) from.innerHTML = opts;
@@ -2375,16 +2390,16 @@ renderSafes = function(pc){
     <div class="card" style="margin-bottom:16px">
       <div class="card-body">
         <div class="tabs" style="margin-bottom:16px">
-          <button class="tab-btn ${safesTab==='safes'?'active':''}" onclick="switchSafesTab('safes')">💵 الصناديق والبنوك</button>
-          <button class="tab-btn ${safesTab==='transfers'?'active':''}" onclick="switchSafesTab('transfers')">🔄 سجل التحويلات</button>
+          <button class="tab-btn ${safesTab==='safes'?'active':''}" onclick="switchSafesTab('safes')"><i class='bx bx-wallet'></i> الصناديق والبنوك</button>
+          <button class="tab-btn ${safesTab==='transfers'?'active':''}" onclick="switchSafesTab('transfers')"><i class='bx bx-transfer'></i> سجل التحويلات</button>
         </div>
         ${safesTab==='safes' ? `
           <div class="filter-bar" style="margin-bottom:12px">
             <input type="text" class="form-control filter-control" id="sfSearch" placeholder="بحث بالاسم..." oninput="filterSafesList()">
             <select class="form-control filter-control" id="sfTypeFilter" onchange="reloadSafesList(1)"><option value="all">كل الأنواع</option><option value="cash">صناديق</option><option value="bank">بنوك</option></select>
             <select class="form-control filter-control" id="sfActiveFilter" onchange="reloadSafesList(1)"><option value="all">كل الحالات</option><option value="active">مفعل</option><option value="inactive">معطل</option></select>
-            ${canDo('manage_safes')?`<button class="btn btn-primary" onclick="showModal('newSafeModal')">➕ صندوق / بنك جديد</button>`:''}
-            ${canDo('manage_safes')?`<button class="btn btn-outline" onclick="populateTransferForm();showModal('newTransferModal')">🔄 تحويل</button>`:''}
+            ${canDo('manage_safes')?`<button class="btn btn-primary" onclick="showModal('newSafeModal')"><i class='bx bx-plus'></i> صندوق / بنك جديد</button>`:''}
+            ${canDo('manage_safes')?`<button class="btn btn-outline" onclick="populateTransferForm();showModal('newTransferModal')"><i class='bx bx-transfer'></i> تحويل</button>`:''}
           </div>
           <div id="sfTableWrap"><p style="padding:24px;text-align:center;color:var(--text-sm)">جاري التحميل...</p></div>
         ` : `
@@ -2392,7 +2407,7 @@ renderSafes = function(pc){
             <input type="date" class="form-control filter-control" id="trFrom" onchange="reloadTransfersList(1)">
             <input type="date" class="form-control filter-control" id="trTo" onchange="reloadTransfersList(1)">
             <input type="text" class="form-control filter-control" id="trSearch" placeholder="بحث..." oninput="filterTransfersList()">
-            ${canDo('manage_safes')?`<button class="btn btn-primary" onclick="populateTransferForm();showModal('newTransferModal')">➕ تحويل جديد</button>`:''}
+            ${canDo('manage_safes')?`<button class="btn btn-primary" onclick="populateTransferForm();showModal('newTransferModal')"><i class='bx bx-plus'></i> تحويل جديد</button>`:''}
           </div>
           <div id="trTableWrap"><p style="padding:24px;text-align:center;color:var(--text-sm)">جاري التحميل...</p></div>
         `}
@@ -2402,7 +2417,7 @@ renderSafes = function(pc){
       const bal = typeof s.balance === 'number' ? s.balance : getSafeBalance(s.id);
       const movements = (s.movements&&s.movements.length)?s.movements:[];
       return `<div class="card"><div class="card-body">
-        <div style="display:flex;justify-content:space-between;margin-bottom:12px"><div><h3>${s.type==='cash'?'💵':'🏦'} ${s.name}</h3><small style="color:var(--text-sm)">رصيد مبدئي: ${fmt(s.opening_balance??s.initial??0)}</small></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px"><div><h3>${s.type==='cash'?"<i class='bx bx-wallet'></i>":"<i class='bx bxs-bank'></i>"} ${s.name}</h3><small style="color:var(--text-sm)">رصيد مبدئي: ${fmt(s.opening_balance??s.initial??0)}</small></div>
         <div style="font-size:22px;font-weight:800;color:${bal>=0?'var(--success)':'var(--danger)'}">${fmt(bal)}</div></div>
         <div class="table-wrapper"><table class="table"><thead><tr><th>التاريخ</th><th>المرجع</th><th>وارد</th><th>صادر</th></tr></thead>
         <tbody>${movements.slice(0,5).map(j=>`<tr><td>${j.date}</td><td>${displayVal(j.ref)}</td><td style="color:var(--success)">${j.debit>0?fmt(j.debit):'—'}</td><td style="color:var(--danger)">${j.credit>0?fmt(j.credit):'—'}</td></tr>`).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--text-sm)">لا توجد حركات</td></tr>'}</tbody></table></div>
@@ -2550,10 +2565,10 @@ renderDashboard = function(pc){
   <div class="page-shell">
     ${dateFilterBar('dashFrom', 'dashTo', 'filterDashboard', DASHBOARD_DATA.from||'', DASHBOARD_DATA.to||today(), '<span style="font-size:12px;color:var(--text-sm);align-self:center">فترة الإحصائيات:</span>')}
     <div class="grid-kpi-4">
-      ${kpiCard('💰', salesLabel, fmt(todaySales), 'var(--primary)', salesSub)}
-      ${kpiCard('📈', profitLabel, fmt(todayProfit), 'var(--success)', formatMargin(todayProfit,todaySales))}
-      ${kpiCard('🧾','التحصيلات النقدية',fmt(totalReceipts),'var(--info)','')}
-      ${kpiCard('💸','إجمالي المدفوعات',fmt(totalPayments),'var(--warning)','')}
+      ${kpiCard('<i class="bx bxs-dollar-circle" style="font-size:24px"></i>', salesLabel, fmt(todaySales), 'var(--primary)', salesSub)}
+      ${kpiCard('<i class="bx bxs-wallet" style="font-size:24px"></i>', profitLabel, fmt(todayProfit), 'var(--success)', formatMargin(todayProfit,todaySales))}
+      ${kpiCard('<i class="bx bxs-receipt" style="font-size:24px"></i>','التحصيلات النقدية',fmt(totalReceipts),'var(--info)','')}
+      ${kpiCard('<i class="bx bxs-credit-card" style="font-size:24px"></i>','إجمالي المدفوعات',fmt(totalPayments),'var(--warning)','')}
     </div>
     <div class="grid-charts-2-1">
       <div class="card"><div class="card-header"><h3>حركة الأسبوع (قبض ودفع)</h3></div><div class="card-body" style="min-height:240px"><div class="chart-box"><canvas id="weekChart"></canvas></div></div></div>
@@ -2569,9 +2584,9 @@ renderDashboard = function(pc){
       </div>
       <div class="grid-stack">
         ${overdueList.length>0?`<div class="card" style="border-right:4px solid var(--warning)"><div class="card-header"><h3>⏰ متأخر التحصيل (+7 أيام)</h3></div><div class="card-body">${overdueList.map(o=>`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><b>${o.ref}</b> - ${o.client||clientName(o.client_id)}<br><small style="color:var(--danger)">تاريخ: ${o.date} | ${statusLabel[o.status]} | متبقي: ${fmt(+o.client_outstanding||0)}</small></div>`).join('')}</div></div>`:''}
-        <div class="card"><div class="card-header"><h3>🔴 أعلى 5 مدينين</h3></div><div class="card-body" style="padding:0"><div class="table-wrapper">
+        <div class="card"><div class="card-header"><h3>أعلى 5 مدينين</h3></div><div class="card-body" style="padding:0"><div class="table-wrapper">
         <table class="table"><thead><tr><th>العميل</th><th>المبلغ</th></tr></thead><tbody>${debtors.map(c=>`<tr><td>${c.name}</td><td style="color:var(--danger);font-weight:700">${fmt(c.bal)}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text-sm)">لا يوجد مدينون</td></tr>'}</tbody></table></div></div></div>
-        <div class="card"><div class="card-header"><h3>🟡 أعلى 5 دائنين</h3></div><div class="card-body" style="padding:0"><div class="table-wrapper">
+        <div class="card"><div class="card-header"><h3>أعلى 5 دائنين</h3></div><div class="card-body" style="padding:0"><div class="table-wrapper">
         <table class="table"><thead><tr><th>المورد</th><th>المبلغ</th></tr></thead><tbody>${creditors.map(v=>`<tr><td>${v.name}</td><td style="color:var(--warning);font-weight:700">${fmt(v.bal)}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text-sm)">لا يوجد دائنون</td></tr>'}</tbody></table></div></div></div>
       </div>
     </div>
@@ -2599,7 +2614,7 @@ renderSettings = function(pc){
     if (shell) {
       const hiddenCard = document.createElement('div');
       hiddenCard.className = 'card';
-      hiddenCard.innerHTML = `<div class="card-header"><h3>👤 العملاء المخفيون</h3></div>
+      hiddenCard.innerHTML = `<div class="card-header"><h3><i class='bx bx-user'></i> العملاء المخفيون</h3></div>
         <div class="card-body" style="padding:0"><div class="table-wrapper">
           <table class="table"><thead><tr><th>الاسم</th><th>الهاتف</th><th>الرصيد</th><th>الحالة</th><th>إجراءات</th></tr></thead>
           <tbody id="hiddenClientsBody"><tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-sm)">جاري التحميل...</td></tr></tbody>
@@ -2608,7 +2623,7 @@ renderSettings = function(pc){
 
       const hiddenOpsCard = document.createElement('div');
       hiddenOpsCard.className = 'card';
-      hiddenOpsCard.innerHTML = `<div class="card-header"><h3>📋 العمليات المخفية</h3></div>
+      hiddenOpsCard.innerHTML = `<div class="card-header"><h3><i class='bx bx-briefcase'></i> العمليات المخفية</h3></div>
         <div class="card-body" style="padding:0"><div class="table-wrapper">
           <table class="table"><thead><tr><th>المرجع</th><th>التاريخ</th><th>العميل</th><th>المبلغ</th><th>الحالة</th><th>إجراءات</th></tr></thead>
           <tbody id="hiddenOpsBody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-sm)">جاري التحميل...</td></tr></tbody>
@@ -2622,12 +2637,12 @@ renderSettings = function(pc){
   if(!shell) return;
   const card = document.createElement('div');
   card.className = 'card';
-  card.innerHTML = `<div class="card-header"><h3>🏢 فروع الوكالة</h3><button class="btn btn-primary btn-sm" onclick="resetNewOfficeForm();showModal('newOfficeModal')">➕ مكتب جديد</button></div>
+  card.innerHTML = `<div class="card-header"><h3><i class='bx bx-building'></i> فروع الوكالة</h3><button class="btn btn-primary btn-sm" onclick="resetNewOfficeForm();showModal('newOfficeModal')"><i class='bx bx-plus'></i> مكتب جديد</button></div>
     <div class="card-body" style="padding:0"><div class="table-wrapper">
       <table class="table"><thead><tr><th>الشعار</th><th>الرمز</th><th>الاسم</th><th>الحالة</th><th>إجراءات</th></tr></thead>
       <tbody>${OFFICES.map(o=>{
         const url = officeLogoUrl(o);
-        const logoCell = url ? `<img src="${url}" alt="" style="width:36px;height:36px;object-fit:contain;border-radius:8px;border:1px solid var(--border)">` : '<span style="font-size:22px" title="بدون شعار">🏢</span>';
+        const logoCell = url ? `<img src="${url}" alt="" style="width:36px;height:36px;object-fit:contain;border-radius:8px;border:1px solid var(--border)" onerror="this.src='logo.png'; this.onerror=null;">` : '<img src="logo.png" alt="" style="width:36px;height:36px;object-fit:contain;border-radius:8px;border:1px solid var(--border)" onerror="this.src=\'logo.png\'; this.onerror=null;">';
         return `<tr>
           <td>${logoCell}</td>
           <td><b>${o.office_code}</b></td>

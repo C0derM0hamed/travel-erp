@@ -4,103 +4,111 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>نظام إدارة خدمات السفر | Travel ERP</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+<link rel="icon" type="image/png" href="logo.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-:root{--primary:#1E3A8A;--primary-light:#2563EB;--success:#059669;--danger:#DC2626;--warning:#D97706;--info:#0891B2;--bg:#F1F5F9;--white:#fff;--card:#fff;--text:#1e293b;--text-sm:#64748b;--border:#e2e8f0;--sidebar-w:260px;--radius:12px;--shadow:0 1px 3px rgba(0,0,0,.08),0 4px 12px rgba(0,0,0,.05)}
+:root{--primary:#696CFF;--primary-dark:#5F61E6;--primary-light:#E7E7FF;--primary-muted:#F0F0FF;--success:#71DD37;--success-dark:#59AB2C;--success-light:#E8F8DE;--danger:#FF3E1D;--danger-light:#FFE0DB;--warning:#FFAB00;--warning-light:#FFF3CD;--info:#03C3EC;--info-light:#D7F4FC;--bg:#F4F6F9;--white:#fff;--card:#fff;--text:#383C47;--text-heading:#212332;--text-sm:#7F8498;--text-muted:#AAB0C5;--border:#D2D6E1;--border-light:#EAEDF2;--sidebar-w:270px;--radius:12px;--shadow-xs:0 2px 4px rgba(67,74,92,.04);--shadow-sm:0 4px 12px rgba(67,74,92,.06);--shadow:0 6px 16px rgba(67,74,92,.08);--shadow-md:0 12px 24px rgba(67,74,92,.12);--shadow-lg:0 16px 40px rgba(67,74,92,.16);--shadow-xl:0 24px 48px rgba(67,74,92,.20);--shadow-primary:0 6px 16px rgba(105,108,255,.35)}
 *{box-sizing:border-box;margin:0;padding:0}
 html{overflow-x:hidden;-webkit-text-size-adjust:100%}
-body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;direction:rtl;overflow-x:hidden}
+body{font-family:'Public Sans','Tajawal',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;direction:rtl;overflow-x:hidden;font-size:16px;line-height:1.6;letter-spacing:-0.01em}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(67,74,92,.2);border-radius:10px}
+::-webkit-scrollbar-thumb:hover{background:rgba(67,74,92,.4)}
 img,svg,video,canvas{max-width:100%;height:auto}
-#loginPage{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1E3A8A 0%,#1e4d8c 50%,#0f2d6b 100%)}
-.login-card{background:#fff;border-radius:20px;padding:48px 40px;width:100%;max-width:420px;box-shadow:0 25px 60px rgba(0,0,0,.3)}
+#loginPage{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#696CFF 0%,#5F61E6 50%,#4a4de0 100%)}
+.login-card{background:#fff;border-radius:16px;padding:48px 40px;width:100%;max-width:420px;box-shadow:var(--shadow-xl)}
 #loginPage{padding:16px}
 .login-logo{text-align:center;margin-bottom:32px}
-.login-logo .icon{width:72px;height:72px;background:linear-gradient(135deg,var(--primary),var(--primary-light));border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:32px}
-.login-logo h1{font-size:22px;font-weight:800;color:var(--primary);margin-bottom:4px}
+.login-logo .icon{width:72px;height:72px;background:transparent;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:32px;overflow:hidden}
+.login-logo .icon img{width:100%;height:100%;object-fit:contain}
+.login-logo h1{font-size:22px;font-weight:700;color:var(--text-heading);margin-bottom:4px}
 .login-logo p{font-size:13px;color:var(--text-sm)}
 .form-group{margin-bottom:20px}
-.form-group label{display:block;font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px}
-.form-control{width:100%;padding:12px 16px;border:1.5px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;color:var(--text);background:var(--bg);transition:.2s;outline:none}
-.form-control:focus{border-color:var(--primary);background:#fff;box-shadow:0 0 0 3px rgba(30,58,138,.1)}
-.btn-login{width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;border:none;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:16px;font-weight:700;cursor:pointer;transition:.2s;margin-top:8px}
-.btn-login:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(30,58,138,.4)}
+.form-group label{display:block;font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px}
+.form-control{width:100%;padding:10px 16px;border:1px solid var(--border);border-radius:8px;font-family:'Public Sans','Tajawal',sans-serif;font-size:15px;color:var(--text);background:#fff;transition:all .2s ease;outline:none;height:42px}
+.form-control:focus{border-color:var(--primary);background:#fff;box-shadow:0 0 0 4px rgba(105,108,255,.12)}
+.btn-login{width:100%;padding:14px;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);color:#fff;border:none;border-radius:8px;font-family:'Public Sans','Tajawal',sans-serif;font-size:16px;font-weight:700;cursor:pointer;transition:all .2s ease;margin-top:12px;box-shadow:var(--shadow-primary)}
+.btn-login:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(105,108,255,.45)}
 .toast-container{position:fixed;top:20px;left:20px;z-index:9999;display:flex;flex-direction:column;gap:10px;max-width:360px;pointer-events:none}
-.toast{padding:14px 18px;border-radius:10px;font-size:14px;font-weight:600;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.15);opacity:0;transform:translateY(-8px);transition:opacity .25s,transform .25s;pointer-events:auto}
+.toast{padding:14px 18px;border-radius:8px;font-size:13px;font-weight:500;color:var(--text);background:#fff;box-shadow:var(--shadow-md);border-left:4px solid var(--info);opacity:0;transform:translateY(-8px);transition:opacity .25s,transform .25s;pointer-events:auto}
 .toast.show{opacity:1;transform:translateY(0)}
-.toast-success{background:var(--success)}
-.toast-error{background:var(--danger)}
-.toast-warning{background:var(--warning)}
-.toast-info{background:var(--primary)}
+.toast-success{border-left-color:var(--success)}
+.toast-error{border-left-color:var(--danger)}
+.toast-warning{border-left-color:var(--warning)}
+.toast-info{border-left-color:var(--primary)}
 #appLayout{display:none;min-height:100vh;min-height:100dvh;overflow:hidden}
-.sidebar{width:var(--sidebar-w);height:100vh;height:100dvh;background:var(--primary);position:fixed;right:0;top:0;display:flex;flex-direction:column;z-index:100;transition:transform .3s ease}
+.sidebar{width:var(--sidebar-w);height:100vh;height:100dvh;background:#2B2C40;position:fixed;right:0;top:0;display:flex;flex-direction:column;z-index:100;transition:transform .3s ease;border-left:1px solid rgba(255,255,255,0.08)}
 .sidebar-backdrop{display:none}
-.btn-menu{display:none;width:40px;height:40px;border:1.5px solid var(--border);border-radius:10px;background:#fff;cursor:pointer;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;color:var(--text)}
-.sidebar-logo{padding:24px 20px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:12px}
-.sidebar-logo .s-icon{width:40px;height:40px;background:rgba(255,255,255,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
-.sidebar-logo span{color:#fff;font-size:15px;font-weight:700;line-height:1.3}
+.btn-menu{display:none;width:40px;height:40px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;color:var(--text)}
+.sidebar-logo{padding:20px;height:64px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:12px}
+.sidebar-logo .s-icon{width:40px;height:40px;background:rgba(255,255,255,0.05);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;overflow:hidden}
+.sidebar-logo .s-icon img{width:100%;height:100%;object-fit:contain;border-radius:10px;display:block}
+.sidebar-logo span{color:#fff;font-size:14px;font-weight:700;line-height:1.3}
+.sidebar-logo span small{color:rgba(255,255,255,0.5)!important}
 .sidebar-nav{flex:1;overflow-y:auto;padding:12px 0}
-.nav-section{padding:8px 16px 4px;font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px}
-.nav-item{display:flex;align-items:center;gap:12px;padding:10px 20px;color:rgba(255,255,255,.75);cursor:pointer;transition:.15s;font-size:14px;font-weight:500;border-right:3px solid transparent;margin:1px 0}
-.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
-.nav-item.active{background:rgba(255,255,255,.15);color:#fff;border-right-color:#fff}
-.nav-icon{width:20px;text-align:center;font-size:16px;flex-shrink:0}
-.sidebar-footer{padding:16px;border-top:1px solid rgba(255,255,255,.1)}
-.user-info{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,.1);border-radius:10px;cursor:pointer}
-.user-avatar{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px}
-.user-meta span{display:block;color:#fff;font-size:13px;font-weight:600}
-.user-meta small{color:rgba(255,255,255,.6);font-size:11px}
-.main-content{margin-right:var(--sidebar-w);height:100vh;height:100dvh;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;min-width:0}
-.topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 16px;min-height:64px;height:auto;display:flex;align-items:center;gap:10px;flex-shrink:0;position:sticky;top:0;z-index:50;flex-wrap:wrap}
-.topbar-office-logo{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:18px}
-.topbar-office-logo img{width:100%;height:100%;object-fit:contain}
-.topbar-office-logo{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:18px}
-.topbar-office-logo img{width:100%;height:100%;object-fit:contain}
+.nav-section{padding:16px 20px 4px;font-size:11px;font-weight:600;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.08em}
+.nav-item{display:flex;align-items:center;gap:12px;padding:12px 20px;color:rgba(255,255,255,0.65);cursor:pointer;transition:all .2s cubic-bezier(0.4, 0, 0.2, 1);font-size:15px;font-weight:600;border-right:3px solid transparent;margin:4px 12px;border-radius:8px}
+.nav-item:hover{background:rgba(255,255,255,0.08);color:#fff;transform:translateX(-2px)}
+.nav-item.active{background:linear-gradient(270deg, rgba(105,108,255,0.25) 0%, rgba(105,108,255,0.08) 100%);color:#fff;border-right-color:var(--primary);box-shadow:inset -3px 0 0 var(--primary)}
+.nav-icon{width:24px;text-align:center;font-size:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:inherit;transition:all .2s ease}
+.nav-item.active .nav-icon{color:var(--primary)}
+.sidebar-footer{padding:16px;border-top:1px solid rgba(255,255,255,0.08)}
+.user-info{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.05);border-radius:8px;cursor:pointer}
+.user-avatar{width:36px;height:36px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px}
+.user-meta span{display:block;color:#fff;font-size:14px;font-weight:700}
+.user-meta small{color:rgba(255,255,255,0.5);font-size:12px;font-weight:500}
+.main-content{margin-right:var(--sidebar-w);height:100vh;height:100dvh;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;min-width:0;transition:margin .3s ease}
+.topbar{background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(0,0,0,0.05);padding:0 24px;min-height:72px;height:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;position:sticky;top:0;z-index:50;flex-wrap:wrap;box-shadow:0 1px 10px rgba(0,0,0,0.03)}
 .topbar-office-logo{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:18px}
 .topbar-office-logo img{width:100%;height:100%;object-fit:contain}
 .search-box{flex:1;min-width:0;max-width:400px;position:relative}
-.search-box input{width:100%;padding:9px 16px 9px 38px;border:1.5px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;background:var(--bg);outline:none;transition:.2s}
-.search-box input:focus{border-color:var(--primary);background:#fff}
+.search-box input{width:100%;padding:10px 16px 10px 42px;border:none;border-radius:24px;font-family:'Public Sans','Tajawal',sans-serif;font-size:15px;background:var(--bg);outline:none;transition:all .2s ease;height:44px}
+.search-box input:focus{background:#fff;box-shadow:0 0 0 4px rgba(105,108,255,0.15);transform:translateY(-1px)}
 .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-sm);font-size:16px}
 .topbar-actions{margin-right:auto;display:flex;align-items:center;gap:8px}
-.btn-icon{width:38px;height:38px;border:1.5px solid var(--border);border-radius:10px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:.15s;position:relative}
-.btn-icon:hover{border-color:var(--primary);color:var(--primary)}
-.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;position:static;width:auto;height:auto;line-height:1.3}
-.badge-success{background:rgba(5,150,105,.15);color:var(--success)}
-.badge-danger{background:rgba(220,38,38,.1);color:var(--danger)}
-.badge-warning{background:rgba(217,119,6,.15);color:var(--warning)}
-.badge-info{background:rgba(8,145,178,.1);color:var(--info)}
-.page-content{padding:16px;flex:1;min-width:0}
-.page-shell{padding:16px;min-width:0}
-.page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+.btn-icon{width:40px;height:40px;border:none;border-radius:8px;background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;transition:all .2s ease;position:relative;color:var(--text-sm)}
+.btn-icon:hover{background:var(--primary-light);color:var(--primary);transform:translateY(-2px);box-shadow:var(--shadow-sm)}
+.badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:30px;font-size:12px;font-weight:700;white-space:nowrap;line-height:1.3;height:24px;gap:6px}
+.badge-success{background:rgba(113,221,55,0.12);color:var(--success-dark)}
+.badge-danger{background:rgba(255,62,29,0.12);color:var(--danger)}
+.badge-warning{background:rgba(255,171,0,0.12);color:var(--warning)}
+.badge-info{background:rgba(3,195,236,0.12);color:var(--info)}
+.page-content{padding:24px 32px;flex:1;min-width:0}
+.page-shell{padding:24px 32px;min-width:0}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:32px;flex-wrap:wrap}
 .card-header-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .card-header-actions .form-control,.filter-bar .form-control,.filter-control{flex:1 1 140px;min-width:0;max-width:100%;width:auto}
 .filter-bar .form-control,.filter-control{min-width:120px}
-.page-title h2{font-size:22px;font-weight:800;color:var(--text)}
-.page-title p{font-size:13px;color:var(--text-sm);margin-top:2px}
-.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:.15s;text-decoration:none}
-.btn-primary{background:var(--primary);color:#fff}
-.btn-primary:hover{background:var(--primary-light);box-shadow:0 4px 12px rgba(30,58,138,.3)}
-.btn-success{background:var(--success);color:#fff}
-.btn-success:hover{background:#047857}
-.btn-danger{background:var(--danger);color:#fff}
-.btn-danger:hover{background:#b91c1c}
-.btn-outline{background:#fff;color:var(--text);border:1.5px solid var(--border)}
-.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
-.btn-sm{padding:7px 14px;font-size:13px}
-.btn-xs{padding:4px 10px;font-size:12px;border-radius:6px}
-.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border)}
-.card-header{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
-.card-header h3{font-size:15px;font-weight:700;color:var(--text);flex:1;min-width:0}
+.page-title h2{font-size:26px;font-weight:800;color:var(--text-heading);letter-spacing:-0.02em}
+.page-title p{font-size:14px;color:var(--text-sm);margin-top:4px;font-weight:500}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:8px;font-family:'Public Sans','Tajawal',sans-serif;font-size:15px;font-weight:600;cursor:pointer;border:none;transition:all .2s cubic-bezier(0.4, 0, 0.2, 1);text-decoration:none;height:42px}
+.btn-primary{background:linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);color:#fff;box-shadow:var(--shadow-primary)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(105,108,255,.45)}
+.btn-success{background:linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);color:#fff;box-shadow:0 4px 12px rgba(113,221,55,.3)}
+.btn-success:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(113,221,55,.45)}
+.btn-danger{background:linear-gradient(135deg, var(--danger) 0%, #E03518 100%);color:#fff;box-shadow:0 4px 12px rgba(255,62,29,.3)}
+.btn-danger:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(255,62,29,.45)}
+.btn-outline{background:#fff;color:var(--text-heading);border:2px solid var(--border)}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-muted);transform:translateY(-2px)}
+.btn-sm{padding:8px 16px;font-size:14px;height:36px}
+.btn-xs{padding:6px 12px;font-size:12px;border-radius:6px;height:28px}
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-md);border:1px solid rgba(255,255,255,0.8);transition:all .3s ease}
+.card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px)}
+.card-header{padding:20px 24px;border-bottom:1px solid var(--border-light);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:var(--radius) var(--radius) 0 0}
+.card-header h3{font-size:18px;font-weight:700;color:var(--text-heading);flex:1;min-width:0;display:flex;align-items:center;gap:10px}
 .card-body{padding:20px}
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
-.kpi-card{background:var(--card);border-radius:var(--radius);padding:20px;border:1px solid var(--border);box-shadow:var(--shadow)}
-.kpi-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:12px}
-.kpi-card.blue .kpi-icon{background:rgba(30,58,138,.1);color:var(--primary)}
-.kpi-card.green .kpi-icon{background:rgba(5,150,105,.1);color:var(--success)}
-.kpi-card.amber .kpi-icon{background:rgba(217,119,6,.1);color:var(--warning)}
-.kpi-card.cyan .kpi-icon{background:rgba(8,145,178,.1);color:var(--info)}
+.kpi-card{background:var(--card);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow-md);border:1px solid rgba(255,255,255,0.8);transition:all .3s ease}
+.kpi-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
+.kpi-icon{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:16px;box-shadow:0 4px 12px rgba(0,0,0,0.05)}
+.kpi-card.blue .kpi-icon{background:rgba(105,108,255,.15);color:var(--primary)}
+.kpi-card.green .kpi-icon{background:rgba(113,221,55,.15);color:var(--success)}
+.kpi-card.amber .kpi-icon{background:rgba(255,171,0,.15);color:var(--warning)}
+.kpi-card.cyan .kpi-icon{background:rgba(3,195,236,.15);color:var(--info)}
 .kpi-val{font-size:24px;font-weight:800;color:var(--text);margin-bottom:4px}
 .kpi-label{font-size:12px;color:var(--text-sm);font-weight:500}
 .kpi-change{font-size:12px;font-weight:600;margin-top:8px;padding:3px 8px;border-radius:20px;display:inline-block}
@@ -108,31 +116,43 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .kpi-change.down{background:rgba(220,38,38,.1);color:var(--danger)}
 .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
 .chart-container{position:relative;height:220px}
-.table-wrapper{overflow-x:auto;border-radius:var(--radius)}
-table{width:100%;border-collapse:collapse}
-thead{background:#F8FAFC}
-th{padding:11px 16px;text-align:right;font-size:12px;font-weight:700;color:var(--text-sm);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;border-bottom:2px solid var(--border)}
-td{padding:12px 16px;font-size:13px;color:var(--text);border-bottom:1px solid var(--border);vertical-align:middle}
-tr:last-child td{border-bottom:none}
-tr:hover td{background:#F8FAFC}
-.badge-status{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
-.badge-new{background:rgba(8,145,178,.1);color:var(--info)}
-.badge-processing{background:rgba(217,119,6,.1);color:var(--warning)}
-.badge-completed{background:rgba(5,150,105,.1);color:var(--success)}
-.badge-cancelled{background:rgba(220,38,38,.1);color:var(--danger)}
-.badge-paid{background:rgba(5,150,105,.15);color:var(--success)}
-.badge-partial{background:rgba(217,119,6,.15);color:var(--warning)}
-.badge-unpaid{background:rgba(220,38,38,.1);color:var(--danger)}
+.table-wrapper{overflow-x:auto;border-radius:var(--radius);padding-bottom:10px}
+table{width:100%;border-collapse:separate;border-spacing:0;margin-bottom:8px}
+thead{background:transparent}
+th{padding:16px 24px;text-align:right;font-size:14px;font-weight:700;color:var(--text-sm);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;border-bottom:1px solid var(--border-light);height:52px;background:var(--bg)}
+th:first-child{border-radius:0 12px 12px 0}
+th:last-child{border-radius:12px 0 0 12px}
+td{padding:18px 24px;font-size:16px;color:var(--text-heading);border-bottom:1px solid var(--border-light);vertical-align:middle;font-weight:500;background:#fff}
+tr{transition:all .2s ease;position:relative}
+tr:hover td{background:var(--primary-muted)}
+tr:hover td:first-child{box-shadow:inset -3px 0 0 var(--primary)}
+.badge-status{padding:6px 14px;border-radius:30px;font-size:12px;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;border:1px solid transparent}
+.badge-new{background:rgba(3,195,236,0.12);color:var(--info);border-color:rgba(3,195,236,0.2)}
+.badge-processing{background:rgba(105,108,255,0.12);color:var(--primary);border-color:rgba(105,108,255,0.2)}
+.badge-completed{background:rgba(113,221,55,0.12);color:var(--success);border-color:rgba(113,221,55,0.2)}
+.badge-cancelled{background:rgba(255,62,29,0.12);color:var(--danger);border-color:rgba(255,62,29,0.2)}
+.badge-paid{background:rgba(113,221,55,0.12);color:var(--success);border-color:rgba(113,221,55,0.2)}
+.badge-partial{background:rgba(255,171,0,0.12);color:var(--warning);border-color:rgba(255,171,0,0.2)}
+.badge-unpaid{background:rgba(255,62,29,0.12);color:var(--danger);border-color:rgba(255,62,29,0.2)}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;color:var(--text-sm)}
+.empty-state i{font-size:64px;color:var(--border);margin-bottom:16px;opacity:0.7}
+.empty-state h4{font-size:18px;color:var(--text-heading);margin-bottom:8px;font-weight:700}
+.empty-state p{font-size:14px;max-width:320px;margin:0 auto}
+.avatar-circle{width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;margin-left:12px;flex-shrink:0}
+.client-cell{display:flex;align-items:center;}
+.client-cell div{display:flex;flex-direction:column}
+.client-cell span{font-size:14px;font-weight:700;color:var(--text-heading)}
+.client-cell small{font-size:12px;color:var(--text-sm)}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
 .modal-overlay.open{display:flex}
 .modal-overlay{padding:12px}
-.modal{background:#fff;border-radius:16px;width:100%;max-width:600px;max-height:calc(100dvh - 24px);overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.25);animation:slideUp .25s}
+.modal{background:#fff;border-radius:16px;width:100%;max-width:600px;max-height:calc(100dvh - 32px);overflow-y:auto;box-shadow:var(--shadow-xl);animation:slideUp .3s cubic-bezier(0.4, 0, 0.2, 1)}
 .modal-lg{max-width:min(800px,95vw)}
-.modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1}
-.modal-header h3{font-size:17px;font-weight:700}
-.modal-close{width:32px;height:32px;border:none;background:var(--bg);border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
-.modal-close:hover{background:var(--border)}
-.modal-body{padding:24px}
+.modal-header{padding:24px 32px;border-bottom:1px solid var(--border-light);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(255,255,255,0.95);backdrop-filter:blur(8px);z-index:10}
+.modal-header h3{font-size:20px;font-weight:800;color:var(--text-heading);display:flex;align-items:center;gap:10px}
+.modal-close{width:36px;height:36px;border:none;background:var(--bg);border-radius:8px;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;color:var(--text-sm);transition:all .2s ease}
+.modal-close:hover{background:var(--danger-light);color:var(--danger);transform:rotate(90deg)}
+.modal-body{padding:32px}
 .modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;position:sticky;bottom:0;background:#fff}
 .modal-footer .btn{flex:1 1 auto;min-width:fit-content}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
@@ -159,9 +179,10 @@ textarea.form-control{resize:vertical;min-height:80px}
 .table-pager-actions{display:flex;gap:6px;flex-wrap:wrap}
 .journal-line-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:4px}
 @media (max-width:639px){.journal-line-grid{grid-template-columns:1fr}}
-.tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px}
-.tab-btn{padding:10px 20px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:600;background:none;border:none;color:var(--text-sm);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.15s}
-.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
+.tabs{display:flex;gap:8px;border-bottom:2px solid var(--border-light);margin-bottom:24px;overflow-x:auto;padding-bottom:2px}
+.tab-btn{padding:12px 24px;font-family:'Public Sans','Tajawal',sans-serif;font-size:15px;font-weight:700;background:none;border:none;color:var(--text-sm);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .2s ease;border-radius:12px 12px 0 0;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.tab-btn:hover{color:var(--primary);background:var(--primary-muted)}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);background:linear-gradient(180deg, transparent 0%, var(--primary-muted) 100%)}
 .tab-pane{display:none}
 .tab-pane.active{display:block}
 .stats-row{display:flex;gap:12px;flex-wrap:wrap}
@@ -173,8 +194,8 @@ textarea.form-control{resize:vertical;min-height:80px}
 .drawer{position:fixed;left:0;top:0;width:min(580px,100vw);max-width:100vw;height:100vh;height:100dvh;background:#fff;z-index:901;transform:translateX(-100%);transition:.3s ease;overflow-y:auto;overflow-x:hidden;box-shadow:-20px 0 60px rgba(0,0,0,.2)}
 .drawer.drawer-wide{width:min(680px,100vw)}
 .drawer.open{transform:translateX(0)}
-.drawer-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;position:sticky;top:0;background:#fff;z-index:1}
-.drawer-header h3{flex:1;min-width:0;font-size:16px;line-height:1.35}
+.drawer-header{padding:24px 32px;border-bottom:1px solid var(--border-light);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;position:sticky;top:0;background:rgba(255,255,255,0.95);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:10}
+.drawer-header h3{flex:1;min-width:0;font-size:20px;font-weight:800;color:var(--text-heading);line-height:1.35;display:flex;align-items:center;gap:10px}
 .drawer-body{padding:24px;min-width:0}
 .drawer-body .table-wrapper{margin-bottom:12px}
 .drawer-body .table-wrapper .table{min-width:480px}
@@ -185,9 +206,7 @@ textarea.form-control{resize:vertical;min-height:80px}
 .text-danger{color:var(--danger)!important;font-weight:700}
 .text-primary{color:var(--primary)!important;font-weight:700}
 .text-warning{color:var(--warning)!important;font-weight:700}
-.empty-state{text-align:center;padding:48px 24px;color:var(--text-sm)}
-.empty-state .e-icon{font-size:48px;margin-bottom:12px;opacity:.3}
-.empty-state p{font-size:15px;font-weight:600}
+/* legacy empty-state styling removed to prevent conflicts */
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:500;z-index:9999;opacity:0;transition:.3s;pointer-events:none;white-space:nowrap}
 #toast.show{opacity:1}
 body[data-auth="login"] #appLayout{display:none!important}
@@ -198,9 +217,7 @@ body[data-auth="app"] #loginPage{display:none!important}
 .drawer-overlay.open,.drawer-overlay.is-open{display:block}
 @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-::-webkit-scrollbar{width:6px;height:6px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:3px}
+/* legacy scrollbar styling removed to preserve custom thin scrollbar */
 @media (max-width:1279px){
   .kpi-grid{grid-template-columns:repeat(2,1fr)}
   .grid-kpi-4{grid-template-columns:repeat(2,1fr)}
@@ -212,7 +229,7 @@ body[data-auth="app"] #loginPage{display:none!important}
   .sidebar-backdrop{display:block;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:99;opacity:0;pointer-events:none;transition:opacity .2s}
   body.sidebar-open{overflow:hidden}
   body.sidebar-open .sidebar-backdrop{opacity:1;pointer-events:auto}
-  .sidebar{transform:translateX(100%);box-shadow:-8px 0 32px rgba(0,0,0,.25)}
+  .sidebar{transform:translateX(100%);box-shadow:-8px 0 32px rgba(67,74,92,.15)}
   body.sidebar-open .sidebar{transform:translateX(0)}
   .main-content{margin-right:0;width:100%}
   .topbar{padding:10px 12px}
@@ -253,6 +270,23 @@ body[data-auth="app"] #loginPage{display:none!important}
   .modal-overlay{align-items:center;padding:12px}
   .modal{border-radius:16px;max-height:90vh}
 }
+.profile-settings .profile-section-title{font-size:14px;font-weight:700;margin:0 0 12px;color:var(--text-heading)}
+.profile-settings .profile-divider{border:none;border-top:1px solid var(--border-light);margin:24px 0}
+.profile-settings .profile-hint{font-size:12px;color:var(--text-sm);margin:0 0 12px}
+.profile-settings .profile-actions{display:flex;flex-wrap:wrap;gap:8px}
+.profile-settings .profile-alert{margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:13px}
+.password-field{position:relative;display:flex;align-items:stretch}
+.password-field .form-control{padding-left:44px;width:100%}
+.password-toggle{position:absolute;left:8px;top:50%;transform:translateY(-50%);width:36px;height:36px;min-width:36px;min-height:36px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--text-sm);font-size:18px;line-height:1;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.password-toggle:hover,.password-toggle:focus-visible{background:var(--bg);outline:2px solid var(--primary);outline-offset:1px}
+.password-toggle .eye-closed{display:none}
+.password-toggle.is-visible .eye-open{display:none}
+.password-toggle.is-visible .eye-closed{display:inline}
+.office-logo-field{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.office-logo-preview{width:72px;height:72px;border-radius:8px;border:1px dashed var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
+.office-logo-preview img{width:100%;height:100%;object-fit:contain}
+.office-logo-fallback{font-size:28px;line-height:1}
+.office-logo-actions{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:180px}
 </style>
 </head>
 <body data-auth="login">
@@ -260,7 +294,7 @@ body[data-auth="app"] #loginPage{display:none!important}
 <div id="loginPage">
 <div class="login-card">
   <div class="login-logo">
-    <div class="icon">&#x2708;&#xFE0F;</div>
+    <div class="icon"><img src="logo.png" alt="Logo" onerror="this.src='logo.png'; this.onerror=null;"></div>
     <h1>نظام إدارة خدمات السفر</h1>
     <p>نظام تشغيل ومحاسبة خدمات السفر</p>
   </div>
@@ -273,23 +307,23 @@ body[data-auth="app"] #loginPage{display:none!important}
 <div id="appLayout">
   <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeMobileSidebar()" aria-hidden="true"></div>
   <aside class="sidebar" id="appSidebar">
-    <div class="sidebar-logo"><div class="s-icon" id="sidebarOfficeLogo">&#x2708;&#xFE0F;</div><span id="sidebarOfficeName">نظام السفر<br><small style="font-size:10px;opacity:.6">ERP للوكالات</small></span></div>
+    <div class="sidebar-logo"><div class="s-icon" id="sidebarOfficeLogo"><img src="logo.png" alt="Logo" onerror="this.src='logo.png'; this.onerror=null;"></div><span id="sidebarOfficeName">نظام السفر<br><small style="font-size:10px;opacity:.6">ERP للوكالات</small></span></div>
     <nav class="sidebar-nav">
       <div class="nav-section">الرئيسية</div>
-      <div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')"><span class="nav-icon">&#x1F4CA;</span> لوحة التحكم</div>
+      <div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')"><span class="nav-icon"><i class='bx bxs-dashboard'></i></span> لوحة التحكم</div>
       <div class="nav-section">التشغيل</div>
-      <div class="nav-item" data-page="operations" onclick="navigate('operations')"><span class="nav-icon">&#x1F4CB;</span> العمليات</div>
-      <div class="nav-item" data-page="clients" onclick="navigate('clients')"><span class="nav-icon">&#x1F465;</span> العملاء</div>
-      <div class="nav-item" data-page="vendors" onclick="navigate('vendors')"><span class="nav-icon">&#x1F3E2;</span> المكاتب والمزودون</div>
+      <div class="nav-item" data-page="operations" onclick="navigate('operations')"><span class="nav-icon"><i class='bx bxs-briefcase'></i></span> العمليات</div>
+      <div class="nav-item" data-page="clients" onclick="navigate('clients')"><span class="nav-icon"><i class='bx bxs-group'></i></span> العملاء</div>
+      <div class="nav-item" data-page="vendors" onclick="navigate('vendors')"><span class="nav-icon"><i class='bx bxs-business'></i></span> المكاتب والمزودون</div>
       <div class="nav-section">المالية</div>
-      <div class="nav-item" data-page="vouchers" onclick="navigate('vouchers')"><span class="nav-icon">&#x1F9FE;</span> السندات</div>
-      <div class="nav-item" data-page="journal" onclick="navigate('journal')"><span class="nav-icon">&#x1F4D2;</span> دفتر الأستاذ</div>
-      <div class="nav-item" data-page="safes" onclick="navigate('safes')"><span class="nav-icon">&#x1F3E6;</span> الصناديق والبنوك</div>
+      <div class="nav-item" data-page="vouchers" onclick="navigate('vouchers')"><span class="nav-icon"><i class='bx bxs-receipt'></i></span> السندات</div>
+      <div class="nav-item" data-page="journal" onclick="navigate('journal')"><span class="nav-icon"><i class='bx bxs-book-content'></i></span> دفتر الأستاذ</div>
+      <div class="nav-item" data-page="safes" onclick="navigate('safes')"><span class="nav-icon"><i class='bx bxs-wallet'></i></span> الصناديق والبنوك</div>
       <div class="nav-section">التقارير</div>
-      <div class="nav-item" data-page="reports" onclick="navigate('reports')"><span class="nav-icon">&#x1F4C8;</span> التقارير</div>
-      <div class="nav-item" data-page="activity" onclick="navigate('activity')"><span class="nav-icon">&#x1F4DD;</span> سجل النشاط</div>
+      <div class="nav-item" data-page="reports" onclick="navigate('reports')"><span class="nav-icon"><i class='bx bxs-bar-chart-alt-2'></i></span> التقارير</div>
+      <div class="nav-item" data-page="activity" onclick="navigate('activity')"><span class="nav-icon"><i class='bx bx-history'></i></span> سجل النشاط</div>
       <div class="nav-section">الإعدادات</div>
-      <div class="nav-item" data-page="settings" onclick="navigate('settings')"><span class="nav-icon">&#x2699;&#xFE0F;</span> الإعدادات</div>
+      <div class="nav-item" data-page="settings" onclick="navigate('settings')"><span class="nav-icon"><i class='bx bxs-cog'></i></span> الإعدادات</div>
     </nav>
     <div class="sidebar-footer">
       <div class="user-info" onclick="navigate('settings')">
@@ -303,10 +337,10 @@ body[data-auth="app"] #loginPage{display:none!important}
       <button type="button" class="btn-menu" id="sidebarMenuBtn" onclick="toggleMobileSidebar()" aria-label="فتح القائمة">&#9776;</button>
       <select class="form-control" id="officeSwitcher" style="max-width:180px;display:none" onchange="switchOffice(this.value)" title="المكتب الحالي"></select>
       <div class="topbar-office-logo" id="topbarOfficeLogo" style="display:none" title="شعار المكتب"></div>
-      <div class="search-box"><span class="search-icon">&#x1F50D;</span><input type="text" placeholder="بحث برقم عملية أو اسم عميل..." id="globalSearch" oninput="globalSearchFn(this.value)"></div>
+      <div class="search-box"><span class="search-icon"><i class='bx bx-search'></i></span><input type="text" placeholder="بحث برقم عملية أو اسم عميل..." id="globalSearch" oninput="globalSearchFn(this.value)"></div>
       <div class="topbar-actions">
-        <div class="btn-icon" id="topbarNewOpBtn" onclick="showModal('newOpModal');populateOpForm()" title="عملية جديدة">&#x2795;</div>
-        <div class="btn-icon" onclick="doLogout()" title="خروج">&#x1F6AA;</div>
+        <div class="btn-icon" id="topbarNewOpBtn" onclick="showModal('newOpModal');populateOpForm()" title="عملية جديدة"><i class='bx bx-plus'></i></div>
+        <div class="btn-icon" onclick="doLogout()" title="خروج"><i class='bx bx-log-out'></i></div>
       </div>
     </div>
     <div class="page-content" id="pageContent"></div>
@@ -315,7 +349,7 @@ body[data-auth="app"] #loginPage{display:none!important}
 <!-- MODALS -->
 <div class="modal-overlay" id="newOpModal">
 <div class="modal modal-lg">
-  <div class="modal-header"><h3>&#x2795; إنشاء عملية جديدة</h3><button class="modal-close" onclick="closeModal('newOpModal')">&#x2715;</button></div>
+  <div class="modal-header"><h3>إنشاء عملية جديدة</h3><button class="modal-close" onclick="closeModal('newOpModal')"><i class='bx bx-x'></i></button></div>
   <div class="modal-body">
     <div id="newOpModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
     <div class="form-row">
@@ -337,19 +371,19 @@ body[data-auth="app"] #loginPage{display:none!important}
     </div>
     <div class="form-row full"><div class="form-group"><label>ملاحظات</label><textarea class="form-control" id="op_notes"></textarea></div></div>
     <div id="op_journal_preview" style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:10px;padding:16px;display:none">
-      <p style="font-size:13px;font-weight:700;color:var(--info);margin-bottom:10px">&#x1F4D2; القيود المحاسبية الآلية المتوقعة:</p>
+      <p style="font-size:13px;font-weight:700;color:var(--info);margin-bottom:10px">القيود المحاسبية الآلية المتوقعة:</p>
       <div id="op_journal_lines" style="font-size:12px"></div>
     </div>
   </div>
   <div class="modal-footer">
     <button class="btn btn-outline" onclick="closeModal('newOpModal')">إلغاء</button>
-    <button class="btn btn-primary" onclick="saveOperation()">&#x1F4BE; حفظ العملية وإنشاء القيود</button>
+    <button class="btn btn-primary" onclick="saveOperation()"><i class='bx bx-save'></i> حفظ العملية وإنشاء القيود</button>
   </div>
 </div>
 </div>
 <div class="modal-overlay" id="newClientModal">
 <div class="modal">
-  <div class="modal-header"><h3>&#x1F464; إضافة عميل جديد</h3><button class="modal-close" onclick="closeModal('newClientModal')">&#x2715;</button></div>
+  <div class="modal-header"><h3>إضافة عميل جديد</h3><button class="modal-close" onclick="closeModal('newClientModal')"><i class='bx bx-x'></i></button></div>
   <div class="modal-body">
     <div id="newClientModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
     <div class="form-row"><div class="form-group"><label>الاسم الكامل *</label><input type="text" class="form-control" id="cl_name"></div><div class="form-group"><label>رقم الهاتف *</label><input type="text" class="form-control" id="cl_phone"></div></div>
@@ -362,7 +396,7 @@ body[data-auth="app"] #loginPage{display:none!important}
 </div>
 <div class="modal-overlay" id="newVendorModal">
 <div class="modal">
-  <div class="modal-header"><h3>&#x1F3E2; إضافة مكتب/مزود جديد</h3><button class="modal-close" onclick="closeModal('newVendorModal')">&#x2715;</button></div>
+  <div class="modal-header"><h3>إضافة مكتب/مزود جديد</h3><button class="modal-close" onclick="closeModal('newVendorModal')"><i class='bx bx-x'></i></button></div>
   <div class="modal-body">
     <div class="form-row"><div class="form-group"><label>اسم المكتب *</label><input type="text" class="form-control" id="vn_name"></div><div class="form-group"><label>التصنيف</label><select class="form-control" id="vn_category"><option value="airline">شركة طيران</option><option value="hotel">فندق</option><option value="visa">مكتب تأشيرات</option><option value="transport">نقل وسياحة</option><option value="other">أخرى</option></select></div></div>
     <div class="form-row"><div class="form-group"><label>رقم الهاتف</label><input type="text" class="form-control" id="vn_phone"></div><div class="form-group"><label>جهة الاتصال</label><input type="text" class="form-control" id="vn_contact"></div></div>
@@ -373,7 +407,7 @@ body[data-auth="app"] #loginPage{display:none!important}
 </div>
 <div class="modal-overlay" id="newOfficeModal">
 <div class="modal">
-  <div class="modal-header"><h3>🏢 إنشاء فرع جديد</h3><button class="modal-close" onclick="closeModal('newOfficeModal')">&#x2715;</button></div>
+  <div class="modal-header"><h3>إنشاء فرع جديد</h3><button class="modal-close" onclick="closeModal('newOfficeModal')"><i class='bx bx-x'></i></button></div>
   <div class="modal-body">
     <div id="newOfficeModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
     <div class="form-row"><div class="form-group"><label>رمز المكتب *</label><input type="text" class="form-control" id="office_code" placeholder="مثال: JAH"></div><div class="form-group"><label>اسم المكتب *</label><input type="text" class="form-control" id="office_name" placeholder="مثال: فرع الجهراء"></div></div>
@@ -381,10 +415,10 @@ body[data-auth="app"] #loginPage{display:none!important}
       <div class="form-group">
         <label>شعار المكتب</label>
         <div class="office-logo-field">
-          <div class="office-logo-preview" id="office_logo_preview"><span class="office-logo-fallback">🏢</span></div>
+          <div class="office-logo-preview" id="office_logo_preview"><span class="office-logo-fallback"><i class='bx bx-building' style='font-size:28px'></i></span></div>
           <div class="office-logo-actions">
             <input type="file" id="office_logo" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" hidden onchange="previewOfficeLogo('office_logo','office_logo_preview')">
-            <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('office_logo').click()">📷 رفع شعار</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('office_logo').click()"><i class='bx bx-camera'></i> رفع شعار</button>
             <button type="button" class="btn btn-sm btn-outline" id="office_logo_clear" style="display:none" onclick="clearOfficeLogoPick('office_logo','office_logo_preview','office_logo_clear')">إزالة</button>
             <p class="profile-hint" style="margin:8px 0 0">JPG, PNG, WEBP — حتى 2MB</p>
           </div>
@@ -397,7 +431,7 @@ body[data-auth="app"] #loginPage{display:none!important}
 </div>
 <div class="modal-overlay" id="editOfficeModal">
 <div class="modal">
-  <div class="modal-header"><h3>✏️ تعديل فرع</h3><button class="modal-close" onclick="closeModal('editOfficeModal')">&#x2715;</button></div>
+  <div class="modal-header"><h3>تعديل فرع</h3><button class="modal-close" onclick="closeModal('editOfficeModal')"><i class='bx bx-x'></i></button></div>
   <div class="modal-body">
     <div id="editOfficeModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
     <input type="hidden" id="eoffice_id">
@@ -406,12 +440,12 @@ body[data-auth="app"] #loginPage{display:none!important}
       <div class="form-group">
         <label>شعار المكتب</label>
         <div class="office-logo-field">
-          <div class="office-logo-preview" id="eoffice_logo_preview"><span class="office-logo-fallback">🏢</span></div>
+          <div class="office-logo-preview" id="eoffice_logo_preview"><span class="office-logo-fallback"><i class='bx bx-building' style='font-size:28px'></i></span></div>
           <div class="office-logo-actions">
             <input type="file" id="eoffice_logo" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" hidden onchange="previewOfficeLogo('eoffice_logo','eoffice_logo_preview','eoffice_logo_clear')">
-            <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('eoffice_logo').click()">📷 تغيير الشعار</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('eoffice_logo').click()"><i class='bx bx-camera'></i> تغيير الشعار</button>
             <button type="button" class="btn btn-sm btn-outline" id="eoffice_logo_clear" style="display:none" onclick="clearOfficeLogoPick('eoffice_logo','eoffice_logo_preview','eoffice_logo_clear')">إزالة الاختيار</button>
-            <button type="button" class="btn btn-sm btn-danger" id="eoffice_logo_remove" style="display:none" onclick="removeOfficeLogo()">🗑️ حذف الشعار الحالي</button>
+            <button type="button" class="btn btn-sm btn-danger" id="eoffice_logo_remove" style="display:none" onclick="removeOfficeLogo()"><i class='bx bx-trash'></i> حذف الشعار الحالي</button>
             <p class="profile-hint" style="margin:8px 0 0">JPG, PNG, WEBP — حتى 2MB</p>
           </div>
         </div>
@@ -423,7 +457,7 @@ body[data-auth="app"] #loginPage{display:none!important}
 </div>
 <div class="modal-overlay" id="newUserModal">
 <div class="modal">
-  <div class="modal-header"><h3>👤 إضافة مستخدم</h3><button class="modal-close" onclick="closeModal('newUserModal')">&#x2715;</button></div>
+  <div class="modal-header"><h3>إضافة مستخدم</h3><button class="modal-close" onclick="closeModal('newUserModal')"><i class='bx bx-x'></i></button></div>
   <div class="modal-body">
     <div id="newUserModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
     <div class="form-row"><div class="form-group"><label>الاسم *</label><input type="text" class="form-control" id="usr_name"></div><div class="form-group"><label>البريد *</label><input type="email" class="form-control" id="usr_email"></div></div>
@@ -435,7 +469,7 @@ body[data-auth="app"] #loginPage{display:none!important}
 </div>
 <div class="modal-overlay" id="editUserModal">
 <div class="modal">
-  <div class="modal-header"><h3>✏️ تعديل مستخدم</h3><button class="modal-close" onclick="closeModal('editUserModal')">&#x2715;</button></div>
+  <div class="modal-header"><h3>تعديل مستخدم</h3><button class="modal-close" onclick="closeModal('editUserModal')"><i class='bx bx-x'></i></button></div>
   <div class="modal-body">
     <div id="editUserModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
     <input type="hidden" id="eusr_id">
@@ -447,7 +481,7 @@ body[data-auth="app"] #loginPage{display:none!important}
 </div>
 <div class="modal-overlay" id="editClientModal">
 <div class="modal">
-  <div class="modal-header"><h3>&#x270F;&#xFE0F; تعديل عميل</h3><button class="modal-close" onclick="closeModal('editClientModal')">&#x2715;</button></div>
+  <div class="modal-header"><h3>تعديل عميل</h3><button class="modal-close" onclick="closeModal('editClientModal')"><i class='bx bx-x'></i></button></div>
   <div class="modal-body">
     <div id="editClientModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
     <input type="hidden" id="ecl_id">
@@ -461,7 +495,7 @@ body[data-auth="app"] #loginPage{display:none!important}
 </div>
 <div class="modal-overlay" id="editVendorModal">
 <div class="modal">
-  <div class="modal-header"><h3>&#x270F;&#xFE0F; تعديل مورد</h3><button class="modal-close" onclick="closeModal('editVendorModal')">&#x2715;</button></div>
+  <div class="modal-header"><h3>تعديل مورد</h3><button class="modal-close" onclick="closeModal('editVendorModal')"><i class='bx bx-x'></i></button></div>
   <div class="modal-body">
     <input type="hidden" id="evn_id">
     <div class="form-row"><div class="form-group"><label>اسم المكتب *</label><input type="text" class="form-control" id="evn_name"></div><div class="form-group"><label>التصنيف</label><select class="form-control" id="evn_category"><option value="airline">شركة طيران</option><option value="hotel">فندق</option><option value="visa">مكتب تأشيرات</option><option value="transport">نقل وسياحة</option><option value="other">أخرى</option></select></div></div>
@@ -473,7 +507,7 @@ body[data-auth="app"] #loginPage{display:none!important}
 </div>
 <div class="modal-overlay" id="editOpModal">
 <div class="modal modal-lg">
-  <div class="modal-header"><h3>&#x270F;&#xFE0F; تعديل عملية</h3><button class="modal-close" onclick="closeModal('editOpModal')">&#x2715;</button></div>
+  <div class="modal-header"><h3>تعديل عملية</h3><button class="modal-close" onclick="closeModal('editOpModal')"><i class='bx bx-x'></i></button></div>
   <div class="modal-body">
     <div id="editOpModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
     <input type="hidden" id="eop_id">
@@ -490,7 +524,7 @@ body[data-auth="app"] #loginPage{display:none!important}
 </div>
 <div class="modal-overlay" id="newSafeModal">
 <div class="modal">
-  <div class="modal-header"><h3>&#x1F4B0; إضافة صندوق / حساب بنكي</h3><button class="modal-close" onclick="closeModal('newSafeModal')">&#x2715;</button></div>
+  <div class="modal-header"><h3>إضافة صندوق / حساب بنكي</h3><button class="modal-close" onclick="closeModal('newSafeModal')"><i class='bx bx-x'></i></button></div>
   <div class="modal-body">
     <div id="newSafeModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
     <div class="form-row"><div class="form-group"><label>الاسم *</label><input class="form-control" id="sf_name"></div><div class="form-group"><label>النوع *</label><select class="form-control" id="sf_type"><option value="cash">صندوق نقدي</option><option value="bank">حساب بنكي</option></select></div></div>
@@ -501,7 +535,7 @@ body[data-auth="app"] #loginPage{display:none!important}
 </div>
 <div class="modal-overlay" id="editSafeModal">
 <div class="modal">
-  <div class="modal-header"><h3>&#x270F;&#xFE0F; تعديل صندوق / بنك</h3><button class="modal-close" onclick="closeModal('editSafeModal')">&#x2715;</button></div>
+  <div class="modal-header"><h3>تعديل صندوق / بنك</h3><button class="modal-close" onclick="closeModal('editSafeModal')"><i class='bx bx-x'></i></button></div>
   <div class="modal-body">
     <div id="editSafeModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
     <input type="hidden" id="esf_id">
@@ -513,7 +547,7 @@ body[data-auth="app"] #loginPage{display:none!important}
 </div>
 <div class="modal-overlay" id="newTransferModal">
 <div class="modal">
-  <div class="modal-header"><h3>&#x1F504; تحويل بين الصناديق</h3><button class="modal-close" onclick="closeModal('newTransferModal')">&#x2715;</button></div>
+  <div class="modal-header"><h3>تحويل بين الصناديق</h3><button class="modal-close" onclick="closeModal('newTransferModal')"><i class='bx bx-x'></i></button></div>
   <div class="modal-body">
     <div id="newTransferModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
     <div class="form-row"><div class="form-group"><label>من (المصدر) *</label><select class="form-control" id="tr_from"></select></div><div class="form-group"><label>إلى (الوجهة) *</label><select class="form-control" id="tr_to"></select></div></div>
@@ -526,7 +560,7 @@ body[data-auth="app"] #loginPage{display:none!important}
 </div>
 <div class="modal-overlay" id="newVoucherModal">
 <div class="modal">
-  <div class="modal-header"><h3 id="voucherModalTitle">&#x1F9FE; سند جديد</h3><button class="modal-close" onclick="closeModal('newVoucherModal')">&#x2715;</button></div>
+  <div class="modal-header"><h3 id="voucherModalTitle">سند جديد</h3><button class="modal-close" onclick="closeModal('newVoucherModal')"><i class='bx bx-x'></i></button></div>
   <div class="modal-body">
     <div class="form-row"><div class="form-group"><label>نوع الطرف</label><select class="form-control" id="vc_party_type" onchange="updateVoucherParties()"><option value="client">عميل</option><option value="vendor">مكتب/مزود</option><option value="general">عام</option></select></div><div class="form-group"><label>الطرف</label><select class="form-control" id="vc_party_id"><option value="">-- اختر --</option></select></div></div>
     <div class="form-row"><div class="form-group"><label>المبلغ *</label><input type="number" class="form-control" id="vc_amount" placeholder="0.000" step="0.001"></div><div class="form-group"><label>العملة</label><select class="form-control" id="vc_currency"><option value="KWD">دينار كويتي</option><option value="USD">دولار أمريكي</option></select></div></div>
@@ -534,12 +568,12 @@ body[data-auth="app"] #loginPage{display:none!important}
     <div class="form-row"><div class="form-group"><label>ربط بعملية (اختياري)</label><select class="form-control" id="vc_operation"><option value="">-- بدون ربط --</option></select></div><div class="form-group"><label>رقم المرجع</label><input type="text" class="form-control" id="vc_ref"></div></div>
     <div class="form-row full"><div class="form-group"><label>البيان</label><textarea class="form-control" id="vc_desc"></textarea></div></div>
   </div>
-  <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('newVoucherModal')">إلغاء</button><button class="btn btn-primary" id="voucherSaveBtn" onclick="saveVoucher()">&#x1F4BE; حفظ السند</button></div>
+  <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('newVoucherModal')">إلغاء</button><button class="btn btn-primary" id="voucherSaveBtn" onclick="saveVoucher()"><i class='bx bx-save'></i> حفظ السند</button></div>
 </div>
 </div>
 <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
-<div class="drawer" id="opDrawer"><div class="drawer-header"><h3 id="drawerTitle">تفاصيل العملية</h3><button class="modal-close" onclick="closeDrawer()">&#x2715;</button></div><div class="drawer-body" id="drawerBody"></div></div>
-<div class="drawer drawer-wide" id="stmtDrawer"><div class="drawer-header"><h3 id="stmtTitle">كشف الحساب</h3><button class="modal-close" onclick="closeDrawer()">&#x2715;</button></div><div class="drawer-body" id="stmtBody"></div></div>
+<div class="drawer" id="opDrawer"><div class="drawer-header"><h3 id="drawerTitle">تفاصيل العملية</h3><button class="modal-close" onclick="closeDrawer()"><i class='bx bx-x'></i></button></div><div class="drawer-body" id="drawerBody"></div></div>
+<div class="drawer drawer-wide" id="stmtDrawer"><div class="drawer-header"><h3 id="stmtTitle">كشف الحساب</h3><button class="modal-close" onclick="closeDrawer()"><i class='bx bx-x'></i></button></div><div class="drawer-body" id="stmtBody"></div></div>
 </div>
 </div>
 <script>
@@ -778,10 +812,10 @@ function renderDashboard(pc){
   pc.innerHTML=`
   <div class="page-shell">
     <div class="grid-kpi-4">
-      ${kpiCard('💰','مبيعات اليوم',fmt(todaySales),'var(--primary)','اليوم: '+todayOps.length+' عمليات')}
-      ${kpiCard('📈','ربح متوقع اليوم',fmt(todayProfit),'var(--success)',formatMargin(todayProfit,todaySales))}
-      ${kpiCard('🧾','التحصيلات النقدية',fmt(totalReceipts),'var(--info)',VOUCHERS.filter(v=>v.type==='receipt').length+' سند قبض')}
-      ${kpiCard('💸','إجمالي المدفوعات',fmt(totalPayments),'var(--warning)',VOUCHERS.filter(v=>v.type==='payment').length+' سند صرف')}
+      ${kpiCard('<i class="bx bxs-dollar-circle" style="font-size:24px"></i>','مبيعات اليوم',fmt(todaySales),'var(--primary)','اليوم: '+todayOps.length+' عمليات')}
+      ${kpiCard('<i class="bx bxs-wallet" style="font-size:24px"></i>','ربح متوقع اليوم',fmt(todayProfit),'var(--success)',formatMargin(todayProfit,todaySales))}
+      ${kpiCard('<i class="bx bxs-receipt" style="font-size:24px"></i>','التحصيلات النقدية',fmt(totalReceipts),'var(--info)',VOUCHERS.filter(v=>v.type==='receipt').length+' سند قبض')}
+      ${kpiCard('<i class="bx bxs-credit-card" style="font-size:24px"></i>','إجمالي المدفوعات',fmt(totalPayments),'var(--warning)',VOUCHERS.filter(v=>v.type==='payment').length+' سند صرف')}
     </div>
     <div class="grid-charts-2-1">
       <div class="card"><div class="card-header"><h3>حركة الأسبوع (قبض ودفع)</h3></div><div class="card-body" style="min-height:240px"><div class="chart-box"><canvas id="weekChart"></canvas></div></div></div>
@@ -796,10 +830,10 @@ function renderDashboard(pc){
         </div></div>
       </div>
       <div class="grid-stack">
-        ${overdueList.length>0?`<div class="card" style="border-right:4px solid var(--warning)"><div class="card-header"><h3>⏰ متأخر التحصيل (+7 أيام)</h3></div><div class="card-body">${overdueList.map(o=>`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><b>${o.ref}</b> - ${clientName(o.client_id)}<br><small style="color:var(--danger)">تاريخ: ${o.date} | ${statusLabel[o.status]} | متبقي: ${fmt(+o.client_outstanding||getClientBalance(o.client_id))}</small></div>`).join('')}</div></div>`:''}
-        <div class="card"><div class="card-header"><h3>🔴 أعلى 5 مدينين</h3></div><div class="card-body" style="padding:0"><div class="table-wrapper">
+        ${overdueList.length>0?`<div class="card" style="border-right:4px solid var(--warning)"><div class="card-header"><h3>متأخر التحصيل (+7 أيام)</h3></div><div class="card-body">${overdueList.map(o=>`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><b>${o.ref}</b> - ${clientName(o.client_id)}<br><small style="color:var(--danger)">تاريخ: ${o.date} | ${statusLabel[o.status]} | متبقي: ${fmt(+o.client_outstanding||getClientBalance(o.client_id))}</small></div>`).join('')}</div></div>`:''}
+        <div class="card"><div class="card-header"><h3>أعلى 5 مدينين</h3></div><div class="card-body" style="padding:0"><div class="table-wrapper">
         <table class="table"><thead><tr><th>العميل</th><th>المبلغ</th></tr></thead><tbody>${debtors.map(c=>`<tr><td>${c.name}</td><td style="color:var(--danger);font-weight:700">${fmt(c.bal)}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text-sm)">لا يوجد مدينون</td></tr>'}</tbody></table></div></div></div>
-        <div class="card"><div class="card-header"><h3>🟡 أعلى 5 دائنين</h3></div><div class="card-body" style="padding:0"><div class="table-wrapper">
+        <div class="card"><div class="card-header"><h3>أعلى 5 دائنين</h3></div><div class="card-body" style="padding:0"><div class="table-wrapper">
         <table class="table"><thead><tr><th>المورد</th><th>المبلغ</th></tr></thead><tbody>${creditors.map(v=>`<tr><td>${v.name}</td><td style="color:var(--warning);font-weight:700">${fmt(v.bal)}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text-sm)">لا يوجد دائنون</td></tr>'}</tbody></table></div></div></div>
       </div>
     </div>
@@ -812,12 +846,12 @@ function renderDashboard(pc){
       const wctx=document.getElementById('weekChart')?.getContext('2d');
       if(wctx){if(charts.week){try{charts.week.destroy();}catch(e){}} charts.week=new Chart(wctx,{type:'bar',data:{labels:days.map(d=>d.slice(5)),datasets:[{label:'مقبوضات',data:weekReceipts,backgroundColor:'rgba(5,150,105,.7)',borderRadius:6},{label:'مدفوعات',data:weekPayments,backgroundColor:'rgba(220,38,38,.7)',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true}}}});}
       const sctx=document.getElementById('svcChart')?.getContext('2d');
-      if(sctx){if(charts.svc){try{charts.svc.destroy();}catch(e){}} charts.svc=new Chart(sctx,{type:'doughnut',data:{labels:svcCount.map(s=>s.name),datasets:[{data:svcCount.map(s=>s.count),backgroundColor:['#1E3A8A','#059669','#D97706','#DC2626','#0891B2'],borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom'}}}});}
+      if(sctx){if(charts.svc){try{charts.svc.destroy();}catch(e){}} charts.svc=new Chart(sctx,{type:'doughnut',data:{labels:svcCount.map(s=>s.name),datasets:[{data:svcCount.map(s=>s.count),backgroundColor:['#696CFF','#71DD37','#FFAB00','#FF3E1D','#03C3EC'],borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom'}}}});}
     });
   },200);
 }
 function kpiCard(icon,label,value,color,sub){
-  return `<div class="card" style="border-top:4px solid ${color}"><div class="card-body"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><p style="font-size:12px;color:var(--text-sm);margin-bottom:6px">${label}</p><p style="font-size:24px;font-weight:800;color:${color}">${value}</p><p style="font-size:11px;color:var(--text-sm);margin-top:4px">${sub}</p></div><div style="font-size:32px">${icon}</div></div></div></div>`;
+  return `<div class="card"><div class="card-body"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><p style="font-size:12px;color:var(--text-sm);margin-bottom:6px">${label}</p><p style="font-size:24px;font-weight:800;color:var(--text-heading)">${value}</p><p style="font-size:11px;color:var(--text-sm);margin-top:4px">${sub}</p></div><div style="width:48px;height:48px;border-radius:50%;background:${color.replace('var(--primary)','rgba(105,108,255,.15)').replace('var(--success)','rgba(113,221,55,.15)').replace('var(--warning)','rgba(255,171,0,.15)').replace('var(--info)','rgba(3,195,236,.15)').replace('var(--danger)','rgba(255,62,29,.15)')};display:flex;align-items:center;justify-content:center;color:${color}">${icon}</div></div></div></div>`;
 }
 
 // ==================== OPERATIONS ====================
@@ -827,7 +861,7 @@ function renderOperations(pc){
   <div class="page-shell">
     <div class="card">
       <div class="card-header">
-        <h3>📋 إدارة العمليات (${OPS.length})</h3>
+        <h3>إدارة العمليات (${OPS.length})</h3>
         <div class="card-header-actions">
           <input type="text" class="form-control filter-control" id="opSearchInput" placeholder="بحث..." oninput="filterOps()">
           <select class="form-control filter-control" id="opStatusFilter" onchange="filterOps()">
@@ -841,9 +875,9 @@ function renderOperations(pc){
             <option value="all">كل الخدمات</option>
             ${SERVICES.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}
           </select>
-          ${canDo('create_op')?`<button class="btn btn-primary" onclick="showModal('newOpModal');populateOpForm()">➕ عملية جديدة</button>`:''}
-          <button class="btn btn-sm btn-outline" onclick="exportOps()">📥 Excel</button>
-          <button class="btn btn-sm btn-outline" onclick="exportOpsPDF()">📄 PDF</button>
+          ${canDo('create_op')?`<button class="btn btn-primary" onclick="showModal('newOpModal');populateOpForm()"><i class='bx bx-plus'></i> عملية جديدة</button>`:''}
+          <button class="btn btn-sm btn-outline" onclick="exportOps()"><i class='bx bx-download'></i> Excel</button>
+          <button class="btn btn-sm btn-outline" onclick="exportOpsPDF()"><i class='bx bx-file'></i> PDF</button>
         </div>
       </div>
       <div class="card-body" style="padding:0"><div id="opTableWrap"></div></div>
@@ -977,11 +1011,11 @@ function renderClients(pc){
   <div class="page-shell">
     <div class="card">
       <div class="card-header">
-        <h3>👤 إدارة العملاء (${CLIENTS.length})</h3>
+        <h3>إدارة العملاء (${CLIENTS.length})</h3>
         <div class="card-header-actions">
           <input type="text" class="form-control filter-control" id="clSearch" placeholder="بحث..." oninput="filterClients()">
-          ${canDo('write_master')?`<button class="btn btn-primary" onclick="showModal('newClientModal')">➕ عميل جديد</button>`:''}
-          <button class="btn btn-sm btn-outline" onclick="exportClients()">📥 Excel</button>
+          ${canDo('write_master')?`<button class="btn btn-primary" onclick="showModal('newClientModal')"><i class='bx bx-plus'></i> عميل جديد</button>`:''}
+          <button class="btn btn-sm btn-outline" onclick="exportClients()"><i class='bx bx-download'></i> Excel</button>
         </div>
       </div>
       <div class="card-body" style="padding:0"><div id="clTableWrap"></div></div>
@@ -1021,11 +1055,11 @@ function renderVendors(pc){
   <div class="page-shell">
     <div class="card">
       <div class="card-header">
-        <h3>🏢 الموردون والمكاتب (${VENDORS.length})</h3>
+        <h3>الموردون والمكاتب (${VENDORS.length})</h3>
         <div class="card-header-actions">
           <input type="text" class="form-control filter-control" id="vnSearch" placeholder="بحث..." oninput="filterVendors()">
-          ${canDo('write_master')?`<button class="btn btn-primary" onclick="showModal('newVendorModal')">➕ مورد جديد</button>`:''}
-          <button class="btn btn-sm btn-outline" onclick="exportVendors()">📥 Excel</button>
+          ${canDo('write_master')?`<button class="btn btn-primary" onclick="showModal('newVendorModal')"><i class='bx bx-plus'></i> مورد جديد</button>`:''}
+          <button class="btn btn-sm btn-outline" onclick="exportVendors()"><i class='bx bx-download'></i> Excel</button>
         </div>
       </div>
       <div class="card-body" style="padding:0"><div id="vnTableWrap"></div></div>
@@ -1060,10 +1094,10 @@ function renderVouchers(pc){
   <div class="page-shell">
     <div class="card">
       <div class="card-header">
-        <h3>🧾 السندات المالية</h3>
+        <h3>السندات المالية</h3>
         <div class="card-header-actions">
-          ${canDo('create_voucher')?`<button class="btn btn-success" onclick="openNewVoucher('receipt')">➕ سند قبض</button><button class="btn btn-danger" onclick="openNewVoucher('payment')">➕ سند صرف</button>`:''}
-          <button class="btn btn-sm btn-outline" onclick="exportVouchers()">📥 Excel</button>
+          ${canDo('create_voucher')?`<button class="btn btn-success" onclick="openNewVoucher('receipt')"><i class='bx bx-plus'></i> سند قبض</button><button class="btn btn-danger" onclick="openNewVoucher('payment')"><i class='bx bx-plus'></i> سند صرف</button>`:''}
+          <button class="btn btn-sm btn-outline" onclick="exportVouchers()"><i class='bx bx-download'></i> Excel</button>
         </div>
       </div>
       <div class="card-body">
@@ -1103,12 +1137,12 @@ function renderVcTable(){
     const party=partyLabel(v);
     const op=OPS.find(o=>o.id===v.operation_id);
     const reversed=v.reversed||op?.status==='cancelled';
-    return `<tr style="${reversed?'opacity:.65':''}"><td><b style="color:var(--primary)">${v.ref}</b></td><td>${v.date}</td><td>${party}</td><td style="font-weight:700;color:${vcTab==='receipt'?'var(--success)':'var(--danger)'}">${fmt(v.amount)}</td><td>${reversed?'<span class="badge badge-danger">ملغى</span>':'<span class="badge badge-success">فعّال</span>'}</td><td>${methodLabel(v.method)}</td><td>${safeName(v.safe_id)}</td><td>${op?op.ref:'—'}</td><td style="font-size:12px">${displayVal(v.desc)}</td><td><button class="btn btn-xs btn-outline" onclick="printVoucher(${v.id})">🖨️ طباعة</button></td></tr>`;
+    return `<tr style="${reversed?'opacity:.65':''}"><td><b style="color:var(--primary)">${v.ref}</b></td><td>${v.date}</td><td>${party}</td><td style="font-weight:700;color:${vcTab==='receipt'?'var(--success)':'var(--danger)'}">${fmt(v.amount)}</td><td>${reversed?'<span class="badge badge-danger">ملغى</span>':'<span class="badge badge-success">فعّال</span>'}</td><td>${methodLabel(v.method)}</td><td>${safeName(v.safe_id)}</td><td>${op?op.ref:'—'}</td><td style="font-size:12px">${displayVal(v.desc)}</td><td><button class="btn btn-xs btn-outline" onclick="printVoucher(${v.id})"><i class='bx bx-printer'></i> طباعة</button></td></tr>`;
   }).join('')||'<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-sm)">لا توجد سندات</td></tr>'}</tbody></table></div>${tablePagerHtml('vouchers', page, totalPages, vcs.length)}`;
 }
 function openNewVoucher(type){
   vcTab=type;
-  document.getElementById('voucherModalTitle').textContent=type==='receipt'?'🧾 سند قبض جديد':'💸 سند صرف جديد';
+  document.getElementById('voucherModalTitle').textContent=type==='receipt'?'سند قبض جديد':'سند صرف جديد';
   document.getElementById('voucherSaveBtn').style.background=type==='receipt'?'var(--success)':'var(--danger)';
   updateVoucherParties();
   const vcSafe=document.getElementById('vc_safe');
@@ -1171,11 +1205,11 @@ function printVoucher(id){
   </style></head><body>
   <div class="voucher">
     <div class="v-header">
-      <div><h1>${isReceipt?'🧾 سند قبض':'💸 سند صرف'}</h1><div class="ref">${isReceipt?'Receipt Voucher':'Payment Voucher'}</div></div>
+      <div><h1>${isReceipt?'سند قبض':'سند صرف'}</h1><div class="ref">${isReceipt?'Receipt Voucher':'Payment Voucher'}</div></div>
       <div style="text-align:left"><div style="font-size:22px;font-weight:800">${v.ref}</div><div style="font-size:13px;opacity:.85">${v.date}</div></div>
     </div>
     <div class="v-body">
-      <div class="v-company" style="display:flex;justify-content:center">${typeof officeBrandBlock==='function'?officeBrandBlock(isReceipt?'سند قبض':'سند صرف'):`<div><h2>✈️ نظام إدارة خدمات السفر</h2><p>Travel Services Management System</p></div>`}</div>
+      <div class="v-company" style="display:flex;justify-content:center">${typeof officeBrandBlock==='function'?officeBrandBlock(isReceipt?'سند قبض':'سند صرف'):`<div><h2>نظام إدارة خدمات السفر</h2><p>Travel Services Management System</p></div>`}</div>
       <div class="v-amount">
         <div class="lbl">${isReceipt?'المبلغ المقبوض':'المبلغ المصروف'}</div>
         <div class="val">${fmt(v.amount)}</div>
@@ -1215,13 +1249,13 @@ function renderJournal(pc){
   pc.innerHTML=`
   <div class="page-shell">
     <div class="grid-kpi-3">
-      ${kpiCard('📊','إجمالي المدين',fmt(totalD),'var(--danger)',je.length+' قيد')}
-      ${kpiCard('📊','إجمالي الدائن',fmt(totalC),'var(--success)','')}
-      ${kpiCard(balanced?'✅':'❌','ميزان المراجعة',balanced?'متوازن ✅':'غير متوازن ❌',balanced?'var(--success)':'var(--danger)','')}
+      ${kpiCard('<i class="bx bxs-bar-chart-alt-2" style="font-size:24px"></i>','إجمالي المدين',fmt(totalD),'var(--danger)',je.length+' قيد')}
+      ${kpiCard('<i class="bx bxs-bar-chart-alt-2" style="font-size:24px"></i>','إجمالي الدائن',fmt(totalC),'var(--success)','')}
+      ${kpiCard(balanced?'<i class="bx bx-check-circle" style="font-size:24px"></i>':'<i class="bx bx-x-circle" style="font-size:24px"></i>','ميزان المراجعة',balanced?'متوازن ':'غير متوازن ',balanced?'var(--success)':'var(--danger)','')}
     </div>
     <div class="card">
       <div class="card-header">
-        <h3>📒 دفتر الأستاذ (${je.length} قيد)</h3>
+        <h3>دفتر الأستاذ (${je.length} قيد)</h3>
         <div class="card-header-actions">
           <input type="text" class="form-control filter-control" id="jeSearch" placeholder="بحث..." oninput="filterJournal()">
           <select class="form-control filter-control" id="jeAccFilter" onchange="filterJournal()">
@@ -1230,9 +1264,9 @@ function renderJournal(pc){
           </select>
           <input type="date" class="form-control filter-control" id="jeFrom" value="${minDate}" onchange="filterJournal()" title="من تاريخ">
           <input type="date" class="form-control filter-control" id="jeTo" value="${maxDate}" onchange="filterJournal()" title="إلى تاريخ">
-          <button class="btn btn-sm btn-outline" onclick="exportJournal()">📥 Excel</button>
-          <button class="btn btn-sm btn-outline" onclick="exportJournalPDF()">📄 PDF</button>
-          <button class="btn btn-sm btn-outline" onclick="printJournal()">🖨️ طباعة</button>
+          <button class="btn btn-sm btn-outline" onclick="exportJournal()"><i class='bx bx-download'></i> Excel</button>
+          <button class="btn btn-sm btn-outline" onclick="exportJournalPDF()"><i class='bx bx-file'></i> PDF</button>
+          <button class="btn btn-sm btn-outline" onclick="printJournal()"><i class='bx bx-printer'></i> طباعة</button>
         </div>
       </div>
       <div class="card-body" style="padding:0"><div id="jeTableWrap"></div></div>
@@ -1303,7 +1337,7 @@ function printJournal(){
     .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #1E3A8A}
     @media print{@page{margin:1cm}body{padding:0}}
   </style></head><body>
-  <div class="header"><div>${typeof officeBrandBlock==='function'?officeBrandBlock(title):`<div><h1>✈️ نظام إدارة خدمات السفر</h1><div class="meta">${title}</div><div class="meta">${je.length} قيد محاسبي</div></div>`}</div><div style="text-align:left;font-size:12px;color:#64748b">طُبع: ${new Date().toLocaleDateString('ar-KW')}</div></div>
+  <div class="header"><div>${typeof officeBrandBlock==='function'?officeBrandBlock(title):`<div><h1>نظام إدارة خدمات السفر</h1><div class="meta">${title}</div><div class="meta">${je.length} قيد محاسبي</div></div>`}</div><div style="text-align:left;font-size:12px;color:#64748b">طُبع: ${new Date().toLocaleDateString('ar-KW')}</div></div>
   <table><thead><tr><th>#</th><th>التاريخ</th><th>المرجع</th><th>الحساب</th><th>البيان</th><th>مدين</th><th>دائن</th></tr></thead>
   <tbody>
   ${je.map(j=>`<tr><td>${j.id}</td><td>${j.date}</td><td>${j.ref}</td><td><b>${j.account}</b></td><td>${j.desc}</td><td class="debit">${j.debit>0?fmtN(j.debit,3):'—'}</td><td class="credit">${j.credit>0?fmtN(j.credit,3):'—'}</td></tr>`).join('')}
@@ -1327,7 +1361,7 @@ function renderSafes(pc){
         return `<div class="card">
           <div class="card-body">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:16px">
-              <div style="min-width:0"><h3>${s.type==='cash'?'💵':'🏦'} ${s.name}</h3><small style="color:var(--text-sm)">${currencyLabel(s.currency)} | رصيد مبدئي: ${fmt(s.initial)}</small></div>
+              <div style="min-width:0"><h3>${s.type==='cash'?'<i class="bx bx-money" style="font-size:18px"></i>':'<i class="bx bx-building-house" style="font-size:18px"></i>'} ${s.name}</h3><small style="color:var(--text-sm)">${currencyLabel(s.currency)} | رصيد مبدئي: ${fmt(s.initial)}</small></div>
               <div style="font-size:clamp(20px,5vw,28px);font-weight:800;color:${bal>=0?'var(--success)':'var(--danger)'};flex-shrink:0">${fmt(bal)}</div>
             </div>
             <div class="table-wrapper"><table class="table"><thead><tr><th>التاريخ</th><th>المرجع</th><th>وارد</th><th>صادر</th></tr></thead>
@@ -1347,7 +1381,7 @@ function renderReports(pc){
     <div class="card">
       <div class="card-body">
         <div class="tabs" style="margin-bottom:24px">
-          ${[['ops','📋 تقرير العمليات'],['profit','📈 الربحية'],['aging','⏳ تقادم الديون'],['employee','👥 أداء الموظفين'],['cashflow','💧 التدفق النقدي'],['clients_debt','👤 مديونية العملاء'],['vendors_balance','🏢 أرصدة المكاتب']].map(([k,l])=>`<button class="tab-btn ${rptTab===k?'active':''}" onclick="switchRptTab('${k}')">${l}</button>`).join('')}
+          ${[['ops','تقرير العمليات'],['profit','الربحية'],['aging','تقادم الديون'],['employee','أداء الموظفين'],['cashflow','التدفق النقدي'],['clients_debt','مديونية العملاء'],['vendors_balance','أرصدة المكاتب']].map(([k,l])=>`<button class="tab-btn ${rptTab===k?'active':''}" onclick="switchRptTab('${k}')">${l}</button>`).join('')}
         </div>
         <div id="rptContent"></div>
       </div>
@@ -1372,11 +1406,11 @@ function renderRptContent(){
         <input type="date" class="form-control filter-control" id="rptOpsTo" value="${toVal}" onchange="filterRptOps()" title="إلى تاريخ">
       </div>
       <div class="grid-kpi-3">
-        ${kpiCard('💰','إجمالي الإيرادات',fmt(totRev),'var(--primary)','')}
-        ${kpiCard('💸','إجمالي التكاليف',fmt(totCost),'var(--danger)','')}
-        ${kpiCard('📈','صافي الربح',fmt(totProfit),'var(--success)','')}
+        ${kpiCard('<i class="bx bxs-dollar-circle" style="font-size:24px"></i>','إجمالي الإيرادات',fmt(totRev),'var(--primary)','')}
+        ${kpiCard('<i class="bx bxs-credit-card" style="font-size:24px"></i>','إجمالي التكاليف',fmt(totCost),'var(--danger)','')}
+        ${kpiCard('<i class="bx bxs-wallet" style="font-size:24px"></i>','صافي الربح',fmt(totProfit),'var(--success)','')}
       </div>
-      <div class="card-header-actions" style="margin-bottom:12px;justify-content:flex-end"><button class="btn btn-sm btn-outline" onclick="exportOps()">📥 Excel</button><button class="btn btn-sm btn-outline" onclick="exportOpsPDF()">📄 PDF</button></div>
+      <div class="card-header-actions" style="margin-bottom:12px;justify-content:flex-end"><button class="btn btn-sm btn-outline" onclick="exportOps()"><i class='bx bx-download'></i> Excel</button><button class="btn btn-sm btn-outline" onclick="exportOpsPDF()"><i class='bx bx-file'></i> PDF</button></div>
       <div class="table-wrapper"><table class="table"><thead><tr><th>المرجع</th><th>التاريخ</th><th>العميل</th><th>الخدمة</th><th>الإيراد</th><th>التكلفة</th><th>الربح</th><th>الحالة</th></tr></thead>
       <tbody>${data.map(o=>`<tr><td><b>${o.ref}</b></td><td>${o.date}</td><td>${clientName(o.client_id)}</td><td>${serviceName(o.service_id)}</td><td>${fmt(o.client_price)}</td><td>${fmt(o.vendor_cost)}</td><td style="color:${o.profit>=0?'var(--success)':'var(--danger)'};font-weight:700">${fmt(o.profit)}</td><td><span class="badge ${statusClass[o.status]}">${statusLabel[o.status]}</span></td></tr>`).join('')||'<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-sm)">لا توجد عمليات في هذه الفترة</td></tr>'}</tbody></table></div>`;
   } else if(rptTab==='profit'){
@@ -1385,7 +1419,7 @@ function renderRptContent(){
       return {name:s.name,icon:s.icon,count:sOps.length,revenue:sOps.reduce((t,o)=>t+o.client_price,0),cost:sOps.reduce((t,o)=>t+o.vendor_cost,0),profit:sOps.reduce((t,o)=>t+o.profit,0)};
     }).sort((a,b)=>b.profit-a.profit);
     wrap.innerHTML=`
-      <div class="card-header-actions" style="margin-bottom:12px;justify-content:flex-end"><button class="btn btn-sm btn-outline" onclick="exportProfitReport()">📥 Excel</button></div>
+      <div class="card-header-actions" style="margin-bottom:12px;justify-content:flex-end"><button class="btn btn-sm btn-outline" onclick="exportProfitReport()"><i class='bx bx-download'></i> Excel</button></div>
       <div class="table-wrapper"><table class="table"><thead><tr><th>الخدمة</th><th>عدد العمليات</th><th>الإيرادات</th><th>التكاليف</th><th>الربح</th><th>هامش الربح</th></tr></thead>
       <tbody>${byService.map(s=>`<tr><td>${s.icon} <b>${s.name}</b></td><td><span class="badge badge-info">${s.count}</span></td><td>${fmt(s.revenue)}</td><td>${fmt(s.cost)}</td><td style="color:var(--success);font-weight:700">${fmt(s.profit)}</td><td>${s.revenue>0?(s.profit/s.revenue*100).toFixed(1)+'%':'—'}</td></tr>`).join('')}</tbody></table></div>`;
   } else if(rptTab==='aging'){
@@ -1398,9 +1432,9 @@ function renderRptContent(){
       return {name:c.name,balance:bal,days,b1:days<=30?bal:0,b2:days>30&&days<=60?bal:0,b3:days>60&&days<=90?bal:0,b4:days>90?bal:0};
     }).filter(Boolean).sort((a,b)=>b.balance-a.balance);
     wrap.innerHTML=`
-      <div class="card-header-actions" style="margin-bottom:12px;justify-content:flex-end"><button class="btn btn-sm btn-outline" onclick="exportAgingReport()">📥 Excel</button></div>
+      <div class="card-header-actions" style="margin-bottom:12px;justify-content:flex-end"><button class="btn btn-sm btn-outline" onclick="exportAgingReport()"><i class='bx bx-download'></i> Excel</button></div>
       <div class="table-wrapper"><table class="table"><thead><tr><th>العميل</th><th>الإجمالي</th><th>1-30 يوم</th><th>31-60 يوم</th><th>61-90 يوم</th><th>+90 يوم</th></tr></thead>
-      <tbody>${aged.map(a=>`<tr><td><b>${a.name}</b><br><small style="color:var(--text-sm)">${a.days} يوم</small></td><td style="font-weight:700;color:var(--danger)">${fmt(a.balance)}</td><td>${a.b1>0?fmt(a.b1):'—'}</td><td style="color:${a.b2>0?'var(--warning)':'inherit'}">${a.b2>0?fmt(a.b2):'—'}</td><td style="color:${a.b3>0?'var(--danger)':'inherit'}">${a.b3>0?fmt(a.b3):'—'}</td><td style="color:${a.b4>0?'var(--danger)':'inherit'};font-weight:${a.b4>0?'700':'400'}">${a.b4>0?fmt(a.b4):'—'}</td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--success)">✅ لا توجد ديون متأخرة</td></tr>'}</tbody></table></div>`;
+      <tbody>${aged.map(a=>`<tr><td><b>${a.name}</b><br><small style="color:var(--text-sm)">${a.days} يوم</small></td><td style="font-weight:700;color:var(--danger)">${fmt(a.balance)}</td><td>${a.b1>0?fmt(a.b1):'—'}</td><td style="color:${a.b2>0?'var(--warning)':'inherit'}">${a.b2>0?fmt(a.b2):'—'}</td><td style="color:${a.b3>0?'var(--danger)':'inherit'}">${a.b3>0?fmt(a.b3):'—'}</td><td style="color:${a.b4>0?'var(--danger)':'inherit'};font-weight:${a.b4>0?'700':'400'}">${a.b4>0?fmt(a.b4):'—'}</td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--success)">لا توجد ديون متأخرة</td></tr>'}</tbody></table></div>`;
   } else if(rptTab==='employee'){
     const byUser=USERS.map(u=>{
       const uOps=OPS.filter(o=>o.created_by===u.id&&o.status!=='cancelled');
@@ -1421,7 +1455,7 @@ function renderRptContent(){
       return {date:d,inflow,outflow,net:inflow-outflow,cash:safe1,bank:safe2};
     });
     wrap.innerHTML=`
-      <div class="card-header-actions" style="margin-bottom:12px;justify-content:flex-end"><button class="btn btn-sm btn-outline" onclick="exportCashFlow()">📥 Excel</button></div>
+      <div class="card-header-actions" style="margin-bottom:12px;justify-content:flex-end"><button class="btn btn-sm btn-outline" onclick="exportCashFlow()"><i class='bx bx-download'></i> Excel</button></div>
       <div class="table-wrapper"><table class="table"><thead><tr><th>التاريخ</th><th>وارد</th><th>صادر</th><th>صافي</th><th>رصيد الصندوق</th><th>رصيد البنك</th></tr></thead>
       <tbody>${rows.map(r=>`<tr><td>${r.date}</td><td style="color:var(--success)">${r.inflow>0?fmt(r.inflow):'—'}</td><td style="color:var(--danger)">${r.outflow>0?fmt(r.outflow):'—'}</td><td style="font-weight:700;color:${r.net>=0?'var(--success)':'var(--danger)'}">${fmt(r.net)}</td><td>${fmt(r.cash)}</td><td>${fmt(r.bank)}</td></tr>`).join('')}</tbody></table></div>`;
   } else if(rptTab==='clients_debt'){
@@ -1436,13 +1470,13 @@ function renderRptContent(){
     const totalDebt=debtors.reduce((s,c)=>s+c.balance,0);
     wrap.innerHTML=`
       <div class="grid-kpi-3">
-        ${kpiCard('👤','عدد المدينين',debtors.length+' عميل','var(--danger)','')}
-        ${kpiCard('💰','إجمالي المديونية',fmt(totalDebt),'var(--danger)','')}
-        ${kpiCard('📊','متوسط المديونية',fmt(debtors.length?totalDebt/debtors.length:0),'var(--warning)','')}
+        ${kpiCard('<i class="bx bxs-user" style="font-size:24px"></i>','عدد المدينين',debtors.length+' عميل','var(--danger)','')}
+        ${kpiCard('<i class="bx bxs-dollar-circle" style="font-size:24px"></i>','إجمالي المديونية',fmt(totalDebt),'var(--danger)','')}
+        ${kpiCard('<i class="bx bxs-bar-chart-alt-2" style="font-size:24px"></i>','متوسط المديونية',fmt(debtors.length?totalDebt/debtors.length:0),'var(--warning)','')}
       </div>
       <div class="card-header-actions" style="margin-bottom:12px;justify-content:flex-end">
-        <button class="btn btn-sm btn-outline" onclick="exportClientsDebtReport()">📥 Excel</button>
-        <button class="btn btn-sm btn-outline" onclick="printClientsDebtReport()">🖨️ طباعة</button>
+        <button class="btn btn-sm btn-outline" onclick="exportClientsDebtReport()"><i class='bx bx-download'></i> Excel</button>
+        <button class="btn btn-sm btn-outline" onclick="printClientsDebtReport()"><i class='bx bx-printer'></i> طباعة</button>
       </div>
       <div class="table-wrapper"><table class="table"><thead><tr><th>#</th><th>اسم العميل</th><th>الهاتف</th><th>الجنسية</th><th>إجمالي المشتريات</th><th>المدفوع</th><th style="color:var(--danger)">الرصيد المدين</th><th>آخر معاملة</th><th>عدد العمليات</th></tr></thead>
       <tbody>${debtors.map((c,i)=>`<tr>
@@ -1455,7 +1489,7 @@ function renderRptContent(){
         <td style="color:var(--danger);font-weight:800;font-size:14px">${fmt(c.balance)}</td>
         <td>${c.lastOpDate}</td>
         <td><span class="badge badge-info">${c.opsCount}</span></td>
-      </tr>`).join('')||'<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--success);font-weight:700">✅ لا توجد ذمم على العملاء</td></tr>'}
+      </tr>`).join('')||'<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--success);font-weight:700">لا توجد ذمم على العملاء</td></tr>'}
       ${debtors.length?`<tr style="background:#FEE2E2"><td colspan="6" style="text-align:center;font-weight:800;padding:10px 16px;color:var(--danger)">الإجمالي</td><td style="font-weight:800;color:var(--danger);padding:10px 16px;font-size:15px">${fmt(totalDebt)}</td><td colspan="2"></td></tr>`:''}
       </tbody></table></div>`;
   } else if(rptTab==='vendors_balance'){
@@ -1471,13 +1505,13 @@ function renderRptContent(){
     const totalOwed=creditors.reduce((s,v)=>s+v.balance,0);
     wrap.innerHTML=`
       <div class="grid-kpi-3">
-        ${kpiCard('🏢','عدد المكاتب الدائنة',creditors.length+' مكتب','var(--warning)','')}
-        ${kpiCard('💸','إجمالي المستحقات',fmt(totalOwed),'var(--warning)','')}
-        ${kpiCard('📊','متوسط المستحقات',fmt(creditors.length?totalOwed/creditors.length:0),'var(--info)','')}
+        ${kpiCard('<i class="bx bx-building" style="font-size:28px"></i>','عدد المكاتب الدائنة',creditors.length+' مكتب','var(--warning)','')}
+        ${kpiCard('<i class="bx bxs-credit-card" style="font-size:24px"></i>','إجمالي المستحقات',fmt(totalOwed),'var(--warning)','')}
+        ${kpiCard('<i class="bx bxs-bar-chart-alt-2" style="font-size:24px"></i>','متوسط المستحقات',fmt(creditors.length?totalOwed/creditors.length:0),'var(--info)','')}
       </div>
       <div class="card-header-actions" style="margin-bottom:12px;justify-content:flex-end">
-        <button class="btn btn-sm btn-outline" onclick="exportVendorsBalanceReport()">📥 Excel</button>
-        <button class="btn btn-sm btn-outline" onclick="printVendorsBalanceReport()">🖨️ طباعة</button>
+        <button class="btn btn-sm btn-outline" onclick="exportVendorsBalanceReport()"><i class='bx bx-download'></i> Excel</button>
+        <button class="btn btn-sm btn-outline" onclick="printVendorsBalanceReport()"><i class='bx bx-printer'></i> طباعة</button>
       </div>
       <div class="table-wrapper"><table class="table"><thead><tr><th>#</th><th>اسم المكتب</th><th>التصنيف</th><th>الهاتف</th><th>جهة الاتصال</th><th>إجمالي الخدمات</th><th>المدفوع</th><th style="color:var(--warning)">الرصيد المستحق</th><th>عدد العمليات</th></tr></thead>
       <tbody>${creditors.map((v,i)=>`<tr>
@@ -1490,7 +1524,7 @@ function renderRptContent(){
         <td style="color:var(--success);font-weight:700">${fmt(v.totalPaid)}</td>
         <td style="color:var(--warning);font-weight:800;font-size:14px">${fmt(v.balance)}</td>
         <td><span class="badge badge-info">${v.opsCount}</span></td>
-      </tr>`).join('')||'<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--success);font-weight:700">✅ لا توجد مستحقات للمكاتب</td></tr>'}
+      </tr>`).join('')||'<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--success);font-weight:700">لا توجد مستحقات للمكاتب</td></tr>'}
       ${creditors.length?`<tr style="background:#FEF3C7"><td colspan="7" style="text-align:center;font-weight:800;padding:10px 16px;color:var(--warning)">الإجمالي</td><td style="font-weight:800;color:var(--warning);padding:10px 16px;font-size:15px">${fmt(totalOwed)}</td><td></td></tr>`:''}
       </tbody></table></div>`;
   }
@@ -1530,7 +1564,7 @@ function printClientsDebtReport(){
   tr:nth-child(even) td{background:#fff5f5}.total-row td{background:#FEE2E2;font-weight:800;border-top:2px solid #DC2626}
   .balance{color:#DC2626;font-weight:800}.paid{color:#059669;font-weight:700}
   @media print{@page{margin:1cm}body{padding:0}}</style></head><body>
-  <div class="header"><div>${typeof officeBrandBlock==='function'?officeBrandBlock('تقرير مديونية العملاء'):`<div><h1>✈️ نظام إدارة خدمات السفر</h1><div class="sub">تقرير مديونية العملاء</div><div class="meta">تاريخ الطباعة: ${new Date().toLocaleDateString('ar-KW')}</div></div>`}</div><div style="text-align:left;font-size:12px;color:#64748b">${debtors.length} عميل مدين</div></div>
+  <div class="header"><div>${typeof officeBrandBlock==='function'?officeBrandBlock('تقرير مديونية العملاء'):`<div><h1>نظام إدارة خدمات السفر</h1><div class="sub">تقرير مديونية العملاء</div><div class="meta">تاريخ الطباعة: ${new Date().toLocaleDateString('ar-KW')}</div></div>`}</div><div style="text-align:left;font-size:12px;color:#64748b">${debtors.length} عميل مدين</div></div>
   <div class="summary"><div class="sum-box"><div class="val">${debtors.length}</div><div class="lbl">عدد العملاء المدينين</div></div><div class="sum-box"><div class="val">${fmtN(totalDebt,3)} د.ك</div><div class="lbl">إجمالي المديونية</div></div><div class="sum-box"><div class="val">${debtors.length?fmtN(totalDebt/debtors.length,3):0} د.ك</div><div class="lbl">متوسط المديونية</div></div></div>
   <table><thead><tr><th>#</th><th>اسم العميل</th><th>الهاتف</th><th>الجنسية</th><th>إجمالي المشتريات</th><th>المدفوع</th><th>الرصيد المدين</th><th>العمليات</th></tr></thead>
   <tbody>${debtors.map((c,i)=>`<tr><td>${i+1}</td><td><b>${c.name}</b></td><td>${c.phone}</td><td>${displayVal(c.nationality)}</td><td>${fmtN(c.totalPurchases,3)} د.ك</td><td class="paid">${fmtN(c.totalPaid,3)} د.ك</td><td class="balance">${fmtN(c.balance,3)} د.ك</td><td>${c.opsCount}</td></tr>`).join('')}
@@ -1576,7 +1610,7 @@ function printVendorsBalanceReport(){
   tr:nth-child(even) td{background:#FFFBEB}.total-row td{background:#FEF3C7;font-weight:800;border-top:2px solid #D97706}
   .balance{color:#D97706;font-weight:800}.paid{color:#059669;font-weight:700}
   @media print{@page{margin:1cm}body{padding:0}}</style></head><body>
-  <div class="header"><div>${typeof officeBrandBlock==='function'?officeBrandBlock('تقرير أرصدة المكاتب والموردين'):`<div><h1>✈️ نظام إدارة خدمات السفر</h1><div class="sub">تقرير أرصدة المكاتب والموردين</div><div class="meta">تاريخ الطباعة: ${new Date().toLocaleDateString('ar-KW')}</div></div>`}</div><div style="text-align:left;font-size:12px;color:#64748b">${creditors.length} مكتب دائن</div></div>
+  <div class="header"><div>${typeof officeBrandBlock==='function'?officeBrandBlock('تقرير أرصدة المكاتب والموردين'):`<div><h1>نظام إدارة خدمات السفر</h1><div class="sub">تقرير أرصدة المكاتب والموردين</div><div class="meta">تاريخ الطباعة: ${new Date().toLocaleDateString('ar-KW')}</div></div>`}</div><div style="text-align:left;font-size:12px;color:#64748b">${creditors.length} مكتب دائن</div></div>
   <div class="summary"><div class="sum-box"><div class="val">${creditors.length}</div><div class="lbl">عدد المكاتب الدائنة</div></div><div class="sum-box"><div class="val">${fmtN(totalOwed,3)} د.ك</div><div class="lbl">إجمالي المستحقات</div></div><div class="sum-box"><div class="val">${creditors.length?fmtN(totalOwed/creditors.length,3):0} د.ك</div><div class="lbl">متوسط المستحق</div></div></div>
   <table><thead><tr><th>#</th><th>اسم المكتب</th><th>التصنيف</th><th>الهاتف</th><th>جهة الاتصال</th><th>إجمالي الخدمات</th><th>المدفوع</th><th>الرصيد المستحق</th><th>العمليات</th></tr></thead>
   <tbody>${creditors.map((v,i)=>`<tr><td>${i+1}</td><td><b>${v.name}</b></td><td>${v.category}</td><td>${v.phone}</td><td>${v.contact}</td><td>${fmtN(v.totalServices,3)} د.ك</td><td class="paid">${fmtN(v.totalPaid,3)} د.ك</td><td class="balance">${fmtN(v.balance,3)} د.ك</td><td>${v.opsCount}</td></tr>`).join('')}
@@ -1617,23 +1651,23 @@ function settingsStatsRows(){
 function renderSettings(pc){
   pc.innerHTML=`
   <div class="page-shell">
+    ${currentUser?.role==='admin'||currentUser?.role==='super_admin'?`<div class="card" style="margin-bottom:20px">
+      <div class="card-header"><h3>المستخدمون</h3><button class="btn btn-primary btn-sm" onclick="showModal('newUserModal')"><i class='bx bx-plus'></i> مستخدم جديد</button></div>
+      <div class="card-body" style="padding:0"><div class="table-wrapper">
+        <table class="table"><thead><tr><th>الاسم</th><th>البريد</th><th>الدور</th><th>المكتب</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+        <tbody id="usersSettingsBody">${typeof usersSettingsRows==='function'?usersSettingsRows():USERS.map(u=>`<tr><td style="white-space:nowrap"><div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">${u.avatar||'?'}</div><b>${u.name}</b></div></td><td style="font-size:13px;white-space:nowrap">${u.email}</td><td style="white-space:nowrap"><span class="badge badge-info">${u.roleLabel||u.role}</span></td><td style="white-space:nowrap">${u.office?.office_name||u.office?.office_code||'—'}</td><td style="white-space:nowrap"><span class="badge ${u.is_active!==false?'badge-success':'badge-danger'}">${u.is_active!==false?'مفعل':'معطل'}</span></td><td style="white-space:nowrap">—</td></tr>`).join('')}</tbody></table>
+      </div></div>
+    </div>`:''}
     <div class="grid-2">
-      ${currentUser?.role==='admin'||currentUser?.role==='super_admin'?`<div class="card">
-        <div class="card-header"><h3>👤 المستخدمون</h3><button class="btn btn-primary btn-sm" onclick="showModal('newUserModal')">➕ مستخدم جديد</button></div>
-        <div class="card-body" style="padding:0"><div class="table-wrapper">
-          <table class="table"><thead><tr><th>الاسم</th><th>البريد</th><th>الدور</th><th>المكتب</th><th>الحالة</th><th>إجراءات</th></tr></thead>
-          <tbody id="usersSettingsBody">${typeof usersSettingsRows==='function'?usersSettingsRows():USERS.map(u=>`<tr><td><div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">${u.avatar||'?'}</div><b>${u.name}</b></div></td><td style="font-size:13px">${u.email}</td><td><span class="badge badge-info">${u.roleLabel||u.role}</span></td><td>${u.office?.office_name||u.office?.office_code||'—'}</td><td><span class="badge ${u.is_active!==false?'badge-success':'badge-danger'}">${u.is_active!==false?'مفعل':'معطل'}</span></td><td>—</td></tr>`).join('')}</tbody></table>
-        </div></div>
-      </div>`:''}
       <div class="card">
-        <div class="card-header"><h3>🛎️ الخدمات</h3></div>
+        <div class="card-header"><h3>الخدمات</h3></div>
         <div class="card-body" style="padding:0"><div class="table-wrapper">
           <table class="table"><thead><tr><th>الخدمة</th><th>الحالة</th><th>تبديل</th></tr></thead>
           <tbody id="svcSettings">${SERVICES.map(s=>`<tr><td>${s.icon} ${s.name}</td><td><span class="badge ${s.active?'badge-success':'badge-danger'}">${s.active?'نشطة':'معطلة'}</span></td><td>${(currentUser?.role==='admin'||currentUser?.role==='super_admin')?`<button class="btn btn-sm btn-outline" onclick="toggleService(${s.id})">${s.active?'تعطيل':'تفعيل'}</button>`:'—'}</td></tr>`).join('')}</tbody></table>
         </div></div>
       </div>
       <div class="card">
-        <div class="card-header"><h3>👤 ملفي الشخصي</h3></div>
+        <div class="card-header"><h3>ملفي الشخصي</h3></div>
         <div class="card-body profile-settings">
           <div id="profProfileError" class="alert alert-danger profile-alert" style="display:none"></div>
           <p class="profile-section-title">البيانات الأساسية</p>
@@ -1645,7 +1679,7 @@ function renderSettings(pc){
             <div class="form-group"><label>الدور</label><input class="form-control" value="${currentUser?.roleLabel||''}" readonly tabindex="-1"></div>
             <div class="form-group"><label>المكتب</label><input class="form-control" value="${currentUser?.office?.office_name||currentUser?.office?.office_code||'—'}" readonly tabindex="-1"></div>
           </div>
-          <div class="profile-actions"><button class="btn btn-primary" id="saveProfileBtn" onclick="saveProfile()">💾 حفظ البيانات</button></div>
+          <div class="profile-actions"><button class="btn btn-primary" id="saveProfileBtn" onclick="saveProfile()"><i class='bx bx-save'></i> حفظ البيانات</button></div>
           <hr class="profile-divider">
           <p class="profile-section-title">تغيير كلمة المرور</p>
           <div id="profPasswordError" class="alert alert-danger profile-alert" style="display:none"></div>
@@ -1654,7 +1688,7 @@ function renderSettings(pc){
               <label for="prof_current_password">كلمة المرور الحالية</label>
               <div class="password-field">
                 <input type="password" class="form-control" id="prof_current_password" autocomplete="current-password">
-                <button type="button" class="password-toggle" aria-label="إظهار كلمة المرور" onclick="togglePasswordVisibility('prof_current_password', this)"><span class="eye-open" aria-hidden="true">👁</span><span class="eye-closed" aria-hidden="true">🙈</span></button>
+                <button type="button" class="password-toggle" aria-label="إظهار كلمة المرور" onclick="togglePasswordVisibility('prof_current_password', this)"><span class="eye-open" aria-hidden="true">&#x1F441;</span><span class="eye-closed" aria-hidden="true">&#x1F648;</span></button>
               </div>
             </div>
           </div>
@@ -1663,23 +1697,23 @@ function renderSettings(pc){
               <label for="prof_new_password">كلمة المرور الجديدة</label>
               <div class="password-field">
                 <input type="password" class="form-control" id="prof_new_password" autocomplete="new-password" minlength="8">
-                <button type="button" class="password-toggle" aria-label="إظهار كلمة المرور" onclick="togglePasswordVisibility('prof_new_password', this)"><span class="eye-open" aria-hidden="true">👁</span><span class="eye-closed" aria-hidden="true">🙈</span></button>
+                <button type="button" class="password-toggle" aria-label="إظهار كلمة المرور" onclick="togglePasswordVisibility('prof_new_password', this)"><span class="eye-open" aria-hidden="true">&#x1F441;</span><span class="eye-closed" aria-hidden="true">&#x1F648;</span></button>
               </div>
             </div>
             <div class="form-group">
               <label for="prof_confirm_password">تأكيد كلمة المرور</label>
               <div class="password-field">
                 <input type="password" class="form-control" id="prof_confirm_password" autocomplete="new-password" minlength="8">
-                <button type="button" class="password-toggle" aria-label="إظهار كلمة المرور" onclick="togglePasswordVisibility('prof_confirm_password', this)"><span class="eye-open" aria-hidden="true">👁</span><span class="eye-closed" aria-hidden="true">🙈</span></button>
+                <button type="button" class="password-toggle" aria-label="إظهار كلمة المرور" onclick="togglePasswordVisibility('prof_confirm_password', this)"><span class="eye-open" aria-hidden="true">&#x1F441;</span><span class="eye-closed" aria-hidden="true">&#x1F648;</span></button>
               </div>
             </div>
           </div>
           <p class="profile-hint">يجب أن تكون كلمة المرور 8 أحرف على الأقل.</p>
-          <div class="profile-actions"><button class="btn btn-outline" id="saveProfilePasswordBtn" onclick="saveProfilePassword()">🔒 تحديث كلمة المرور</button></div>
+          <div class="profile-actions"><button class="btn btn-outline" id="saveProfilePasswordBtn" onclick="saveProfilePassword()"><i class='bx bx-lock-alt'></i> تحديث كلمة المرور</button></div>
         </div>
       </div>
       <div class="card">
-        <div class="card-header"><h3>📊 ${currentUser?.role==='sales'?'ملخص سريع':'إحصائيات النظام'}</h3></div>
+        <div class="card-header"><h3>${currentUser?.role==='sales'?'ملخص سريع':'إحصائيات النظام'}</h3></div>
         <div class="card-body">
           <div style="display:grid;gap:12px">
             ${settingsStatsRows().map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:10px;background:var(--bg);border-radius:8px"><span style="color:var(--text-sm)">${l}</span><b style="color:var(--primary)">${v}</b></div>`).join('')}
@@ -1689,93 +1723,6 @@ function renderSettings(pc){
     </div>
   </div>`;
 }
-// ==================== EXTRA CSS ====================
-const style=document.createElement('style');
-style.textContent=`
-.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow)}
-.card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
-.card-header h3{font-size:15px;font-weight:700;margin:0}
-.card-body{padding:20px}
-.table{width:100%;border-collapse:collapse;font-size:13px}
-.table th{background:var(--bg);padding:10px 14px;text-align:right;font-size:12px;font-weight:700;color:var(--text-sm);white-space:nowrap}
-.table td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
-.table tr:hover td{background:#F8FAFC}
-.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
-.badge-success{background:#D1FAE5;color:#065F46}
-.badge-danger{background:#FEE2E2;color:#991B1B}
-.badge-warning{background:#FEF3C7;color:#92400E}
-.badge-info{background:#E0F2FE;color:#0C4A6E}
-.btn{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:600;transition:.15s}
-.btn-primary{background:var(--primary);color:#fff}
-.btn-primary:hover{background:var(--primary-light)}
-.btn-success{background:var(--success);color:#fff}
-.btn-danger{background:var(--danger);color:#fff}
-.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text)}
-.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
-.btn-sm{padding:5px 12px;font-size:12px}
-.btn-icon{width:36px;height:36px;border-radius:8px;background:var(--bg);border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;position:relative;transition:.15s}
-.btn-icon:hover{background:var(--border)}
-.modal-footer{flex-wrap:wrap}
-.drawer-header h3{margin:0}
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
-.modal-overlay.open{display:flex}
-.modal{background:#fff;border-radius:16px;max-width:640px;width:90%;max-height:90vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.3)}
-.modal-lg{max-width:760px}
-.modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-.modal-header h3{font-size:16px;font-weight:700;margin:0}
-.modal-body{padding:24px}
-.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
-.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-sm);padding:4px 8px;border-radius:6px}
-.modal-close:hover{background:var(--bg)}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:4px}
-.form-row.three{grid-template-columns:1fr 1fr 1fr}
-.form-row.full{grid-template-columns:1fr}
-.profile-settings .profile-section-title{font-size:14px;font-weight:700;margin:0 0 12px;color:var(--text)}
-.profile-settings .profile-divider{border:none;border-top:1px solid var(--border);margin:24px 0}
-.profile-settings .profile-hint{font-size:12px;color:var(--text-sm);margin:0 0 12px}
-.profile-settings .profile-actions{display:flex;flex-wrap:wrap;gap:8px}
-.profile-settings .profile-alert{margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:13px}
-.password-field{position:relative;display:flex;align-items:stretch}
-.password-field .form-control{padding-left:44px;width:100%}
-.password-toggle{position:absolute;left:8px;top:50%;transform:translateY(-50%);width:36px;height:36px;min-width:36px;min-height:36px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:8px;color:var(--text-sm);font-size:18px;line-height:1;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-.password-toggle:hover,.password-toggle:focus-visible{background:var(--bg);outline:2px solid var(--primary);outline-offset:1px}
-.password-toggle .eye-closed{display:none}
-.password-toggle.is-visible .eye-open{display:none}
-.password-toggle.is-visible .eye-closed{display:inline}
-.office-logo-field{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-.office-logo-preview{width:72px;height:72px;border-radius:12px;border:1px dashed var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
-.office-logo-preview img{width:100%;height:100%;object-fit:contain}
-.office-logo-fallback{font-size:28px;line-height:1}
-.office-logo-actions{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:180px}
-.sidebar-logo .s-icon img{width:100%;height:100%;object-fit:cover;border-radius:10px;display:block}
-textarea.form-control{min-height:80px;resize:vertical}
-.page-content{flex:1;overflow-y:auto}
-.drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:150}
-.drawer{position:fixed;left:0;top:0;height:100vh;width:560px;background:#fff;z-index:151;transform:translateX(-100%);transition:.3s;box-shadow:4px 0 20px rgba(0,0,0,.15);overflow-y:auto}
-.drawer.open{transform:translateX(0)}
-.drawer-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;z-index:1}
-.drawer-body{padding:24px}
-.info-item{display:flex;flex-direction:column;gap:4px;padding:10px;background:var(--bg);border-radius:8px}
-.info-label{font-size:11px;color:var(--text-sm);font-weight:600}
-.info-value{font-size:14px;font-weight:600;color:var(--text)}
-.tab-btn{padding:10px 20px;border:none;background:none;cursor:pointer;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:600;color:var(--text-sm);border-bottom:3px solid transparent;transition:.15s}
-.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
-.tab-btn:hover{color:var(--primary)}
-.drawer,.drawer.drawer-wide{width:min(580px,100vw);max-width:100vw;height:100dvh}
-.modal{width:100%;max-width:min(640px,95vw)}
-.modal-lg{max-width:min(760px,95vw)}
-.table-wrapper{width:100%;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.table-wrapper .table{min-width:560px}
-@media (max-width:1023px){
-  .drawer,.drawer.drawer-wide{width:100vw;max-width:100vw}
-  .modal-overlay{align-items:flex-end;padding:8px}
-  .modal,.modal-lg{max-width:100%;border-radius:16px 16px 0 0;max-height:calc(100dvh - 8px)}
-  .form-row,.form-row.three{grid-template-columns:1fr}
-  .grid-kpi-3,.grid-kpi-4,.grid-2,.grid-3{grid-template-columns:1fr}
-}
-`;
-document.head.appendChild(style);
-
 // ==================== INIT ====================
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&document.getElementById('loginPage').style.display!=='none')doLogin();
@@ -1796,6 +1743,6 @@ document.querySelectorAll('.modal-overlay').forEach(el=>{
 
 
 <!-- API INTEGRATION BRIDGE -->
-<script src="/travel-erp-api-bridge.js"></script>
+<script src="./travel-erp-api-bridge.js"></script>
 </body>
 </html>

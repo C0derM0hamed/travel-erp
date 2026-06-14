@@ -6,7 +6,8 @@
 <title>نظام إدارة خدمات السفر | Travel ERP</title>
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
 <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-<link rel="icon" type="image/png" href="logo.png">
+<link rel="icon" type="image/png" href="logo.png?v=2">
+<link rel="shortcut icon" type="image/png" href="logo.png?v=2">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -199,6 +200,14 @@ textarea.form-control{resize:vertical;min-height:80px}
 .drawer-body{padding:24px;min-width:0}
 .drawer-body .table-wrapper{margin-bottom:12px}
 .drawer-body .table-wrapper .table{min-width:480px}
+.drawer-body .table th{font-size:12px;padding:8px 12px;height:auto}
+.drawer-body .table td{font-size:13px;padding:10px 12px;white-space:nowrap}
+.info-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border-light)}
+.info-item-block{display:block;padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border-light);margin-top:12px}
+.info-item-block .info-label{display:block;margin-bottom:6px;color:var(--text-sm);font-size:13px;font-weight:700}
+.info-item-block .info-value{display:block;color:var(--text-heading);font-size:14px;font-weight:500;line-height:1.5}
+.info-label{color:var(--text-sm);font-size:13px;font-weight:700}
+.info-value{color:var(--text-heading);font-size:14px;font-weight:700}
 .drawer-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;margin-bottom:12px}
 .alert{padding:12px 16px;border-radius:10px;font-size:13px;font-weight:500;margin-bottom:12px;display:flex;align-items:center;gap:8px}
 .alert-danger{background:rgba(220,38,38,.1);color:var(--danger);border:1px solid rgba(220,38,38,.2)}

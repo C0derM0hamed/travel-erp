@@ -1720,7 +1720,7 @@ viewOp = async function(id, opts = {}){
           <div class="info-item"><span class="info-label">العميل</span><span class="info-value">${op.client||clientName(op.client_id)}</span></div>
           <div class="info-item"><span class="info-label">الخدمة</span><span class="info-value">${op.service||serviceName(op.service_id)}</span></div>
           <div class="info-item"><span class="info-label">المورد</span><span class="info-value">${op.vendor||vendorName(op.vendor_id)}</span></div>
-          <div class="info-item"><span class="info-label">الحالة</span><span><span class="badge ${statusClass[op.status]}">${statusLabel[op.status]}</span></span>${operationStatusControls(op)}</div>
+          <div class="info-item"><span class="info-label">الحالة</span><div style="display:flex;align-items:center;gap:8px"><span class="badge ${statusClass[op.status]}">${statusLabel[op.status]}</span>${operationStatusControls(op)}</div></div>
           <div class="info-item"><span class="info-label">سعر العميل</span><span class="info-value" style="color:var(--primary);font-weight:700">${fmt(op.client_price)}</span></div>
           <div class="info-item"><span class="info-label">تكلفة المورد</span><span class="info-value">${fmt(op.vendor_cost)}</span></div>
           <div class="info-item"><span class="info-label">رصيد العميل للعملية</span><span class="info-value" style="color:${op.client_outstanding>0?'var(--danger)':'var(--success)'}">${fmt(op.client_outstanding)}</span></div>
@@ -1728,7 +1728,7 @@ viewOp = async function(id, opts = {}){
           <div class="info-item"><span class="info-label">الربح المتوقع</span><span class="info-value" style="color:${op.profit>=0?'var(--success)':'var(--danger)'};font-weight:700">${fmt(op.profit)}</span></div>
           <div class="info-item"><span class="info-label">العملة</span><span class="info-value">${op.currency_label||currencyLabel(op.currency)}</span></div>
         </div>
-        ${op.notes?`<div class="info-item"><span class="info-label">ملاحظات</span><span class="info-value">${op.notes}</span></div>`:''}
+        ${op.notes?`<div class="info-item-block"><span class="info-label">ملاحظات</span><span class="info-value">${op.notes}</span></div>`:''}
       </div>
       <div style="margin-bottom:16px">
         <h4 style="margin-bottom:10px;color:var(--primary)">القيود المحاسبية</h4>

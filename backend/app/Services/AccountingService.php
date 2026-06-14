@@ -83,7 +83,7 @@ class AccountingService
         return (float) $this->journalQuery($officeId)
             ->whereHas('account', fn ($q) => $q->where('code', '1100'))
             ->where('party_type', 'client')->where('party_id', $clientId)
-            ->selectRaw('COALESCE(SUM(debit-credit),0) as bal')->value('bal');
+            ->sum(\Illuminate\Support\Facades\DB::raw('debit - credit'));
     }
 
     public function vendorBalance(int $vendorId, ?int $officeId = null): float
@@ -93,7 +93,7 @@ class AccountingService
         return (float) $this->journalQuery($officeId)
             ->whereHas('account', fn ($q) => $q->where('code', '2100'))
             ->where('party_type', 'vendor')->where('party_id', $vendorId)
-            ->selectRaw('COALESCE(SUM(credit-debit),0) as bal')->value('bal');
+            ->sum(\Illuminate\Support\Facades\DB::raw('credit - debit'));
     }
 
     public function operationClientOutstanding(int $operationId, ?int $officeId = null): float
@@ -108,7 +108,7 @@ class AccountingService
         return (float) $this->journalQuery($officeId)
             ->where('operation_id', $operationId)
             ->whereHas('account', fn ($q) => $q->where('code', '1100'))
-            ->selectRaw('COALESCE(SUM(debit-credit),0) as bal')->value('bal');
+            ->sum(\Illuminate\Support\Facades\DB::raw('debit - credit'));
     }
 
     public function operationVendorOutstanding(int $operationId, ?int $officeId = null): float
@@ -123,7 +123,7 @@ class AccountingService
         return (float) $this->journalQuery($officeId)
             ->where('operation_id', $operationId)
             ->whereHas('account', fn ($q) => $q->where('code', '2100'))
-            ->selectRaw('COALESCE(SUM(credit-debit),0) as bal')->value('bal');
+            ->sum(\Illuminate\Support\Facades\DB::raw('credit - debit'));
     }
 
     public function clientReceiptsTotal(int $clientId, ?int $officeId = null): float
@@ -133,7 +133,7 @@ class AccountingService
         return (float) $this->journalQuery($officeId)
             ->whereHas('account', fn ($q) => $q->where('code', '1100'))
             ->where('party_type', 'client')->where('party_id', $clientId)
-            ->selectRaw('COALESCE(SUM(credit),0) as total')->value('total');
+            ->sum('credit');
     }
 
     public function vendorPaymentsTotal(int $vendorId, ?int $officeId = null): float
@@ -143,7 +143,7 @@ class AccountingService
         return (float) $this->journalQuery($officeId)
             ->whereHas('account', fn ($q) => $q->where('code', '2100'))
             ->where('party_type', 'vendor')->where('party_id', $vendorId)
-            ->selectRaw('COALESCE(SUM(debit),0) as total')->value('total');
+            ->sum('debit');
     }
 
     public function totalClientReceipts(?int $officeId = null): float
@@ -202,9 +202,9 @@ class AccountingService
     {
         $officeId ??= $this->officeContext->requireId();
         $safe = Safe::withoutGlobalScopes()->with('account')->where('office_id', $officeId)->findOrFail($safeId);
-        $movement = $this->journalQuery($officeId)
+        $movement = (float) $this->journalQuery($officeId)
             ->where('account_id', $safe->account->id)
-            ->selectRaw('COALESCE(SUM(debit-credit),0) as bal')->value('bal');
+            ->sum(\Illuminate\Support\Facades\DB::raw('debit - credit'));
 
         return (float) $safe->opening_balance + (float) $movement;
     }

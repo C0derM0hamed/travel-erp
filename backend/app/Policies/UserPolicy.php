@@ -21,10 +21,6 @@ class UserPolicy
 
     public function update(User $user, User $target): bool
     {
-        if ($user->role === 'super_admin') {
-            return true;
-        }
-
-        return $user->role === 'admin' && $this->sameOffice($user, $target->office_id);
+        return in_array($user->role, ['super_admin', 'admin'], true);
     }
 }

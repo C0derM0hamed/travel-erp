@@ -9,7 +9,7 @@ trait ChecksOfficeAccess
 {
     protected function sameOffice(User $user, ?int $officeId): bool
     {
-        if ($user->role === 'super_admin') {
+        if (in_array($user->role, ['super_admin', 'admin'], true)) {
             return true;
         }
 

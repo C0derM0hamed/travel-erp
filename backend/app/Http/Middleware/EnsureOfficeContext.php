@@ -19,8 +19,8 @@ class EnsureOfficeContext
             return $next($request);
         }
 
-        if ($user->role === 'super_admin') {
-            $officeId = $this->resolveSuperAdminOfficeId($request);
+        if (in_array($user->role, ['super_admin', 'admin'], true)) {
+            $officeId = $this->resolveOfficeId($request, $user);
             if ($officeId) {
                 $this->officeContext->setOfficeId($officeId);
                 $request->session()->put('current_office_id', $officeId);
@@ -42,7 +42,7 @@ class EnsureOfficeContext
         return $next($request);
     }
 
-    private function resolveSuperAdminOfficeId(Request $request): ?int
+    private function resolveOfficeId(Request $request, $user): ?int
     {
         $header = $request->header('X-Office-Id');
         if ($header && Office::whereKey($header)->exists()) {
@@ -59,6 +59,6 @@ class EnsureOfficeContext
             return (int) $session;
         }
 
-        return Office::where('is_active', true)->orderBy('id')->value('id');
+        return $user->office_id ?: Office::where('is_active', true)->orderBy('id')->value('id');
     }
 }

@@ -99,11 +99,11 @@ class OfficeController extends ApiController
         $user = $request->user();
         $office = Office::findOrFail($data['office_id']);
 
-        if ($user->role !== 'super_admin' && (int) $user->office_id !== (int) $office->id) {
+        if (!in_array($user->role, ['super_admin', 'admin'], true) && (int) $user->office_id !== (int) $office->id) {
             abort(403);
         }
 
-        if (! $office->is_active && $user->role !== 'super_admin') {
+        if (! $office->is_active && !in_array($user->role, ['super_admin', 'admin'], true)) {
             return response()->json(['message' => 'المكتب غير مفعل'], 403);
         }
 

@@ -45,12 +45,12 @@ class UserController extends ApiController
             'office_id' => ['nullable', 'exists:offices,id'],
         ]);
 
-        if ($authUser->role === 'admin') {
-            $data['office_id'] = $authUser->office_id;
-        } elseif (($data['role'] ?? '') !== 'super_admin') {
-            $data['office_id'] = $data['office_id'] ?? $authUser->office_id;
-        } else {
-            $data['office_id'] = null;
+        if (in_array($authUser->role, ['super_admin', 'admin'], true)) {
+            if (($data['role'] ?? '') === 'super_admin') {
+                $data['office_id'] = null;
+            } else {
+                $data['office_id'] = $data['office_id'] ?? $authUser->office_id;
+            }
         }
 
         if (($data['role'] ?? '') !== 'super_admin' && empty($data['office_id'])) {
@@ -84,12 +84,14 @@ class UserController extends ApiController
             'must_change_password' => ['sometimes', 'boolean'],
         ]);
 
-        if ($authUser->role === 'admin') {
-            $data['office_id'] = $authUser->office_id;
-        } elseif (isset($data['role']) && $data['role'] === 'super_admin') {
-            $data['office_id'] = null;
-        } elseif (isset($data['role']) && ($data['role'] ?? $user->role) !== 'super_admin') {
-            if ($authUser->role === 'super_admin' && array_key_exists('office_id', $data) && empty($data['office_id'])) {
+        if (in_array($authUser->role, ['super_admin', 'admin'], true)) {
+            if (isset($data['role']) && $data['role'] === 'super_admin') {
+                $data['office_id'] = null;
+            }
+        }
+
+        if (isset($data['role']) && ($data['role'] ?? $user->role) !== 'super_admin') {
+            if (in_array($authUser->role, ['super_admin', 'admin'], true) && array_key_exists('office_id', $data) && empty($data['office_id'])) {
                 return response()->json(['message' => 'يجب تحديد المكتب للمستخدم'], 422);
             }
         }

@@ -46,7 +46,7 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('update-op-status', fn (User $user) => $user->canPerform('update_op_status'));
         Gate::define('create-voucher', fn (User $user) => $user->canPerform('create_voucher'));
         Gate::define('write-settings', fn (User $user) => in_array($user->role, ['super_admin', 'admin'], true));
-        Gate::define('manage-offices', fn (User $user) => $user->role === 'super_admin');
+        Gate::define('manage-offices', fn (User $user) => in_array($user->role, ['super_admin', 'admin'], true));
         Gate::define('viewReports', fn (User $user) => in_array($user->role, ['super_admin', 'admin', 'sales', 'accountant', 'auditor'], true));
     }
 }

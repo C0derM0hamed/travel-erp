@@ -53,6 +53,12 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .user-meta small{color:rgba(255,255,255,.6);font-size:11px}
 .main-content{margin-right:var(--sidebar-w);height:100vh;height:100dvh;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;min-width:0}
 .topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 16px;min-height:64px;height:auto;display:flex;align-items:center;gap:10px;flex-shrink:0;position:sticky;top:0;z-index:50;flex-wrap:wrap}
+.topbar-office-logo{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:18px}
+.topbar-office-logo img{width:100%;height:100%;object-fit:contain}
+.topbar-office-logo{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:18px}
+.topbar-office-logo img{width:100%;height:100%;object-fit:contain}
+.topbar-office-logo{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:18px}
+.topbar-office-logo img{width:100%;height:100%;object-fit:contain}
 .search-box{flex:1;min-width:0;max-width:400px;position:relative}
 .search-box input{width:100%;padding:9px 16px 9px 38px;border:1.5px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;background:var(--bg);outline:none;transition:.2s}
 .search-box input:focus{border-color:var(--primary);background:#fff}
@@ -267,7 +273,7 @@ body[data-auth="app"] #loginPage{display:none!important}
 <div id="appLayout">
   <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeMobileSidebar()" aria-hidden="true"></div>
   <aside class="sidebar" id="appSidebar">
-    <div class="sidebar-logo"><div class="s-icon">&#x2708;&#xFE0F;</div><span>نظام السفر<br><small style="font-size:10px;opacity:.6">ERP للوكالات</small></span></div>
+    <div class="sidebar-logo"><div class="s-icon" id="sidebarOfficeLogo">&#x2708;&#xFE0F;</div><span id="sidebarOfficeName">نظام السفر<br><small style="font-size:10px;opacity:.6">ERP للوكالات</small></span></div>
     <nav class="sidebar-nav">
       <div class="nav-section">الرئيسية</div>
       <div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')"><span class="nav-icon">&#x1F4CA;</span> لوحة التحكم</div>
@@ -281,6 +287,7 @@ body[data-auth="app"] #loginPage{display:none!important}
       <div class="nav-item" data-page="safes" onclick="navigate('safes')"><span class="nav-icon">&#x1F3E6;</span> الصناديق والبنوك</div>
       <div class="nav-section">التقارير</div>
       <div class="nav-item" data-page="reports" onclick="navigate('reports')"><span class="nav-icon">&#x1F4C8;</span> التقارير</div>
+      <div class="nav-item" data-page="activity" onclick="navigate('activity')"><span class="nav-icon">&#x1F4DD;</span> سجل النشاط</div>
       <div class="nav-section">الإعدادات</div>
       <div class="nav-item" data-page="settings" onclick="navigate('settings')"><span class="nav-icon">&#x2699;&#xFE0F;</span> الإعدادات</div>
     </nav>
@@ -295,6 +302,7 @@ body[data-auth="app"] #loginPage{display:none!important}
     <div class="topbar">
       <button type="button" class="btn-menu" id="sidebarMenuBtn" onclick="toggleMobileSidebar()" aria-label="فتح القائمة">&#9776;</button>
       <select class="form-control" id="officeSwitcher" style="max-width:180px;display:none" onchange="switchOffice(this.value)" title="المكتب الحالي"></select>
+      <div class="topbar-office-logo" id="topbarOfficeLogo" style="display:none" title="شعار المكتب"></div>
       <div class="search-box"><span class="search-icon">&#x1F50D;</span><input type="text" placeholder="بحث برقم عملية أو اسم عميل..." id="globalSearch" oninput="globalSearchFn(this.value)"></div>
       <div class="topbar-actions">
         <div class="btn-icon" id="topbarNewOpBtn" onclick="showModal('newOpModal');populateOpForm()" title="عملية جديدة">&#x2795;</div>
@@ -367,9 +375,50 @@ body[data-auth="app"] #loginPage{display:none!important}
 <div class="modal">
   <div class="modal-header"><h3>🏢 إنشاء فرع جديد</h3><button class="modal-close" onclick="closeModal('newOfficeModal')">&#x2715;</button></div>
   <div class="modal-body">
+    <div id="newOfficeModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
     <div class="form-row"><div class="form-group"><label>رمز المكتب *</label><input type="text" class="form-control" id="office_code" placeholder="مثال: JAH"></div><div class="form-group"><label>اسم المكتب *</label><input type="text" class="form-control" id="office_name" placeholder="مثال: فرع الجهراء"></div></div>
+    <div class="form-row full">
+      <div class="form-group">
+        <label>شعار المكتب</label>
+        <div class="office-logo-field">
+          <div class="office-logo-preview" id="office_logo_preview"><span class="office-logo-fallback">🏢</span></div>
+          <div class="office-logo-actions">
+            <input type="file" id="office_logo" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" hidden onchange="previewOfficeLogo('office_logo','office_logo_preview')">
+            <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('office_logo').click()">📷 رفع شعار</button>
+            <button type="button" class="btn btn-sm btn-outline" id="office_logo_clear" style="display:none" onclick="clearOfficeLogoPick('office_logo','office_logo_preview','office_logo_clear')">إزالة</button>
+            <p class="profile-hint" style="margin:8px 0 0">JPG, PNG, WEBP — حتى 2MB</p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
   <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('newOfficeModal')">إلغاء</button><button class="btn btn-primary" id="saveOfficeBtn" onclick="saveOffice()">حفظ المكتب</button></div>
+</div>
+</div>
+<div class="modal-overlay" id="editOfficeModal">
+<div class="modal">
+  <div class="modal-header"><h3>✏️ تعديل فرع</h3><button class="modal-close" onclick="closeModal('editOfficeModal')">&#x2715;</button></div>
+  <div class="modal-body">
+    <div id="editOfficeModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
+    <input type="hidden" id="eoffice_id">
+    <div class="form-row"><div class="form-group"><label>رمز المكتب *</label><input type="text" class="form-control" id="eoffice_code"></div><div class="form-group"><label>اسم المكتب *</label><input type="text" class="form-control" id="eoffice_name"></div></div>
+    <div class="form-row full">
+      <div class="form-group">
+        <label>شعار المكتب</label>
+        <div class="office-logo-field">
+          <div class="office-logo-preview" id="eoffice_logo_preview"><span class="office-logo-fallback">🏢</span></div>
+          <div class="office-logo-actions">
+            <input type="file" id="eoffice_logo" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" hidden onchange="previewOfficeLogo('eoffice_logo','eoffice_logo_preview','eoffice_logo_clear')">
+            <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('eoffice_logo').click()">📷 تغيير الشعار</button>
+            <button type="button" class="btn btn-sm btn-outline" id="eoffice_logo_clear" style="display:none" onclick="clearOfficeLogoPick('eoffice_logo','eoffice_logo_preview','eoffice_logo_clear')">إزالة الاختيار</button>
+            <button type="button" class="btn btn-sm btn-danger" id="eoffice_logo_remove" style="display:none" onclick="removeOfficeLogo()">🗑️ حذف الشعار الحالي</button>
+            <p class="profile-hint" style="margin:8px 0 0">JPG, PNG, WEBP — حتى 2MB</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('editOfficeModal')">إلغاء</button><button class="btn btn-primary" id="saveEditOfficeBtn" onclick="saveOfficeEdit()">حفظ التعديلات</button></div>
 </div>
 </div>
 <div class="modal-overlay" id="newUserModal">
@@ -382,6 +431,18 @@ body[data-auth="app"] #loginPage{display:none!important}
     <div class="form-row" id="usr_office_row"><div class="form-group"><label>المكتب *</label><select class="form-control" id="usr_office_id"><option value="">-- اختر المكتب --</option></select></div></div>
   </div>
   <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('newUserModal')">إلغاء</button><button class="btn btn-primary" id="saveUserBtn" onclick="saveUser()">حفظ المستخدم</button></div>
+</div>
+</div>
+<div class="modal-overlay" id="editUserModal">
+<div class="modal">
+  <div class="modal-header"><h3>✏️ تعديل مستخدم</h3><button class="modal-close" onclick="closeModal('editUserModal')">&#x2715;</button></div>
+  <div class="modal-body">
+    <div id="editUserModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
+    <input type="hidden" id="eusr_id">
+    <div class="form-row"><div class="form-group"><label>الاسم *</label><input type="text" class="form-control" id="eusr_name"></div><div class="form-group"><label>البريد *</label><input type="email" class="form-control" id="eusr_email"></div></div>
+    <div class="form-row"><div class="form-group"><label>الدور *</label><select class="form-control" id="eusr_role"><option value="sales">موظف مبيعات</option><option value="accountant">محاسب</option><option value="auditor">مدقق</option><option value="admin">مدير مكتب</option></select></div><div class="form-group"><label>المكتب</label><select class="form-control" id="eusr_office_id"><option value="">-- اختر المكتب --</option></select></div></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('editUserModal')">إلغاء</button><button class="btn btn-primary" id="saveEditUserBtn" onclick="saveUserEdit()">حفظ التعديلات</button></div>
 </div>
 </div>
 <div class="modal-overlay" id="editClientModal">
@@ -425,6 +486,42 @@ body[data-auth="app"] #loginPage{display:none!important}
     <div class="form-row full"><div class="form-group"><label>ملاحظات</label><textarea class="form-control" id="eop_notes"></textarea></div></div>
   </div>
   <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('editOpModal')">إلغاء</button><button class="btn btn-primary" onclick="saveOperationEdit()">حفظ التعديلات</button></div>
+</div>
+</div>
+<div class="modal-overlay" id="newSafeModal">
+<div class="modal">
+  <div class="modal-header"><h3>&#x1F4B0; إضافة صندوق / حساب بنكي</h3><button class="modal-close" onclick="closeModal('newSafeModal')">&#x2715;</button></div>
+  <div class="modal-body">
+    <div id="newSafeModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
+    <div class="form-row"><div class="form-group"><label>الاسم *</label><input class="form-control" id="sf_name"></div><div class="form-group"><label>النوع *</label><select class="form-control" id="sf_type"><option value="cash">صندوق نقدي</option><option value="bank">حساب بنكي</option></select></div></div>
+    <div class="form-row"><div class="form-group"><label>الرصيد الافتتاحي</label><input type="number" step="0.001" class="form-control" id="sf_opening" value="0"></div><div class="form-group"><label>العملة</label><select class="form-control" id="sf_currency"><option value="KWD">دينار كويتي</option></select></div></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('newSafeModal')">إلغاء</button><button class="btn btn-primary" onclick="saveSafe()">حفظ</button></div>
+</div>
+</div>
+<div class="modal-overlay" id="editSafeModal">
+<div class="modal">
+  <div class="modal-header"><h3>&#x270F;&#xFE0F; تعديل صندوق / بنك</h3><button class="modal-close" onclick="closeModal('editSafeModal')">&#x2715;</button></div>
+  <div class="modal-body">
+    <div id="editSafeModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
+    <input type="hidden" id="esf_id">
+    <div class="form-row"><div class="form-group"><label>الاسم *</label><input class="form-control" id="esf_name"></div><div class="form-group"><label>النوع *</label><select class="form-control" id="esf_type"><option value="cash">صندوق نقدي</option><option value="bank">حساب بنكي</option></select></div></div>
+    <div class="form-row"><div class="form-group"><label>الرصيد الافتتاحي</label><input type="number" step="0.001" class="form-control" id="esf_opening"></div><div class="form-group"><label>رمز الحساب</label><input class="form-control" id="esf_account_code" readonly tabindex="-1"></div></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('editSafeModal')">إلغاء</button><button class="btn btn-primary" onclick="saveSafeEdit()">حفظ التعديلات</button></div>
+</div>
+</div>
+<div class="modal-overlay" id="newTransferModal">
+<div class="modal">
+  <div class="modal-header"><h3>&#x1F504; تحويل بين الصناديق</h3><button class="modal-close" onclick="closeModal('newTransferModal')">&#x2715;</button></div>
+  <div class="modal-body">
+    <div id="newTransferModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
+    <div class="form-row"><div class="form-group"><label>من (المصدر) *</label><select class="form-control" id="tr_from"></select></div><div class="form-group"><label>إلى (الوجهة) *</label><select class="form-control" id="tr_to"></select></div></div>
+    <div class="form-row"><div class="form-group"><label>المبلغ *</label><input type="number" step="0.001" class="form-control" id="tr_amount" placeholder="0.000"></div><div class="form-group"><label>التاريخ</label><input type="date" class="form-control" id="tr_date"></div></div>
+    <div class="form-row full"><div class="form-group"><label>ملاحظات</label><textarea class="form-control" id="tr_notes"></textarea></div></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('newTransferModal')">إلغاء</button><button class="btn btn-primary" onclick="saveTransfer()">تنفيذ التحويل</button></div>
+</div>
 </div>
 </div>
 <div class="modal-overlay" id="newVoucherModal">
@@ -546,7 +643,7 @@ function navigate(page){
   if(chartRenderTimer){ clearTimeout(chartRenderTimer); chartRenderTimer=null; }
   Object.values(charts).forEach(c=>{try{c.destroy();}catch(e){}});
   charts={};
-  const pages={dashboard:renderDashboard,operations:renderOperations,clients:renderClients,vendors:renderVendors,vouchers:renderVouchers,journal:renderJournal,safes:renderSafes,reports:renderReports,settings:renderSettings};
+  const pages={dashboard:renderDashboard,operations:renderOperations,clients:renderClients,vendors:renderVendors,vouchers:renderVouchers,journal:renderJournal,safes:renderSafes,reports:renderReports,activity:typeof renderActivityLogs==='function'?renderActivityLogs:null,settings:renderSettings};
   if(pages[page])pages[page](pc);
 }
 
@@ -623,13 +720,15 @@ function toExcelAndDownload(data,headers,filename){
 }
 function buildPrintableTableDoc(title,headers,rows,filename){
   const tableRows=rows.length?rows.map(row=>`<tr>${row.map(cell=>`<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${headers.length}" style="text-align:center;padding:24px">لا توجد بيانات</td></tr>`;
+  const brand = typeof officeBrandBlock === 'function' ? officeBrandBlock(title) : `<div><h1>${escapeHtml(title)}</h1></div>`;
+  const meta = `<div class="meta">${rows.length} سجل — ${escapeHtml(new Date().toLocaleDateString('ar-KW'))}</div>`;
   return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
   <title>${escapeHtml(filename)}</title>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Tajawal',sans-serif;padding:24px;color:#1e293b;font-size:12px;direction:rtl}
-    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #1E3A8A}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #1E3A8A;gap:16px}
     h1{font-size:18px;font-weight:800;color:#1e3a8a;margin-bottom:4px}
     .meta{font-size:12px;color:#64748b}
     table{width:100%;border-collapse:collapse;direction:rtl}
@@ -639,8 +738,8 @@ function buildPrintableTableDoc(title,headers,rows,filename){
     @media print{@page{size:A4 landscape;margin:1cm}body{padding:0}}
   </style></head><body>
   <div class="header">
-    <div><h1>${escapeHtml(title)}</h1><div class="meta">${rows.length} سجل — ${escapeHtml(new Date().toLocaleDateString('ar-KW'))}</div></div>
-    <div class="meta">نظام إدارة خدمات السفر</div>
+    <div>${brand}${typeof officeBrandBlock==='function'?'':`<h1>${escapeHtml(title)}</h1>`}${typeof officeBrandBlock==='function'?'':meta}</div>
+    ${typeof officeBrandBlock==='function'?`<div class="meta">${rows.length} سجل — ${escapeHtml(new Date().toLocaleDateString('ar-KW'))}</div>`:'<div class="meta">نظام إدارة خدمات السفر</div>'}
   </div>
   <table><thead><tr>${headers.map(h=>`<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>${tableRows}</tbody></table>
   <script>window.onload=function(){window.focus();window.print();}<\/script>
@@ -793,6 +892,7 @@ function canViewPage(page){
     journal:['accountant','auditor'],
     safes:['accountant','auditor'],
     reports:['sales','accountant','auditor'],
+    activity:['admin','accountant','auditor'],
     settings:['sales','accountant','auditor'],
   };
   return (access[page]||[]).includes(r);
@@ -808,6 +908,7 @@ function canDo(action){
   if(action==='write_master'&&(r==='sales'||r==='accountant'))return true;
   if(action==='update_op'&&r==='sales')return true;
   if(action==='void_voucher'&&r==='accountant')return true;
+  if(action==='manage_safes'&&r==='accountant')return true;
   return false;
 }
 function applyRoleUi(){
@@ -1074,10 +1175,7 @@ function printVoucher(id){
       <div style="text-align:left"><div style="font-size:22px;font-weight:800">${v.ref}</div><div style="font-size:13px;opacity:.85">${v.date}</div></div>
     </div>
     <div class="v-body">
-      <div class="v-company">
-        <h2>✈️ نظام إدارة خدمات السفر</h2>
-        <p>Travel Services Management System</p>
-      </div>
+      <div class="v-company" style="display:flex;justify-content:center">${typeof officeBrandBlock==='function'?officeBrandBlock(isReceipt?'سند قبض':'سند صرف'):`<div><h2>✈️ نظام إدارة خدمات السفر</h2><p>Travel Services Management System</p></div>`}</div>
       <div class="v-amount">
         <div class="lbl">${isReceipt?'المبلغ المقبوض':'المبلغ المصروف'}</div>
         <div class="val">${fmt(v.amount)}</div>
@@ -1205,7 +1303,7 @@ function printJournal(){
     .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #1E3A8A}
     @media print{@page{margin:1cm}body{padding:0}}
   </style></head><body>
-  <div class="header"><div><h1>✈️ نظام إدارة خدمات السفر</h1><div class="meta">${title}</div><div class="meta">${je.length} قيد محاسبي</div></div><div style="text-align:left;font-size:12px;color:#64748b">طُبع: ${new Date().toLocaleDateString('ar-KW')}</div></div>
+  <div class="header"><div>${typeof officeBrandBlock==='function'?officeBrandBlock(title):`<div><h1>✈️ نظام إدارة خدمات السفر</h1><div class="meta">${title}</div><div class="meta">${je.length} قيد محاسبي</div></div>`}</div><div style="text-align:left;font-size:12px;color:#64748b">طُبع: ${new Date().toLocaleDateString('ar-KW')}</div></div>
   <table><thead><tr><th>#</th><th>التاريخ</th><th>المرجع</th><th>الحساب</th><th>البيان</th><th>مدين</th><th>دائن</th></tr></thead>
   <tbody>
   ${je.map(j=>`<tr><td>${j.id}</td><td>${j.date}</td><td>${j.ref}</td><td><b>${j.account}</b></td><td>${j.desc}</td><td class="debit">${j.debit>0?fmtN(j.debit,3):'—'}</td><td class="credit">${j.credit>0?fmtN(j.credit,3):'—'}</td></tr>`).join('')}
@@ -1432,7 +1530,7 @@ function printClientsDebtReport(){
   tr:nth-child(even) td{background:#fff5f5}.total-row td{background:#FEE2E2;font-weight:800;border-top:2px solid #DC2626}
   .balance{color:#DC2626;font-weight:800}.paid{color:#059669;font-weight:700}
   @media print{@page{margin:1cm}body{padding:0}}</style></head><body>
-  <div class="header"><div><h1>✈️ نظام إدارة خدمات السفر</h1><div class="sub">تقرير مديونية العملاء</div><div class="meta">تاريخ الطباعة: ${new Date().toLocaleDateString('ar-KW')}</div></div><div style="text-align:left;font-size:12px;color:#64748b">${debtors.length} عميل مدين</div></div>
+  <div class="header"><div>${typeof officeBrandBlock==='function'?officeBrandBlock('تقرير مديونية العملاء'):`<div><h1>✈️ نظام إدارة خدمات السفر</h1><div class="sub">تقرير مديونية العملاء</div><div class="meta">تاريخ الطباعة: ${new Date().toLocaleDateString('ar-KW')}</div></div>`}</div><div style="text-align:left;font-size:12px;color:#64748b">${debtors.length} عميل مدين</div></div>
   <div class="summary"><div class="sum-box"><div class="val">${debtors.length}</div><div class="lbl">عدد العملاء المدينين</div></div><div class="sum-box"><div class="val">${fmtN(totalDebt,3)} د.ك</div><div class="lbl">إجمالي المديونية</div></div><div class="sum-box"><div class="val">${debtors.length?fmtN(totalDebt/debtors.length,3):0} د.ك</div><div class="lbl">متوسط المديونية</div></div></div>
   <table><thead><tr><th>#</th><th>اسم العميل</th><th>الهاتف</th><th>الجنسية</th><th>إجمالي المشتريات</th><th>المدفوع</th><th>الرصيد المدين</th><th>العمليات</th></tr></thead>
   <tbody>${debtors.map((c,i)=>`<tr><td>${i+1}</td><td><b>${c.name}</b></td><td>${c.phone}</td><td>${displayVal(c.nationality)}</td><td>${fmtN(c.totalPurchases,3)} د.ك</td><td class="paid">${fmtN(c.totalPaid,3)} د.ك</td><td class="balance">${fmtN(c.balance,3)} د.ك</td><td>${c.opsCount}</td></tr>`).join('')}
@@ -1478,7 +1576,7 @@ function printVendorsBalanceReport(){
   tr:nth-child(even) td{background:#FFFBEB}.total-row td{background:#FEF3C7;font-weight:800;border-top:2px solid #D97706}
   .balance{color:#D97706;font-weight:800}.paid{color:#059669;font-weight:700}
   @media print{@page{margin:1cm}body{padding:0}}</style></head><body>
-  <div class="header"><div><h1>✈️ نظام إدارة خدمات السفر</h1><div class="sub">تقرير أرصدة المكاتب والموردين</div><div class="meta">تاريخ الطباعة: ${new Date().toLocaleDateString('ar-KW')}</div></div><div style="text-align:left;font-size:12px;color:#64748b">${creditors.length} مكتب دائن</div></div>
+  <div class="header"><div>${typeof officeBrandBlock==='function'?officeBrandBlock('تقرير أرصدة المكاتب والموردين'):`<div><h1>✈️ نظام إدارة خدمات السفر</h1><div class="sub">تقرير أرصدة المكاتب والموردين</div><div class="meta">تاريخ الطباعة: ${new Date().toLocaleDateString('ar-KW')}</div></div>`}</div><div style="text-align:left;font-size:12px;color:#64748b">${creditors.length} مكتب دائن</div></div>
   <div class="summary"><div class="sum-box"><div class="val">${creditors.length}</div><div class="lbl">عدد المكاتب الدائنة</div></div><div class="sum-box"><div class="val">${fmtN(totalOwed,3)} د.ك</div><div class="lbl">إجمالي المستحقات</div></div><div class="sum-box"><div class="val">${creditors.length?fmtN(totalOwed/creditors.length,3):0} د.ك</div><div class="lbl">متوسط المستحق</div></div></div>
   <table><thead><tr><th>#</th><th>اسم المكتب</th><th>التصنيف</th><th>الهاتف</th><th>جهة الاتصال</th><th>إجمالي الخدمات</th><th>المدفوع</th><th>الرصيد المستحق</th><th>العمليات</th></tr></thead>
   <tbody>${creditors.map((v,i)=>`<tr><td>${i+1}</td><td><b>${v.name}</b></td><td>${v.category}</td><td>${v.phone}</td><td>${v.contact}</td><td>${fmtN(v.totalServices,3)} د.ك</td><td class="paid">${fmtN(v.totalPaid,3)} د.ك</td><td class="balance">${fmtN(v.balance,3)} د.ك</td><td>${v.opsCount}</td></tr>`).join('')}
@@ -1523,8 +1621,8 @@ function renderSettings(pc){
       ${currentUser?.role==='admin'||currentUser?.role==='super_admin'?`<div class="card">
         <div class="card-header"><h3>👤 المستخدمون</h3><button class="btn btn-primary btn-sm" onclick="showModal('newUserModal')">➕ مستخدم جديد</button></div>
         <div class="card-body" style="padding:0"><div class="table-wrapper">
-          <table class="table"><thead><tr><th>الاسم</th><th>البريد</th><th>الدور</th><th>المكتب</th></tr></thead>
-          <tbody>${USERS.map(u=>`<tr><td><div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">${u.avatar}</div><b>${u.name}</b></div></td><td style="font-size:13px">${u.email}</td><td><span class="badge badge-info">${u.roleLabel}</span></td><td>${u.office?.office_name||u.office?.office_code||'—'}</td></tr>`).join('')}</tbody></table>
+          <table class="table"><thead><tr><th>الاسم</th><th>البريد</th><th>الدور</th><th>المكتب</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+          <tbody id="usersSettingsBody">${typeof usersSettingsRows==='function'?usersSettingsRows():USERS.map(u=>`<tr><td><div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">${u.avatar||'?'}</div><b>${u.name}</b></div></td><td style="font-size:13px">${u.email}</td><td><span class="badge badge-info">${u.roleLabel||u.role}</span></td><td>${u.office?.office_name||u.office?.office_code||'—'}</td><td><span class="badge ${u.is_active!==false?'badge-success':'badge-danger'}">${u.is_active!==false?'مفعل':'معطل'}</span></td><td>—</td></tr>`).join('')}</tbody></table>
         </div></div>
       </div>`:''}
       <div class="card">
@@ -1536,10 +1634,48 @@ function renderSettings(pc){
       </div>
       <div class="card">
         <div class="card-header"><h3>👤 ملفي الشخصي</h3></div>
-        <div class="card-body">
-          <div class="form-row"><div class="form-group"><label>الاسم</label><input class="form-control" id="prof_name" value="${currentUser?.name||''}"></div><div class="form-group"><label>البريد الإلكتروني</label><input class="form-control" value="${currentUser?.email||''}" readonly></div></div>
-          <div class="form-row"><div class="form-group"><label>الدور</label><input class="form-control" value="${currentUser?.roleLabel||''}" readonly></div></div>
-          <button class="btn btn-primary" onclick="saveProfile()">💾 حفظ الاسم</button>
+        <div class="card-body profile-settings">
+          <div id="profProfileError" class="alert alert-danger profile-alert" style="display:none"></div>
+          <p class="profile-section-title">البيانات الأساسية</p>
+          <div class="form-row">
+            <div class="form-group"><label for="prof_name">الاسم</label><input class="form-control" id="prof_name" value="${currentUser?.name||''}" autocomplete="name"></div>
+            <div class="form-group"><label for="prof_email">البريد الإلكتروني</label><input type="email" class="form-control" id="prof_email" value="${currentUser?.email||''}" autocomplete="username"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>الدور</label><input class="form-control" value="${currentUser?.roleLabel||''}" readonly tabindex="-1"></div>
+            <div class="form-group"><label>المكتب</label><input class="form-control" value="${currentUser?.office?.office_name||currentUser?.office?.office_code||'—'}" readonly tabindex="-1"></div>
+          </div>
+          <div class="profile-actions"><button class="btn btn-primary" id="saveProfileBtn" onclick="saveProfile()">💾 حفظ البيانات</button></div>
+          <hr class="profile-divider">
+          <p class="profile-section-title">تغيير كلمة المرور</p>
+          <div id="profPasswordError" class="alert alert-danger profile-alert" style="display:none"></div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label for="prof_current_password">كلمة المرور الحالية</label>
+              <div class="password-field">
+                <input type="password" class="form-control" id="prof_current_password" autocomplete="current-password">
+                <button type="button" class="password-toggle" aria-label="إظهار كلمة المرور" onclick="togglePasswordVisibility('prof_current_password', this)"><span class="eye-open" aria-hidden="true">👁</span><span class="eye-closed" aria-hidden="true">🙈</span></button>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="prof_new_password">كلمة المرور الجديدة</label>
+              <div class="password-field">
+                <input type="password" class="form-control" id="prof_new_password" autocomplete="new-password" minlength="8">
+                <button type="button" class="password-toggle" aria-label="إظهار كلمة المرور" onclick="togglePasswordVisibility('prof_new_password', this)"><span class="eye-open" aria-hidden="true">👁</span><span class="eye-closed" aria-hidden="true">🙈</span></button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="prof_confirm_password">تأكيد كلمة المرور</label>
+              <div class="password-field">
+                <input type="password" class="form-control" id="prof_confirm_password" autocomplete="new-password" minlength="8">
+                <button type="button" class="password-toggle" aria-label="إظهار كلمة المرور" onclick="togglePasswordVisibility('prof_confirm_password', this)"><span class="eye-open" aria-hidden="true">👁</span><span class="eye-closed" aria-hidden="true">🙈</span></button>
+              </div>
+            </div>
+          </div>
+          <p class="profile-hint">يجب أن تكون كلمة المرور 8 أحرف على الأقل.</p>
+          <div class="profile-actions"><button class="btn btn-outline" id="saveProfilePasswordBtn" onclick="saveProfilePassword()">🔒 تحديث كلمة المرور</button></div>
         </div>
       </div>
       <div class="card">
@@ -1594,6 +1730,24 @@ style.textContent=`
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:4px}
 .form-row.three{grid-template-columns:1fr 1fr 1fr}
 .form-row.full{grid-template-columns:1fr}
+.profile-settings .profile-section-title{font-size:14px;font-weight:700;margin:0 0 12px;color:var(--text)}
+.profile-settings .profile-divider{border:none;border-top:1px solid var(--border);margin:24px 0}
+.profile-settings .profile-hint{font-size:12px;color:var(--text-sm);margin:0 0 12px}
+.profile-settings .profile-actions{display:flex;flex-wrap:wrap;gap:8px}
+.profile-settings .profile-alert{margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:13px}
+.password-field{position:relative;display:flex;align-items:stretch}
+.password-field .form-control{padding-left:44px;width:100%}
+.password-toggle{position:absolute;left:8px;top:50%;transform:translateY(-50%);width:36px;height:36px;min-width:36px;min-height:36px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:8px;color:var(--text-sm);font-size:18px;line-height:1;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.password-toggle:hover,.password-toggle:focus-visible{background:var(--bg);outline:2px solid var(--primary);outline-offset:1px}
+.password-toggle .eye-closed{display:none}
+.password-toggle.is-visible .eye-open{display:none}
+.password-toggle.is-visible .eye-closed{display:inline}
+.office-logo-field{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.office-logo-preview{width:72px;height:72px;border-radius:12px;border:1px dashed var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
+.office-logo-preview img{width:100%;height:100%;object-fit:contain}
+.office-logo-fallback{font-size:28px;line-height:1}
+.office-logo-actions{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:180px}
+.sidebar-logo .s-icon img{width:100%;height:100%;object-fit:cover;border-radius:10px;display:block}
 textarea.form-control{min-height:80px;resize:vertical}
 .page-content{flex:1;overflow-y:auto}
 .drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:150}

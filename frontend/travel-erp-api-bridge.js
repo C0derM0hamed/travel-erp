@@ -7,12 +7,13 @@ let DASHBOARD_DATA = null;
 let REPORT_CACHE = {};
 let OFFICES = [];
 let currentOffice = null;
+let opFormState = { ready: false, clients: [], vendors: [], loading: false };
 const __originalNavigate = navigate;
 const __originalRenderRptContent = renderRptContent;
 const PAGE_RENDERERS = {
   dashboard: 'renderDashboard', operations: 'renderOperations', clients: 'renderClients',
   vendors: 'renderVendors', vouchers: 'renderVouchers', journal: 'renderJournal',
-  safes: 'renderSafes', reports: 'renderReports', settings: 'renderSettings',
+  safes: 'renderSafes', reports: 'renderReports', activity: 'renderActivityLogs', settings: 'renderSettings',
 };
 
 /** Central UI lifecycle: overlays, auth isolation, post-mutation sync */
@@ -159,13 +160,15 @@ async function apiFetch(path, options = {}){
     let msg = 'حدث خطأ في الاتصال بالخادم';
     try{
       const err = await res.json();
-      msg = err.message || Object.values(err.errors||{})[0]?.[0] || msg;
+      msg = translateApiMessage(err.message || Object.values(err.errors||{})[0]?.[0] || msg);
     }catch(e){}
-    if(res.status === 403) msg = 'ليس لديك صلاحية لتنفيذ هذا الإجراء';
-    else if(res.status === 401) msg = 'انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى';
-    else if(res.status === 419) msg = 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى';
-    else if(res.status === 429) msg = 'محاولات كثيرة، يرجى الانتظار قليلاً';
-    else if(res.status === 422 && msg === 'حدث خطأ في الاتصال بالخادم') msg = 'يرجى التحقق من البيانات المدخلة';
+    if(res.status === 403) msg = translateApiMessage(msg);
+    else if(res.status === 401) msg = 'يرجى تسجيل الدخول للمتابعة.';
+    else if(res.status === 404) msg = 'العنصر المطلوب غير موجود.';
+    else if(res.status === 419) msg = 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى.';
+    else if(res.status === 429) msg = 'محاولات كثيرة، يرجى الانتظار قليلاً.';
+    else if(res.status === 500) msg = 'حدث خطأ غير متوقع، يرجى المحاولة مرة أخرى.';
+    else if(res.status === 422 && msg === 'حدث خطأ في الاتصال بالخادم') msg = 'يرجى التحقق من البيانات المدخلة.';
     if((res.status === 401 || res.status === 419) && !skipAuthRedirect) handleSessionExpired(msg);
     throw new Error(msg);
   }
@@ -187,6 +190,277 @@ async function fetchAllPages(path, params = {}){
   return rows;
 }
 
+function exportCtxArg(ctx){
+  if (!ctx || typeof ctx !== 'object') return '';
+  const parts = Object.entries(ctx).map(([k, v]) => {
+    if (typeof v === 'number') return `${k}:${v}`;
+    return `${k}:'${String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+  });
+  return parts.length ? `, {${parts.join(', ')}}` : '';
+}
+
+function exportActionBar(handler, { excel = true, pdf = true, print = false, ctx = null } = {}){
+  const ctxJson = exportCtxArg(ctx);
+  const parts = [];
+  if (excel) parts.push(`<button type="button" class="btn btn-sm btn-outline" onclick="runBackendExport('${handler}','xlsx', false${ctxJson})">📥 Excel</button>`);
+  if (pdf) parts.push(`<button type="button" class="btn btn-sm btn-outline" onclick="runBackendExport('${handler}','pdf', false${ctxJson})">📄 PDF</button>`);
+  if (print) parts.push(`<button type="button" class="btn btn-sm btn-outline" onclick="runBackendExport('${handler}','pdf', true${ctxJson})">🖨️ طباعة</button>`);
+  return parts.join('');
+}
+
+function exportParamsFor(handler, ctx = {}){
+  const dateRange = (fromId, toId) => {
+    const p = {};
+    applyDateParams(p, fromId, toId);
+    return p;
+  };
+  switch (handler) {
+    case 'operations':
+      return Object.assign(
+        {},
+        document.getElementById('opSearchInput')?.value?.trim() ? { search: document.getElementById('opSearchInput').value.trim() } : {},
+        (document.getElementById('opStatusFilter')?.value || 'all') !== 'all' ? { status: document.getElementById('opStatusFilter').value } : {},
+        (document.getElementById('opSvcFilter')?.value || 'all') !== 'all' ? { service: document.getElementById('opSvcFilter').value } : {},
+        dateRange('opFrom', 'opTo'),
+      );
+    case 'clients':
+      return document.getElementById('clSearch')?.value?.trim() ? { search: document.getElementById('clSearch').value.trim() } : {};
+    case 'vendors':
+      return document.getElementById('vnSearch')?.value?.trim() ? { search: document.getElementById('vnSearch').value.trim() } : {};
+    case 'vouchers':
+      return Object.assign(
+        { type: vcTab },
+        document.getElementById('vcSearch')?.value?.trim() ? { search: document.getElementById('vcSearch').value.trim() } : {},
+        dateRange('vcFrom', 'vcTo'),
+      );
+    case 'journal':
+      return Object.assign(
+        {},
+        document.getElementById('jeSearch')?.value?.trim() ? { search: document.getElementById('jeSearch').value.trim() } : {},
+        (document.getElementById('jeAccFilter')?.value || 'all') !== 'all' ? { account: document.getElementById('jeAccFilter').value } : {},
+        dateRange('jeFrom', 'jeTo'),
+      );
+    case 'activity_logs':
+      return Object.assign(
+        {},
+        document.getElementById('actSearch')?.value?.trim() ? { search: document.getElementById('actSearch').value.trim() } : {},
+        (document.getElementById('actActionFilter')?.value || 'all') !== 'all' ? { action: document.getElementById('actActionFilter').value } : {},
+        dateRange('actFrom', 'actTo'),
+      );
+    case 'client_statement':
+      return dateRange('stmtFrom', 'stmtTo');
+    case 'vendor_statement':
+      return dateRange('vstmtFrom', 'vstmtTo');
+    case 'report':
+      return rptDateParams();
+    default:
+      return ctx.params || {};
+  }
+}
+
+function exportPathFor(handler, ctx = {}){
+  switch (handler) {
+    case 'operations': return '/exports/operations';
+    case 'clients': return '/exports/clients';
+    case 'vendors': return '/exports/vendors';
+    case 'vouchers': return '/exports/vouchers';
+    case 'journal': return '/exports/journal';
+    case 'activity_logs': return '/exports/activity-logs';
+    case 'operation_detail': return `/exports/operations/${ctx.id}`;
+    case 'operation_invoice': return `/exports/operations/${ctx.id}/invoice`;
+    case 'voucher_detail': return `/exports/vouchers/${ctx.id}`;
+    case 'client_statement': return `/exports/clients/${ctx.id}/statement`;
+    case 'vendor_statement': return `/exports/vendors/${ctx.id}/statement`;
+    case 'report': {
+      const type = ctx.type || reportExportType();
+      return `/exports/reports/${type}`;
+    }
+    default: return ctx.path || '/exports/operations';
+  }
+}
+
+async function downloadBackendExport(path, params = {}, { format = 'xlsx', inline = false } = {}){
+  const qs = new URLSearchParams({ ...params, format });
+  if (inline) qs.set('inline', '1');
+  const headers = {};
+  if (currentOffice?.id) headers['X-Office-Id'] = String(currentOffice.id);
+  const res = await fetch(`${API_BASE}${path}?${qs.toString()}`, { credentials: 'same-origin', headers });
+  if (!res.ok) {
+    let msg = 'فشل التصدير';
+    try {
+      const err = await res.json();
+      msg = translateApiMessage(err.message || msg);
+    } catch (e) {}
+    if (res.status === 403) msg = 'ليس لديك صلاحية لتنفيذ هذا الإجراء.';
+    else if (res.status === 404) msg = 'العنصر المطلوب غير موجود.';
+    else if (res.status === 500) msg = 'حدث خطأ غير متوقع، يرجى المحاولة مرة أخرى.';
+    throw new Error(msg);
+  }
+  const blob = await res.blob();
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+  const filename = match ? decodeURIComponent(match[1]) : `export.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+  const url = URL.createObjectURL(blob);
+  if (inline) {
+    const w = window.open(url, '_blank');
+    if (!w) {
+      notify('يرجى السماح بالنوافذ المنبثقة للطباعة', 'warning');
+    } else {
+      w.onload = () => { try { w.focus(); w.print(); } catch (e) {} };
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function runBackendExport(handler, format, forPrint = false, ctx = {}){
+  try {
+    await downloadBackendExport(
+      exportPathFor(handler, ctx),
+      exportParamsFor(handler, ctx),
+      { format, inline: forPrint && format === 'pdf' },
+    );
+    if (!forPrint) notify('تم التصدير بنجاح', 'success');
+  } catch (e) {
+    notify(e.message, 'error');
+  }
+}
+window.runBackendExport = runBackendExport;
+
+exportOps = () => runBackendExport('operations', 'xlsx');
+exportOpsPDF = () => runBackendExport('operations', 'pdf');
+exportClients = () => runBackendExport('clients', 'xlsx');
+exportClientsPDF = () => runBackendExport('clients', 'pdf');
+exportVendors = () => runBackendExport('vendors', 'xlsx');
+exportVendorsPDF = () => runBackendExport('vendors', 'pdf');
+exportVouchers = () => runBackendExport('vouchers', 'xlsx');
+exportVouchersPDF = () => runBackendExport('vouchers', 'pdf');
+exportJournal = () => runBackendExport('journal', 'xlsx');
+exportJournalPDF = () => runBackendExport('journal', 'pdf');
+printJournal = () => runBackendExport('journal', 'pdf', true);
+exportActivityLogs = () => runBackendExport('activity_logs', 'xlsx');
+exportActivityLogsPDF = () => runBackendExport('activity_logs', 'pdf');
+exportClientStmt = (cid) => runBackendExport('client_statement', 'xlsx', false, { id: cid });
+exportClientStmtPDF = (cid) => runBackendExport('client_statement', 'pdf', false, { id: cid });
+printClientStmtPDF = (cid) => runBackendExport('client_statement', 'pdf', true, { id: cid });
+printVendorStmtPDF = (vid) => runBackendExport('vendor_statement', 'pdf', true, { id: vid });
+exportVendorStmt = (vid) => runBackendExport('vendor_statement', 'xlsx', false, { id: vid });
+exportVendorStmtPDF = (vid) => runBackendExport('vendor_statement', 'pdf', false, { id: vid });
+function translateApiMessage(message){
+  if(!message) return 'يرجى التحقق من البيانات المدخلة.';
+  const key = String(message).trim().toLowerCase();
+  const map = {
+    'forbidden': 'ليس لديك صلاحية لتنفيذ هذا الإجراء.',
+    'this action is unauthorized.': 'ليس لديك صلاحية لتنفيذ هذا الإجراء.',
+    'unauthorized': 'يرجى تسجيل الدخول للمتابعة.',
+    'unauthenticated.': 'يرجى تسجيل الدخول للمتابعة.',
+    'not found': 'العنصر المطلوب غير موجود.',
+    'not found.': 'العنصر المطلوب غير موجود.',
+    'server error': 'حدث خطأ غير متوقع، يرجى المحاولة مرة أخرى.',
+    'internal server error': 'حدث خطأ غير متوقع، يرجى المحاولة مرة أخرى.',
+    'the selected client id is invalid.': 'العميل المحدد غير موجود أو لا ينتمي إلى المكتب الحالي.',
+    'the selected vendor id is invalid.': 'المورد المحدد غير موجود أو لا ينتمي إلى المكتب الحالي.',
+    'the selected service id is invalid.': 'الخدمة غير موجودة أو غير مفعّلة.',
+    'the selected operation id is invalid.': 'العملية المحددة غير موجودة أو لا تنتمي إلى المكتب الحالي.',
+    'the selected safe id is invalid.': 'الصندوق المحدد غير موجود أو لا ينتمي إلى المكتب الحالي.',
+    'office context is required.': 'لم يتم تحديد المكتب الحالي. يرجى إعادة تسجيل الدخول.',
+    'validation failed.': 'يرجى التحقق من البيانات المدخلة.',
+  };
+  if (map[key]) return map[key];
+  if (/^the selected .+ is invalid\.?$/.test(key)) return 'القيمة المحددة غير صالحة أو لا تنتمي إلى المكتب الحالي.';
+  if (/^the .+ field is required\.?$/.test(key)) return 'يرجى تعبئة جميع الحقول المطلوبة.';
+  return message;
+}
+
+function activityActionLabel(action, actionLabel){
+  if (actionLabel) return actionLabel;
+  const map = {
+    'operation.created': 'تم إنشاء عملية',
+    'operation.updated': 'تم تعديل عملية',
+    'operation.hidden': 'تم إخفاء عملية',
+    'operation.restored': 'تم استعادة عملية',
+    'operation.cancelled': 'تم إلغاء عملية',
+    'operation.status_updated': 'تم تحديث حالة عملية',
+    'client.created': 'تم إنشاء عميل',
+    'client.updated': 'تم تعديل عميل',
+    'client.deleted': 'تم حذف عميل',
+    'client.hidden': 'تم إخفاء عميل',
+    'client.restored': 'تم استعادة عميل',
+    'vendor.created': 'تم إنشاء مورد',
+    'vendor.updated': 'تم تعديل مورد',
+    'vendor.deleted': 'تم حذف مورد',
+    'voucher.created': 'تم إنشاء سند',
+    'voucher.voided': 'تم إلغاء سند',
+    'safe.created': 'تم إنشاء صندوق',
+    'safe.updated': 'تم تعديل صندوق',
+    'safe.toggled': 'تم تغيير حالة صندوق',
+    'safe_transfer.created': 'تم إنشاء تحويل بين الصناديق',
+    'user.created': 'تم إنشاء مستخدم',
+    'user.updated': 'تم تعديل مستخدم',
+    'user.password_reset': 'تم إعادة تعيين كلمة مرور',
+    'office.created': 'تم إنشاء مكتب',
+    'office.updated': 'تم تعديل مكتب',
+    'office.logo_updated': 'تم تحديث شعار المكتب',
+    'office.logo_removed': 'تم حذف شعار المكتب',
+    'service.toggled': 'تم تغيير حالة خدمة',
+  };
+  return map[action] || 'حدث نشاط';
+}
+
+function formatActivityDetails(log){
+  if (log?.details) return log.details;
+  return '—';
+}
+
+async function sendWhatsAppInvoice(operationId){
+  try {
+    const share = await apiFetch(`/operations/${operationId}/invoice-share`);
+    if (!share.phone) {
+      notify('لا يوجد رقم هاتف مسجل للعميل', 'warning');
+      return;
+    }
+    const url = share.whatsapp_url;
+    if (!url) {
+      notify('تعذر إنشاء رابط واتساب', 'error');
+      return;
+    }
+    window.open(url, '_blank');
+    notify('تم فتح واتساب مع رسالة الفاتورة', 'success');
+  } catch (e) {
+    notify(e.message || 'تعذر إرسال الفاتورة عبر واتساب', 'error');
+  }
+}
+window.sendWhatsAppInvoice = sendWhatsAppInvoice;
+printOperationDetail = (id) => runBackendExport('operation_detail', 'pdf', true, { id });
+exportOperationDetailPDF = (id) => runBackendExport('operation_detail', 'pdf', false, { id });
+exportOperationInvoicePDF = (id) => runBackendExport('operation_invoice', 'pdf', false, { id });
+printOperationInvoicePDF = (id) => runBackendExport('operation_invoice', 'pdf', true, { id });
+printVoucherExport = (id) => runBackendExport('voucher_detail', 'pdf', true, { id });
+exportReportExcel = () => runBackendExport('report', 'xlsx', false, { type: reportExportType() });
+exportReportPDF = () => runBackendExport('report', 'pdf', false, { type: reportExportType() });
+exportAgingReport = () => runBackendExport('report', 'xlsx', false, { type: 'aging' });
+exportCashFlow = () => runBackendExport('report', 'xlsx', false, { type: 'cashflow' });
+exportProfitReport = () => runBackendExport('report', 'xlsx', false, { type: 'profit' });
+exportClientsDebtReport = () => runBackendExport('report', 'xlsx', false, { type: 'clients-debt' });
+exportVendorsBalanceReport = () => runBackendExport('report', 'xlsx', false, { type: 'vendors-balance' });
+function reportExportType(){
+  if (rptTab === 'ops') return 'operations';
+  if (rptTab === 'clients_debt') return 'clients-debt';
+  if (rptTab === 'vendors_balance') return 'vendors-balance';
+  return rptTab;
+}
+function reportExportBar(){
+  return exportActionBar('report');
+}
+
+
 function clearLocalState(){
   currentUser=null; currentOffice=null; OFFICES=[]; __apiBootstrapped=false; __journalLoaded=false; JOURNAL_CACHE=[]; BOOTSTRAP_METRICS={}; DASHBOARD_DATA=null; REPORT_CACHE={};
   if(typeof vcTab!=='undefined') vcTab='receipt';
@@ -205,7 +479,10 @@ function showLogin(){
 
 function enterApp(user){
   currentUser = user;
-  currentOffice = user.current_office_id ? { id: user.current_office_id, ...(user.office || {}) } : (user.office || null);
+  const officeId = user.current_office_id || user.office_id || user.office?.id || null;
+  currentOffice = officeId
+    ? { id: officeId, ...(user.office || {}) }
+    : (user.office || null);
   AppShell.setAuthMode('app');
   document.getElementById('loginPage').style.display='none';
   document.getElementById('appLayout').style.display='flex';
@@ -215,6 +492,7 @@ function enterApp(user){
   document.getElementById('loginError').style.display='none';
   if(typeof applyRoleUi==='function')applyRoleUi();
   renderOfficeSwitcher();
+  renderOfficeBranding();
 }
 
 function renderOfficeSwitcher(){
@@ -232,6 +510,9 @@ function renderOfficeSwitcher(){
 async function switchOffice(officeId){
   if(!officeId) return;
   try{
+    closeModal('newOpModal');
+    closeModal('editOpModal');
+    opFormState = { ready: false, clients: [], vendors: [], loading: false };
     const data = await apiFetch('/session/office', {method:'POST', body:JSON.stringify({office_id:+officeId})});
     currentOffice = data.office;
     currentUser = data.user;
@@ -244,20 +525,175 @@ async function switchOffice(officeId){
       window[PAGE_RENDERERS[currentPage]](document.getElementById('pageContent'));
     }
     notify('تم التبديل إلى: ' + (currentOffice.office_name || currentOffice.office_code), 'success');
+    renderOfficeBranding();
   }catch(e){ notify(e.message, 'error'); }
+}
+
+function officeLogoUrl(office){
+  if(!office) return null;
+  if(office.logo_url) return office.logo_url;
+  if(office.logo && !String(office.logo).startsWith('http')) return '/storage/' + String(office.logo).replace(/^\/+/, '');
+  return office.logo || null;
+}
+
+function renderOfficeBranding(){
+  const office = currentOffice || currentUser?.office || null;
+  const iconEl = document.getElementById('sidebarOfficeLogo');
+  const nameEl = document.getElementById('sidebarOfficeName');
+  const topbarEl = document.getElementById('topbarOfficeLogo');
+  const url = officeLogoUrl(office);
+  if(iconEl){
+    iconEl.innerHTML = url
+      ? `<img src="${url}" alt="${office?.office_name || 'شعار المكتب'}">`
+      : '&#x2708;&#xFE0F;';
+  }
+  if(nameEl){
+    const subtitle = office?.office_code ? `<small style="font-size:10px;opacity:.6">${office.office_code}</small>` : '<small style="font-size:10px;opacity:.6">ERP للوكالات</small>';
+    nameEl.innerHTML = `${office?.office_name || 'نظام السفر'}<br>${subtitle}`;
+  }
+  if(topbarEl){
+    topbarEl.style.display = office ? 'flex' : 'none';
+    topbarEl.innerHTML = url
+      ? `<img src="${url}" alt="">`
+      : '🏢';
+  }
+}
+
+function officeBrandBlock(subtitle=''){
+  const office = currentOffice || currentUser?.office || null;
+  const url = officeLogoUrl(office);
+  const name = office?.office_name || 'نظام إدارة خدمات السفر';
+  const esc = typeof escapeHtml === 'function' ? escapeHtml : (v) => String(v ?? '');
+  const logoHtml = url
+    ? `<img src="${esc(url)}" alt="" style="width:56px;height:56px;object-fit:contain;border-radius:8px">`
+    : `<div style="width:56px;height:56px;background:#1e3a8a;color:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px">✈️</div>`;
+  return `<div style="display:flex;align-items:center;gap:12px">${logoHtml}<div><h1 style="font-size:18px;font-weight:800;color:#1e3a8a;margin:0">${esc(name)}</h1>${subtitle ? `<div style="font-size:13px;color:#64748b;margin-top:4px;font-weight:700">${esc(subtitle)}</div>` : `<div style="font-size:12px;color:#64748b;margin-top:2px">Travel Services Management System</div>`}</div></div>`;
+}
+
+function previewOfficeLogo(inputId, previewId, clearBtnId){
+  const input = document.getElementById(inputId);
+  const preview = document.getElementById(previewId);
+  const clearBtn = clearBtnId ? document.getElementById(clearBtnId) : document.getElementById(inputId.replace('logo','logo_clear'));
+  if(!input?.files?.[0] || !preview) return;
+  const file = input.files[0];
+  const allowed = ['image/jpeg','image/jpg','image/png','image/webp'];
+  if(!allowed.includes(file.type)){ notify('نوع الملف غير مدعوم. المسموح: JPG, PNG, WEBP', 'warning'); input.value=''; return; }
+  if(file.size > 2 * 1024 * 1024){ notify('حجم الشعار يجب ألا يتجاوز 2MB', 'warning'); input.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = () => { preview.innerHTML = `<img src="${reader.result}" alt="معاينة الشعار">`; };
+  reader.readAsDataURL(file);
+  if(clearBtn) clearBtn.style.display = 'inline-flex';
+}
+
+function clearOfficeLogoPick(inputId, previewId, clearBtnId){
+  const input = document.getElementById(inputId);
+  const preview = document.getElementById(previewId);
+  const clearBtn = clearBtnId ? document.getElementById(clearBtnId) : null;
+  if(input) input.value = '';
+  if(preview) preview.innerHTML = '<span class="office-logo-fallback">🏢</span>';
+  if(clearBtn) clearBtn.style.display = 'none';
+}
+
+function resetNewOfficeForm(){
+  ['office_code','office_name'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  clearOfficeLogoPick('office_logo','office_logo_preview','office_logo_clear');
+  const err = document.getElementById('newOfficeModalError');
+  if(err){ err.style.display='none'; err.textContent=''; }
+}
+
+let __editOfficeHasLogo = false;
+
+function openEditOffice(id){
+  const office = OFFICES.find(o => +o.id === +id);
+  if(!office){ notify('المكتب غير موجود', 'error'); return; }
+  document.getElementById('eoffice_id').value = office.id;
+  document.getElementById('eoffice_code').value = office.office_code || '';
+  document.getElementById('eoffice_name').value = office.office_name || '';
+  __editOfficeHasLogo = !!officeLogoUrl(office);
+  const preview = document.getElementById('eoffice_logo_preview');
+  const url = officeLogoUrl(office);
+  if(preview){
+    preview.innerHTML = url
+      ? `<img src="${url}" alt="شعار المكتب">`
+      : '<span class="office-logo-fallback">🏢</span>';
+  }
+  clearOfficeLogoPick('eoffice_logo','eoffice_logo_preview','eoffice_logo_clear');
+  const removeBtn = document.getElementById('eoffice_logo_remove');
+  if(removeBtn) removeBtn.style.display = __editOfficeHasLogo ? 'inline-flex' : 'none';
+  const err = document.getElementById('editOfficeModalError');
+  if(err){ err.style.display='none'; err.textContent=''; }
+  showModal('editOfficeModal');
 }
 
 async function saveOffice(){
   const code = document.getElementById('office_code')?.value?.trim();
   const name = document.getElementById('office_name')?.value?.trim();
+  const fileInput = document.getElementById('office_logo');
   if(!code || !name){ notify('يرجى إدخال رمز واسم المكتب', 'warning'); return; }
   await withSaveGuard('#saveOfficeBtn', async () => {
-    await apiFetch('/offices', {method:'POST', body:JSON.stringify({office_code:code, office_name:name, is_active:true})});
+    const form = new FormData();
+    form.append('office_code', code);
+    form.append('office_name', name);
+    form.append('is_active', '1');
+    if(fileInput?.files?.[0]) form.append('logo', fileInput.files[0]);
+    await apiFetch('/offices', {method:'POST', body: form});
     closeModal('newOfficeModal');
+    resetNewOfficeForm();
     await refreshBootstrap();
     renderSettings(document.getElementById('pageContent'));
     notify('تم إنشاء المكتب بنجاح', 'success');
+  }).catch(e => {
+    const err = document.getElementById('newOfficeModalError');
+    if(err){ err.textContent = e.message; err.style.display = 'block'; }
+    else notify(e.message, 'error');
   });
+}
+
+async function saveOfficeEdit(){
+  const id = document.getElementById('eoffice_id')?.value;
+  const code = document.getElementById('eoffice_code')?.value?.trim();
+  const name = document.getElementById('eoffice_name')?.value?.trim();
+  const fileInput = document.getElementById('eoffice_logo');
+  if(!id || !code || !name){ notify('يرجى تعبئة جميع الحقول المطلوبة', 'warning'); return; }
+  await withSaveGuard('#saveEditOfficeBtn', async () => {
+    await apiFetch(`/offices/${id}`, { method:'PATCH', body: JSON.stringify({ office_code: code, office_name: name }) });
+    if(fileInput?.files?.[0]){
+      const form = new FormData();
+      form.append('logo', fileInput.files[0]);
+      await apiFetch(`/offices/${id}/logo`, { method:'POST', body: form });
+    }
+    closeModal('editOfficeModal');
+    await refreshBootstrap();
+    renderSettings(document.getElementById('pageContent'));
+    if(+currentOffice?.id === +id){
+      currentOffice = OFFICES.find(o => +o.id === +id) || currentOffice;
+      renderOfficeBranding();
+    }
+    notify('تم تحديث المكتب', 'success');
+  }).catch(e => {
+    const err = document.getElementById('editOfficeModalError');
+    if(err){ err.textContent = e.message; err.style.display = 'block'; }
+    else notify(e.message, 'error');
+  });
+}
+
+async function removeOfficeLogo(){
+  const id = document.getElementById('eoffice_id')?.value;
+  if(!id || !__editOfficeHasLogo) return;
+  if(!confirm('حذف شعار هذا المكتب؟')) return;
+  await withSaveGuard(null, async () => {
+    await apiFetch(`/offices/${id}/logo`, { method:'DELETE' });
+    __editOfficeHasLogo = false;
+    document.getElementById('eoffice_logo_preview').innerHTML = '<span class="office-logo-fallback">🏢</span>';
+    document.getElementById('eoffice_logo_remove').style.display = 'none';
+    await refreshBootstrap();
+    renderSettings(document.getElementById('pageContent'));
+    if(+currentOffice?.id === +id){
+      currentOffice = OFFICES.find(o => +o.id === +id) || currentOffice;
+      renderOfficeBranding();
+    }
+    notify('تم حذف الشعار', 'success');
+  }).catch(e => notify(e.message, 'error'));
 }
 
 async function toggleOfficeActive(officeId, active){
@@ -308,10 +744,120 @@ async function saveUser(){
   }).catch(e => showModalError('newUserModal', e.message));
 }
 
+function usersSettingsRows(){
+  const canManage = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
+  return USERS.map(u => {
+    const isSelf = u.id === currentUser?.id;
+    const active = u.is_active !== false;
+    const actions = canManage ? `
+      <button class="btn btn-sm btn-outline" onclick="openEditUser(${u.id})">تعديل</button>
+      ${isSelf ? '' : `<button class="btn btn-sm ${active ? 'btn-danger' : 'btn-success'}" onclick="toggleUserActive(${u.id}, ${active ? 0 : 1})">${active ? 'تعطيل' : 'تفعيل'}</button>`}
+      <button class="btn btn-sm btn-outline" onclick="resetUserPassword(${u.id})">إعادة كلمة المرور</button>
+    ` : '—';
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">${u.avatar || '?'}</div><b>${u.name}</b></div></td>
+      <td style="font-size:13px">${u.email}</td>
+      <td><span class="badge badge-info">${u.roleLabel || u.role}</span></td>
+      <td>${u.office?.office_name || u.office?.office_code || '—'}</td>
+      <td><span class="badge ${active ? 'badge-success' : 'badge-danger'}">${active ? 'مفعل' : 'معطل'}</span></td>
+      <td style="white-space:nowrap">${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+function populateEditUserForm(user){
+  const sel = document.getElementById('eusr_office_id');
+  const roleSel = document.getElementById('eusr_role');
+  if(!sel || !roleSel || !user) return;
+  const offices = OFFICES.length ? OFFICES : (currentOffice ? [currentOffice] : []);
+  sel.innerHTML = '<option value="">-- بدون مكتب --</option>' + offices.map(o => `<option value="${o.id}">${o.office_name || o.office_code}</option>`).join('');
+  if(currentUser?.role === 'super_admin' && !roleSel.querySelector('option[value="super_admin"]')){
+    roleSel.insertAdjacentHTML('beforeend', '<option value="super_admin">مدير عام</option>');
+  }
+  document.getElementById('eusr_id').value = user.id;
+  document.getElementById('eusr_name').value = user.name || '';
+  document.getElementById('eusr_email').value = user.email || '';
+  roleSel.value = user.role || 'sales';
+  sel.value = user.office_id ? String(user.office_id) : '';
+  if(currentUser?.role === 'admin'){
+    sel.value = String(currentUser.office_id || user.office_id || '');
+    sel.disabled = true;
+  } else {
+    sel.disabled = roleSel.value === 'super_admin';
+  }
+  roleSel.onchange = () => {
+    if(currentUser?.role === 'super_admin'){
+      sel.disabled = roleSel.value === 'super_admin';
+      if(roleSel.value === 'super_admin') sel.value = '';
+    }
+  };
+}
+
+function openEditUser(id){
+  const user = USERS.find(u => +u.id === +id);
+  if(!user){ notify('المستخدم غير موجود', 'error'); return; }
+  populateEditUserForm(user);
+  showModal('editUserModal');
+}
+
+async function saveUserEdit(){
+  const id = document.getElementById('eusr_id')?.value;
+  const name = document.getElementById('eusr_name')?.value?.trim();
+  const email = document.getElementById('eusr_email')?.value?.trim();
+  const role = document.getElementById('eusr_role')?.value;
+  const officeId = document.getElementById('eusr_office_id')?.value;
+  if(!id || !name || !email || !role){ notify('يرجى تعبئة جميع الحقول المطلوبة', 'warning'); return; }
+  if(role !== 'super_admin' && !officeId){ notify('يرجى اختيار المكتب', 'warning'); return; }
+  await withSaveGuard('#saveEditUserBtn', async () => {
+    const body = { name, email, role };
+    if(role !== 'super_admin') body.office_id = +officeId;
+    else body.office_id = null;
+    await apiFetch(`/users/${id}`, { method:'PATCH', body: JSON.stringify(body) });
+    closeModal('editUserModal');
+    await refreshBootstrap();
+    renderSettings(document.getElementById('pageContent'));
+    notify('تم تحديث المستخدم', 'success');
+  }).catch(e => showModalError('editUserModal', e.message));
+}
+
+async function toggleUserActive(id, active){
+  const user = USERS.find(u => +u.id === +id);
+  if(!user) return;
+  if(+id === +currentUser?.id){ notify('لا يمكن تعطيل حسابك الشخصي', 'warning'); return; }
+  const label = active ? 'تفعيل' : 'تعطيل';
+  if(!confirm(`${label} المستخدم "${user.name}"؟`)) return;
+  await withSaveGuard(null, async () => {
+    await apiFetch(`/users/${id}`, { method:'PATCH', body: JSON.stringify({ is_active: !!active }) });
+    await refreshBootstrap();
+    renderSettings(document.getElementById('pageContent'));
+    notify(`تم ${label} المستخدم`, 'success');
+  }).catch(e => notify(e.message, 'error'));
+}
+
+async function resetUserPassword(id){
+  const user = USERS.find(u => +u.id === +id);
+  if(!user) return;
+  const password = prompt(`أدخل كلمة المرور الجديدة للمستخدم "${user.name}":`);
+  if(!password) return;
+  if(password.length < 8){ notify('كلمة المرور يجب أن تكون 8 أحرف على الأقل', 'warning'); return; }
+  await withSaveGuard(null, async () => {
+    await apiFetch(`/users/${id}/reset-password`, { method:'PATCH', body: JSON.stringify({ password }) });
+    notify('تم إعادة تعيين كلمة المرور', 'success');
+  }).catch(e => notify(e.message, 'error'));
+}
+
 const __showModal = typeof showModal === 'function' ? showModal : (id) => document.getElementById(id)?.classList.add('open');
 showModal = function(id){
   __showModal(id);
   if(id === 'newUserModal') populateUserForm();
+  if(id === 'newOfficeModal') resetNewOfficeForm();
+  if(id === 'newTransferModal') populateTransferForm();
+  if(id === 'newTransferModal') populateTransferForm();
+  if(id === 'newTransferModal') populateTransferForm();
+  if(id === 'editUserModal'){
+    const uid = document.getElementById('eusr_id')?.value;
+    if(uid) populateEditUserForm(USERS.find(u => +u.id === +uid));
+  }
 };
 
 function handleSessionExpired(message){
@@ -334,13 +880,46 @@ async function loadJournalCache(){
 }
 
 async function loadDashboardData(){
-  try{ DASHBOARD_DATA = await apiFetch('/dashboard'); }
+  try{
+    const d = dateParams('dashFrom', 'dashTo');
+    const qs = new URLSearchParams();
+    if(d.from) qs.set('from', d.from);
+    if(d.to) qs.set('to', d.to);
+    DASHBOARD_DATA = await apiFetch('/dashboard' + (qs.toString() ? '?' + qs : ''));
+  }
   catch(e){ DASHBOARD_DATA = null; notify('تعذر تحميل بيانات لوحة التحكم', 'error'); }
 }
 
-const LIST_META = { clients: null, vendors: null, operations: null, vouchers: null };
+filterDashboard = function(){
+  clearTimeout(__listSearchTimer);
+  __listSearchTimer = setTimeout(async ()=>{
+    await loadDashboardData();
+    renderDashboard(document.getElementById('pageContent'));
+  }, 300);
+};
+
+const LIST_META = { clients: null, vendors: null, operations: null, vouchers: null, journal: null, activity: null };
 const LIST_PER_PAGE = 25;
 let __listSearchTimer = null;
+let JOURNAL_TOTALS = {};
+let ACTIVITY_LOGS = [];
+
+function dateParams(fromId, toId){
+  return { from: document.getElementById(fromId)?.value || '', to: document.getElementById(toId)?.value || '' };
+}
+function dateFilterBar(fromId, toId, onChangeFn, fromVal='', toVal='', extra=''){
+  return `<div class="filter-bar">${extra}<input type="date" class="form-control filter-control" id="${fromId}" value="${fromVal}" onchange="${onChangeFn}()" title="من تاريخ"><input type="date" class="form-control filter-control" id="${toId}" value="${toVal}" onchange="${onChangeFn}()" title="إلى تاريخ"></div>`;
+}
+function rptDateParams(){ return dateParams('rptFrom', 'rptTo'); }
+function applyDateParams(params, fromId, toId){
+  const d = dateParams(fromId, toId);
+  if(d.from) params.from = d.from;
+  if(d.to) params.to = d.to;
+  return params;
+}
+function searchFilterBar(inputId, placeholder, onInputFn, extra=''){
+  return `<input type="text" class="form-control filter-control" id="${inputId}" placeholder="${placeholder}" oninput="${onInputFn}()">${extra}`;
+}
 
 async function refreshBootstrap(){
   const data = await apiFetch('/bootstrap');
@@ -350,9 +929,10 @@ async function refreshBootstrap(){
   replaceArray(OFFICES, data.offices || []);
   currentOffice = data.current_office || currentOffice;
   BOOTSTRAP_METRICS = data.metrics || {};
-  const safesPayload = await apiFetch('/safes').catch(() => ({ data: data.safes }));
+  const safesPayload = await apiFetch('/safes?per_page=500').catch(() => ({ data: data.safes }));
   replaceArray(SAFES, safesPayload.data || data.safes);
   renderOfficeSwitcher();
+  renderOfficeBranding();
 }
 
 async function fetchListPage(path, page = 1, params = {}){
@@ -399,6 +979,9 @@ async function reloadOperationsList(page){
   if (search) params.search = search;
   if (status !== 'all') params.status = status;
   if (service !== 'all') params.service = service;
+  applyDateParams(params, 'opFrom', 'opTo');
+  applyDateParams(params, 'opFrom', 'opTo');
+  applyDateParams(params, 'opFrom', 'opTo');
   const res = await fetchListPage('/operations', p, params);
   replaceArray(OPS, res.data || []);
   LIST_META.operations = res.meta || null;
@@ -411,10 +994,12 @@ async function reloadOperationsList(page){
 async function reloadVouchersList(page){
   const from = document.getElementById('vcFrom')?.value || '';
   const to = document.getElementById('vcTo')?.value || '';
+  const search = document.getElementById('vcSearch')?.value?.trim() || '';
   const p = page || tablePages.vouchers || 1;
   const params = { type: vcTab };
   if (from) params.from = from;
   if (to) params.to = to;
+  if (search) params.search = search;
   const res = await fetchListPage('/vouchers', p, params);
   replaceArray(VOUCHERS, res.data || []);
   LIST_META.vouchers = res.meta || null;
@@ -444,8 +1029,9 @@ function paintClientsTable(){
     const b = formatBalance(bal);
     const ops = c.operations_count ?? 0;
     const editBtn = canDo('write_master') ? `<button class="btn btn-sm btn-outline" onclick="openEditClient(${c.id})">تعديل</button> ` : '';
+    const hideBtn = canDo('write_master') ? `<button class="btn btn-sm btn-outline" onclick="hideClient(${c.id})">إخفاء</button> ` : '';
     const deleteBtn = canDo('write_master') ? `<button class="btn btn-sm btn-danger" onclick="deleteClient(${c.id})">حذف</button> ` : '';
-    return `<tr><td>${c.id}</td><td><b>${c.name}</b></td><td>${c.phone}</td><td>${displayVal(c.civil_id)}</td><td>${displayVal(c.nationality)}</td><td style="color:${b.color};font-weight:700">${b.text}</td><td><span class="badge badge-info">${ops}</span></td><td>${editBtn}${deleteBtn}<button class="btn btn-sm btn-outline" onclick="viewClientStmt(${c.id})">كشف حساب</button></td></tr>`;
+    return `<tr><td>${c.id}</td><td><b>${c.name}</b></td><td>${c.phone}</td><td>${displayVal(c.civil_id)}</td><td>${displayVal(c.nationality)}</td><td style="color:${b.color};font-weight:700">${b.text}</td><td><span class="badge badge-info">${ops}</span></td><td>${editBtn}${hideBtn}${deleteBtn}<button class="btn btn-sm btn-outline" onclick="viewClientStmt(${c.id})">كشف حساب</button></td></tr>`;
   }).join('')||'<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-sm)">لا يوجد عملاء</td></tr>'}</tbody></table>${serverPagerHtml('clients', meta, 'reloadClientsList')}`;
 }
 
@@ -470,16 +1056,81 @@ function paintOperationsTable(){
     <thead><tr><th>المرجع</th><th>التاريخ</th><th>العميل</th><th>الخدمة</th><th>المورد</th><th>سعر العميل</th><th>التكلفة</th><th>الربح</th><th>الحالة</th><th>إجراءات</th></tr></thead>
     <tbody>${OPS.map(o=>{
       const editBtn = canDo('update_op') && o.status !== 'cancelled' && o.status !== 'completed' ? `<button class="btn btn-sm btn-outline" onclick="openEditOperation(${o.id})">تعديل</button> ` : '';
+      const hideBtn = (canDo('write_master') || canDo('cancel_op')) ? `<button class="btn btn-sm btn-outline" onclick="hideOperation(${o.id})">إخفاء</button> ` : '';
       return `<tr>
       <td><b style="color:var(--primary);cursor:pointer" onclick="viewOp(${o.id})">${o.ref}</b></td>
       <td>${o.date}</td><td>${o.client||clientName(o.client_id)}</td><td>${o.service||serviceName(o.service_id)}</td><td>${o.vendor||vendorName(o.vendor_id)}</td>
       <td><b>${fmt(o.client_price)}</b></td><td>${fmt(o.vendor_cost)}</td>
       <td style="color:${o.profit>=0?'var(--success)':'var(--danger)'};font-weight:700">${fmt(o.profit)}</td>
       <td><span class="badge ${statusClass[o.status]}">${statusLabel[o.status]}</span></td>
-      <td>${editBtn}<button class="btn btn-sm btn-outline" onclick="viewOp(${o.id})">تفاصيل</button>${o.status!=='cancelled'&&canDo('cancel_op')?` <button class="btn btn-sm btn-danger" onclick="cancelOp(${o.id})">إلغاء</button>`:''}</td>
+      <td>${editBtn}${hideBtn}<button class="btn btn-sm btn-outline" onclick="viewOp(${o.id})">تفاصيل</button>${o.status!=='cancelled'&&canDo('cancel_op')?` <button class="btn btn-sm btn-danger" onclick="cancelOp(${o.id})">إلغاء</button>`:''}</td>
     </tr>`;
     }).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--text-sm);padding:40px">لا توجد عمليات</td></tr>'}</tbody>
   </table>${serverPagerHtml('operations', meta, 'reloadOperationsList')}`;
+}
+
+async function reloadJournalList(page){
+  const wrap = document.getElementById('jeTableWrap');
+  if (wrap) wrap.innerHTML = '<p style="padding:24px;text-align:center;color:var(--text-sm)">جاري التحميل...</p>';
+  const search = document.getElementById('jeSearch')?.value?.trim() || '';
+  const account = document.getElementById('jeAccFilter')?.value || 'all';
+  const p = page || tablePages.journal || 1;
+  const params = {};
+  if (search) params.search = search;
+  if (account !== 'all') params.account = account;
+  applyDateParams(params, 'jeFrom', 'jeTo');
+  const res = await fetchListPage('/journal', p, params);
+  JOURNAL_CACHE = res.data || [];
+  JOURNAL_TOTALS = res.totals || {};
+  LIST_META.journal = res.meta || null;
+  tablePages.journal = res.meta?.current_page || 1;
+  __journalLoaded = true;
+  if (res.accounts && document.getElementById('jeAccFilter')) {
+    const sel = document.getElementById('jeAccFilter');
+    const current = sel.value || 'all';
+    sel.innerHTML = '<option value="all">كل الحسابات</option>' + (res.accounts||[]).map(a=>`<option value="${a}">${a}</option>`).join('');
+    sel.value = current;
+  }
+  paintJournalTable();
+}
+
+async function reloadActivityLogs(page){
+  const wrap = document.getElementById('actTableWrap');
+  if (wrap) wrap.innerHTML = '<p style="padding:24px;text-align:center;color:var(--text-sm)">جاري التحميل...</p>';
+  const search = document.getElementById('actSearch')?.value?.trim() || '';
+  const action = document.getElementById('actActionFilter')?.value || 'all';
+  const p = page || tablePages.activity || 1;
+  const params = {};
+  if (search) params.search = search;
+  if (action !== 'all') params.action = action;
+  applyDateParams(params, 'actFrom', 'actTo');
+  const res = await fetchListPage('/activity-logs', p, params);
+  ACTIVITY_LOGS = res.data || [];
+  LIST_META.activity = res.meta || null;
+  tablePages.activity = res.meta?.current_page || 1;
+  paintActivityTable();
+}
+
+function paintJournalTable(){
+  const wrap = document.getElementById('jeTableWrap');
+  if (!wrap) return;
+  const meta = LIST_META.journal;
+  const je = JOURNAL_CACHE;
+  const totalD = JOURNAL_TOTALS.debit ?? je.reduce((s,j)=>s+j.debit,0);
+  const totalC = JOURNAL_TOTALS.credit ?? je.reduce((s,j)=>s+j.credit,0);
+  const balanced = JOURNAL_TOTALS.filtered ? Math.abs(totalD-totalC) < 0.01 : (JOURNAL_TOTALS.balanced ?? Math.abs(totalD-totalC) < 0.01);
+  wrap.innerHTML = `<div class="table-wrapper"><table class="table"><thead><tr><th>#</th><th>التاريخ</th><th>المرجع</th><th>الحساب</th><th>البيان</th><th>مدين</th><th>دائن</th></tr></thead>
+  <tbody>${je.map(j=>`<tr><td>${j.id}</td><td>${j.date}</td><td>${j.ref}</td><td><b>${j.account}</b></td><td style="font-size:12px">${j.desc}</td><td style="color:var(--danger);font-weight:700">${j.debit!==0?fmt(j.debit):'—'}</td><td style="color:var(--success);font-weight:700">${j.credit!==0?fmt(j.credit):'—'}</td></tr>`).join('')||'<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-sm)">لا توجد قيود</td></tr>'}
+  <tr style="background:#F1F5F9;font-weight:800"><td colspan="5" style="text-align:center;padding:10px 16px;color:var(--text-sm)">الإجمالي (${meta?.total ?? je.length} قيد)</td><td style="color:var(--danger);padding:10px 16px">${fmt(totalD)}</td><td style="color:var(--success);padding:10px 16px">${fmt(totalC)} ${balanced?'✅':'❌'}</td></tr>
+  </tbody></table></div>${serverPagerHtml('journal', meta, 'reloadJournalList')}`;
+}
+
+function paintActivityTable(){
+  const wrap = document.getElementById('actTableWrap');
+  if (!wrap) return;
+  const meta = LIST_META.activity;
+  wrap.innerHTML = `<div class="table-wrapper"><table class="table"><thead><tr><th>#</th><th>التاريخ</th><th>المستخدم</th><th>المكتب</th><th>الإجراء</th><th>مرجع العملية</th><th>التفاصيل</th><th>IP</th></tr></thead>
+  <tbody>${ACTIVITY_LOGS.map(l=>`<tr><td>${l.id}</td><td>${(l.created_at||'').slice(0,19).replace('T',' ')}</td><td>${l.user_name||'—'}</td><td>${l.office_name||'—'}</td><td><span class="badge badge-info">${activityActionLabel(l.action, l.action_label)}</span></td><td>${l.operation_ref?`<b style="color:var(--primary)">${l.operation_ref}</b>`:'—'}</td><td style="font-size:12px">${formatActivityDetails(l)}</td><td>${l.ip||'—'}</td></tr>`).join('')||'<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-sm)">لا توجد سجلات</td></tr>'}</tbody></table></div>${serverPagerHtml('activity', meta, 'reloadActivityLogs')}`;
 }
 
 async function loadPageList(page){
@@ -487,6 +1138,10 @@ async function loadPageList(page){
   else if (page === 'vendors') await reloadVendorsList(1);
   else if (page === 'operations') await reloadOperationsList(1);
   else if (page === 'vouchers') await reloadVouchersList(1);
+  else if (page === 'journal') await reloadJournalList(1);
+  else if (page === 'activity') await reloadActivityLogs(1);
+  else if (page === 'settings') await loadHiddenSettings();
+  else if (page === 'safes') await reloadSafesPage();
 }
 
 async function loadAllData(){
@@ -509,9 +1164,9 @@ async function refreshAfterMutation(){
   await loadDashboardData();
   REPORT_CACHE = {};
   if (currentPage === 'journal' || currentPage === 'reports') {
+    REPORT_CACHE = {};
     JOURNAL_CACHE = [];
     __journalLoaded = false;
-    try { await loadJournalCache(); } catch (e) { /* optional */ }
   }
   await loadPageList(currentPage);
   await AppShell.syncAfterDataLoad();
@@ -560,10 +1215,10 @@ navigate = async function(page){
   AppShell.resetOverlays();
   AppShell.clearGlobalSearch();
   if(page === 'journal' || page === 'reports') {
-    try{ await loadJournalCache(); }catch(e){ notify('تعذر تحميل القيود المحاسبية', 'error'); }
+    REPORT_CACHE = {};
   }
   __originalNavigate(page);
-  if (__apiBootstrapped && ['clients','vendors','operations','vouchers'].includes(page)) {
+  if (__apiBootstrapped && ['clients','vendors','operations','vouchers','journal','activity'].includes(page)) {
     try { await loadPageList(page); } catch (e) { notify('تعذر تحميل البيانات', 'error'); }
   }
 };
@@ -580,11 +1235,188 @@ filterOps = function(){
   clearTimeout(__listSearchTimer);
   __listSearchTimer = setTimeout(() => reloadOperationsList(1), 300);
 };
+filterJournal = function(){
+  clearTimeout(__listSearchTimer);
+  __listSearchTimer = setTimeout(() => reloadJournalList(1), 300);
+};
+filterActivityLogs = function(){
+  clearTimeout(__listSearchTimer);
+  __listSearchTimer = setTimeout(() => reloadActivityLogs(1), 300);
+};
+filterJournal = function(){
+  clearTimeout(__listSearchTimer);
+  __listSearchTimer = setTimeout(() => reloadJournalList(1), 300);
+};
+filterActivityLogs = function(){
+  clearTimeout(__listSearchTimer);
+  __listSearchTimer = setTimeout(() => reloadActivityLogs(1), 300);
+};
+filterJournal = function(){
+  clearTimeout(__listSearchTimer);
+  __listSearchTimer = setTimeout(() => reloadJournalList(1), 300);
+};
+filterActivityLogs = function(){
+  clearTimeout(__listSearchTimer);
+  __listSearchTimer = setTimeout(() => reloadActivityLogs(1), 300);
+};
 filterVouchers = function(){
   clearTimeout(__listSearchTimer);
   __listSearchTimer = setTimeout(() => reloadVouchersList(1), 300);
 };
 switchVcTab = function(tab){ vcTab = tab; tablePages.vouchers = 1; navigate('vouchers'); };
+
+const __originalRenderOperations = renderOperations;
+const __originalRenderClients = renderClients;
+const __originalRenderVendors = renderVendors;
+
+renderClients = function(pc){
+  pc.innerHTML=`
+  <div class="page-shell">
+    <div class="card">
+      <div class="card-header">
+        <h3>👤 إدارة العملاء</h3>
+        <div class="card-header-actions">
+          ${searchFilterBar('clSearch', 'بحث (اسم، هاتف، مدني...)', 'filterClients')}
+          ${canDo('write_master')?`<button class="btn btn-primary" onclick="showModal('newClientModal')">➕ عميل جديد</button>`:''}
+          ${exportActionBar('clients')}
+        </div>
+      </div>
+      <div class="card-body" style="padding:0"><div id="clTableWrap"></div></div>
+    </div>
+  </div>`;
+  reloadClientsList(1);
+};
+
+renderVendors = function(pc){
+  pc.innerHTML=`
+  <div class="page-shell">
+    <div class="card">
+      <div class="card-header">
+        <h3>🏢 الموردون والمكاتب</h3>
+        <div class="card-header-actions">
+          ${searchFilterBar('vnSearch', 'بحث (اسم، هاتف...)', 'filterVendors')}
+          ${canDo('write_master')?`<button class="btn btn-primary" onclick="showModal('newVendorModal')">➕ مورد جديد</button>`:''}
+          ${exportActionBar('vendors')}
+        </div>
+      </div>
+      <div class="card-body" style="padding:0"><div id="vnTableWrap"></div></div>
+    </div>
+  </div>`;
+  reloadVendorsList(1);
+};
+
+renderOperations = function(pc){
+  pc.innerHTML=`
+  <div class="page-shell">
+    <div class="card">
+      <div class="card-header">
+        <h3>📋 إدارة العمليات</h3>
+        <div class="card-header-actions">
+          ${searchFilterBar('opSearchInput', 'بحث (رقم، عميل، هاتف، مورد، خدمة، ملاحظات...)', 'filterOps')}
+          <select class="form-control filter-control" id="opStatusFilter" onchange="filterOps()">
+            <option value="all">كل الحالات</option>
+            <option value="new">جديدة</option>
+            <option value="processing">قيد التنفيذ</option>
+            <option value="completed">مكتملة</option>
+            <option value="cancelled">ملغاة</option>
+          </select>
+          <select class="form-control filter-control" id="opSvcFilter" onchange="filterOps()">
+            <option value="all">كل الخدمات</option>
+            ${SERVICES.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}
+          </select>
+          <input type="date" class="form-control filter-control" id="opFrom" onchange="filterOps()" title="من تاريخ">
+          <input type="date" class="form-control filter-control" id="opTo" onchange="filterOps()" title="إلى تاريخ">
+          ${canDo('create_op')?`<button class="btn btn-primary" onclick="showModal('newOpModal');populateOpForm()">➕ عملية جديدة</button>`:''}
+          ${exportActionBar('operations')}
+        </div>
+      </div>
+      <div class="card-body" style="padding:0"><div id="opTableWrap"></div></div>
+    </div>
+  </div>`;
+  reloadOperationsList(1);
+};
+
+const __originalRenderVouchers = renderVouchers;
+renderVouchers = function(pc){
+  pc.innerHTML=`
+  <div class="page-shell">
+    <div class="card">
+      <div class="card-header">
+        <h3>🧾 السندات المالية</h3>
+        <div class="card-header-actions">
+          ${canDo('create_voucher')?`<button class="btn btn-success" onclick="openNewVoucher('receipt')">➕ سند قبض</button><button class="btn btn-danger" onclick="openNewVoucher('payment')">➕ سند صرف</button>`:''}
+          ${exportActionBar('vouchers')}
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--border)">
+          <button class="tab-btn ${vcTab==='receipt'?'active':''}" onclick="switchVcTab('receipt')">سندات القبض</button>
+          <button class="tab-btn ${vcTab==='payment'?'active':''}" onclick="switchVcTab('payment')">سندات الصرف</button>
+        </div>
+        <div class="filter-bar" style="margin-bottom:16px">
+          ${searchFilterBar('vcSearch', 'بحث (رقم، بيان، طرف...)', 'filterVouchers')}
+          <input type="date" class="form-control filter-control" id="vcFrom" onchange="filterVouchers()" title="من تاريخ">
+          <input type="date" class="form-control filter-control" id="vcTo" onchange="filterVouchers()" title="إلى تاريخ">
+        </div>
+        <div id="vcTableWrap"></div>
+      </div>
+    </div>
+  </div>`;
+  reloadVouchersList(1);
+};
+
+const __originalRenderJournal = renderJournal;
+renderJournal = function(pc){
+  const minDate = new Date(Date.now() - 30*86400000).toISOString().slice(0,10);
+  pc.innerHTML=`
+  <div class="page-shell">
+    <div class="grid-kpi-3" id="jeKpiRow"></div>
+    <div class="card">
+      <div class="card-header">
+        <h3>📒 دفتر الأستاذ</h3>
+        <div class="card-header-actions">
+          ${searchFilterBar('jeSearch', 'بحث (مرجع، بيان، حساب)...', 'filterJournal')}
+          <select class="form-control filter-control" id="jeAccFilter" onchange="filterJournal()"><option value="all">كل الحسابات</option></select>
+          <input type="date" class="form-control filter-control" id="jeFrom" value="${minDate}" onchange="filterJournal()" title="من تاريخ">
+          <input type="date" class="form-control filter-control" id="jeTo" value="${today()}" onchange="filterJournal()" title="إلى تاريخ">
+          ${exportActionBar('journal', { print: true })}
+        </div>
+      </div>
+      <div class="card-body" style="padding:0"><div id="jeTableWrap"></div></div>
+    </div>
+  </div>`;
+  reloadJournalList(1);
+};
+
+renderActivityLogs = async function(pc){
+  pc.innerHTML=`
+  <div class="page-shell">
+    <div class="card">
+      <div class="card-header"><h3>📝 سجل النشاط</h3><div class="card-header-actions">${exportActionBar('activity_logs')}</div></div>
+      <div class="card-body">
+        <div class="filter-bar" style="margin-bottom:16px">
+          ${searchFilterBar('actSearch', 'بحث (إجراء، مستخدم، تفاصيل)...', 'filterActivityLogs')}
+          <select class="form-control filter-control" id="actActionFilter" onchange="filterActivityLogs()"><option value="all">كل الإجراءات</option></select>
+          <input type="date" class="form-control filter-control" id="actFrom" onchange="filterActivityLogs()" title="من تاريخ">
+          <input type="date" class="form-control filter-control" id="actTo" onchange="filterActivityLogs()" title="إلى تاريخ">
+        </div>
+        <div id="actTableWrap"></div>
+      </div>
+    </div>
+  </div>`;
+  try{
+    const actions = await apiFetch('/activity-logs/actions');
+    const sel = document.getElementById('actActionFilter');
+    if(sel) sel.innerHTML = '<option value="all">كل الإجراءات</option><option value="operations">عمليات (الكل)</option>' + (actions.data||[]).map(a=>{
+      const key = typeof a === 'string' ? a : a.key;
+      const label = typeof a === 'string' ? activityActionLabel(a) : (a.label || activityActionLabel(a.key));
+      return `<option value="${key}">${label}</option>`;
+    }).join('');
+  }catch(e){}
+  await reloadActivityLogs(1);
+};
+
+
 
 renderVcTable = function(){
   const wrap = document.getElementById('vcTableWrap');
@@ -596,23 +1428,75 @@ renderVcTable = function(){
     const opRef = v.operation_id ? (OPS.find(o=>o.id===v.operation_id)?.ref || '—') : '—';
     const reversed = v.reversed;
     const voidBtn = canDo('void_voucher') && !reversed ? `<button class="btn btn-xs btn-danger" onclick="voidVoucher(${v.id})">إلغاء</button> ` : '';
-    return `<tr style="${reversed?'opacity:.65':''}"><td><b style="color:var(--primary)">${v.ref}</b></td><td>${v.date}</td><td>${party}</td><td style="font-weight:700;color:${vcTab==='receipt'?'var(--success)':'var(--danger)'}">${fmt(v.amount)}</td><td>${reversed?'<span class="badge badge-danger">ملغى</span>':'<span class="badge badge-success">فعّال</span>'}</td><td>${methodLabel(v.method)}</td><td>${safeName(v.safe_id)}</td><td>${opRef}</td><td style="font-size:12px">${displayVal(v.desc)}</td><td>${voidBtn}<button class="btn btn-xs btn-outline" onclick="printVoucher(${v.id})">🖨️</button></td></tr>`;
+    return `<tr style="${reversed?'opacity:.65':''}"><td><b style="color:var(--primary)">${v.ref}</b></td><td>${v.date}</td><td>${party}</td><td style="font-weight:700;color:${vcTab==='receipt'?'var(--success)':'var(--danger)'}">${fmt(v.amount)}</td><td>${reversed?'<span class="badge badge-danger">ملغى</span>':'<span class="badge badge-success">فعّال</span>'}</td><td>${methodLabel(v.method)}</td><td>${safeName(v.safe_id)}</td><td>${opRef}</td><td style="font-size:12px">${displayVal(v.desc)}</td><td>${voidBtn}<button class="btn btn-xs btn-outline" onclick="printVoucherExport(${v.id})">🖨️</button></td></tr>`;
   }).join('')||'<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-sm)">لا توجد سندات</td></tr>'}</tbody></table>${serverPagerHtml('vouchers', meta, 'reloadVouchersList')}`;
 };
 
+function setOpFormLoading(loading){
+  opFormState.loading = loading;
+  const saveBtn = document.querySelector('#newOpModal .btn-primary');
+  if (saveBtn) {
+    saveBtn.disabled = loading;
+    saveBtn.style.opacity = loading ? '0.65' : '';
+  }
+  const cs = document.getElementById('op_client');
+  const vn = document.getElementById('op_vendor');
+  const placeholder = loading ? 'جاري التحميل...' : '-- اختر --';
+  if (loading) {
+    if (cs) cs.innerHTML = `<option value="">${placeholder}</option>`;
+    if (vn) vn.innerHTML = `<option value="">${placeholder}</option>`;
+  }
+}
+
+function resetOpFormFields(){
+  ['op_client_price','op_vendor_cost','op_profit','op_initial_payment','op_notes'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const jp = document.getElementById('op_journal_preview');
+  if (jp) jp.style.display = 'none';
+}
+
+function opOptionIds(selectId){
+  const sel = document.getElementById(selectId);
+  if (!sel) return [];
+  return Array.from(sel.options).map(o => +o.value).filter(id => id > 0);
+}
+
 populateOpForm = async function(){
+  opFormState = { ready: false, clients: [], vendors: [], loading: true };
+  setOpFormLoading(true);
+  resetOpFormFields();
+  const sv = document.getElementById('op_service');
+  if (sv) sv.innerHTML = '<option value="">-- اختر خدمة --</option>' + SERVICES.filter(s=>s.active).map(s=>`<option value="${s.id}">${s.icon} ${s.name}</option>`).join('');
   try {
     const [clientsRes, vendorsRes] = await Promise.all([
       apiFetch('/clients?per_page=500'),
       apiFetch('/vendors?per_page=500'),
     ]);
+    opFormState.clients = clientsRes.data || [];
+    opFormState.vendors = vendorsRes.data || [];
     const cs = document.getElementById('op_client');
     const vn = document.getElementById('op_vendor');
-    if (cs) cs.innerHTML = '<option value="">-- اختر عميل --</option>' + (clientsRes.data||[]).map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-    if (vn) vn.innerHTML = '<option value="">-- اختر مورد --</option>' + (vendorsRes.data||[]).map(v=>`<option value="${v.id}">${v.name}</option>`).join('');
-  } catch (e) { notify(e.message, 'error'); }
-  const sv = document.getElementById('op_service');
-  if (sv) sv.innerHTML = '<option value="">-- اختر خدمة --</option>' + SERVICES.filter(s=>s.active).map(s=>`<option value="${s.id}">${s.icon} ${s.name}</option>`).join('');
+    if (cs) cs.innerHTML = '<option value="">-- اختر عميل --</option>' + opFormState.clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+    if (vn) vn.innerHTML = '<option value="">-- اختر مورد --</option>' + opFormState.vendors.map(v=>`<option value="${v.id}">${v.name}</option>`).join('');
+    opFormState.ready = true;
+    if (!opFormState.clients.length) showModalError('newOpModal', 'لا يوجد عملاء في المكتب الحالي. أضف عميلاً أولاً.');
+    else if (!opFormState.vendors.length) showModalError('newOpModal', 'لا يوجد موردون في المكتب الحالي. أضف مورداً أولاً.');
+    else {
+      const err = document.getElementById('newOpModalError');
+      if (err) err.style.display = 'none';
+    }
+  } catch (e) {
+    opFormState = { ready: false, clients: [], vendors: [], loading: false };
+    const cs = document.getElementById('op_client');
+    const vn = document.getElementById('op_vendor');
+    if (cs) cs.innerHTML = '<option value="">-- اختر عميل --</option>';
+    if (vn) vn.innerHTML = '<option value="">-- اختر مورد --</option>';
+    notify(e.message, 'error');
+  } finally {
+    setOpFormLoading(false);
+  }
 };
 
 openNewVoucher = async function(type){
@@ -688,6 +1572,8 @@ saveVendor = async function(){
 };
 
 saveOperation = async function(){
+  if (opFormState.loading) { showModalError('newOpModal', 'جاري تحميل العملاء والموردين، يرجى الانتظار'); return; }
+  if (!opFormState.ready) { showModalError('newOpModal', 'تعذر تحميل قائمة العملاء والموردين. أغلق النافذة وحاول مرة أخرى.'); return; }
   const cid=+document.getElementById('op_client').value;
   const sid=+document.getElementById('op_service').value;
   const vid=+document.getElementById('op_vendor').value;
@@ -695,6 +1581,12 @@ saveOperation = async function(){
   const vc=+document.getElementById('op_vendor_cost').value;
   const ip=+document.getElementById('op_initial_payment').value||0;
   if(!cid||!sid||!vid){ showModalError('newOpModal','يرجى اختيار العميل والخدمة والمورد'); return; }
+  if(!opFormState.clients.some(c=>c.id===cid)){ showModalError('newOpModal','العميل المحدد غير متاح في المكتب الحالي. أعد فتح النموذج.'); return; }
+  if(!opFormState.vendors.some(v=>v.id===vid)){ showModalError('newOpModal','المورد المحدد غير متاح في المكتب الحالي. أعد فتح النموذج.'); return; }
+  if(!opOptionIds('op_client').includes(cid) || !opOptionIds('op_vendor').includes(vid)){
+    showModalError('newOpModal','بيانات النموذج غير محدّثة. أغلق النافذة وافتحها مرة أخرى.');
+    return;
+  }
   if(!cp||cp<1){ showModalError('newOpModal','الحد الأدنى لسعر العميل 1 د.ك'); return; }
   if(vc<0||isNaN(vc)){ showModalError('newOpModal','يرجى إدخال تكلفة المورد بشكل صحيح'); return; }
   if(vc>cp){ showModalError('newOpModal','تكلفة المورد لا يمكن أن تتجاوز سعر العميل'); return; }
@@ -800,6 +1692,12 @@ viewOp = async function(id, opts = {}){
     const vcs=op.vouchers||[];
     document.getElementById('drawerTitle').textContent=`تفاصيل العملية - ${op.ref}`;
     document.getElementById('drawerBody').innerHTML=`
+      <div class="drawer-actions" style="margin-bottom:12px;justify-content:flex-end;flex-wrap:wrap;gap:8px">
+        <button type="button" class="btn btn-sm btn-outline" onclick="exportOperationInvoicePDF(${op.id})">🧾 فاتورة PDF</button>
+        <button type="button" class="btn btn-sm btn-outline" onclick="printOperationInvoicePDF(${op.id})">🖨️ طباعة فاتورة</button>
+        <button type="button" class="btn btn-sm btn-success" onclick="sendWhatsAppInvoice(${op.id})" title="إرسال عبر واتساب">💬 واتساب</button>
+        ${exportActionBar('operation_detail', { excel: false, pdf: true, print: true, ctx: { id: op.id } })}
+      </div>
       <div style="margin-bottom:16px">
         <div class="grid-2" style="margin-bottom:16px">
           <div class="info-item"><span class="info-label">رقم العملية</span><span class="info-value">${op.ref}</span></div>
@@ -843,7 +1741,12 @@ viewClientStmt = async function(cid, opts = {}){
   document.getElementById('stmtBody').innerHTML='<p style="padding:20px;text-align:center;color:var(--text-sm)">جاري تحميل كشف الحساب...</p>';
   AppShell.openDrawer('stmtDrawer', AppShell.drawerContext);
   try{
-    const stmt = await apiFetch(`/clients/${cid}/statement`);
+    const stmtParams = new URLSearchParams();
+    const from = document.getElementById('stmtFrom')?.value || '';
+    const to = document.getElementById('stmtTo')?.value || '';
+    if(from) stmtParams.set('from', from);
+    if(to) stmtParams.set('to', to);
+    const stmt = await apiFetch(`/clients/${cid}/statement${stmtParams.toString() ? '?' + stmtParams : ''}`);
     if (gen !== AppShell._viewGeneration && !opts.refresh) return;
     const rows = stmt.rows || [];
     document.getElementById('stmtTitle').textContent=`كشف حساب - ${stmt.client?.name || cl?.name || ''}`;
@@ -853,7 +1756,13 @@ viewClientStmt = async function(cid, opts = {}){
         <div class="card" style="background:var(--bg)"><div class="card-body" style="text-align:center"><div style="font-size:11px;color:var(--text-sm)">المدفوع</div><div style="font-size:20px;font-weight:800;color:var(--success)">${fmt(stmt.paid)}</div></div></div>
         <div class="card" style="background:var(--bg)"><div class="card-body" style="text-align:center"><div style="font-size:11px;color:var(--text-sm)">الرصيد المتبقي</div><div style="font-size:20px;font-weight:800;color:${stmt.balance>0?'var(--danger)':'var(--success)'}">${fmt(stmt.balance)}</div></div></div>
       </div>
-      <div class="drawer-actions"><h4 style="margin:0">حركات الحساب</h4><button class="btn btn-sm btn-outline" onclick="exportClientStmt(${cid})">تصدير</button></div>
+      <div class="drawer-actions" style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <h4 style="margin:0">حركات الحساب</h4>
+        <input type="date" class="form-control filter-control" id="stmtFrom" onchange="viewClientStmt(${cid})" title="من تاريخ">
+        <input type="date" class="form-control filter-control" id="stmtTo" onchange="viewClientStmt(${cid})" title="إلى تاريخ">
+        <button class="btn btn-sm btn-outline" onclick="exportClientStmtPDF(${cid})">📄 PDF</button>
+        <button class="btn btn-sm btn-outline" onclick="runBackendExport('client_statement','pdf',true,{id:${cid}})">🖨️ طباعة</button>
+        <button class="btn btn-sm btn-outline" onclick="exportClientStmt(${cid})">📥 Excel</button></div>
       <div class="table-wrapper"><table class="table"><thead><tr><th>التاريخ</th><th>المرجع</th><th>البيان</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead>
       <tbody>${rows.map(j=>`<tr><td>${j.date}</td><td>${j.ref}</td><td style="font-size:12px">${j.desc||''}</td><td>${signedAmount(j.debit,'var(--danger)','var(--success)')}</td><td>${signedAmount(j.credit,'var(--success)','var(--danger)')}</td><td style="font-weight:700;color:${j.balance>0?'var(--danger)':'var(--success)'}">${fmt(j.balance)}</td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--text-sm)">لا توجد حركات</td></tr>'}</tbody></table></div>`;
   }catch(e){ document.getElementById('stmtBody').innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
@@ -868,7 +1777,12 @@ viewVendorStmt = async function(vid, opts = {}){
   document.getElementById('stmtBody').innerHTML='<p style="padding:20px;text-align:center;color:var(--text-sm)">جاري تحميل كشف الحساب...</p>';
   AppShell.openDrawer('stmtDrawer', AppShell.drawerContext);
   try{
-    const stmt = await apiFetch(`/vendors/${vid}/statement`);
+    const stmtParams = new URLSearchParams();
+    const from = document.getElementById('vstmtFrom')?.value || '';
+    const to = document.getElementById('vstmtTo')?.value || '';
+    if(from) stmtParams.set('from', from);
+    if(to) stmtParams.set('to', to);
+    const stmt = await apiFetch(`/vendors/${vid}/statement${stmtParams.toString() ? '?' + stmtParams : ''}`);
     if (gen !== AppShell._viewGeneration && !opts.refresh) return;
     const rows = stmt.rows || [];
     const totalOwed = rows.reduce((s,j)=>s+(+j.credit||0),0);
@@ -879,16 +1793,33 @@ viewVendorStmt = async function(vid, opts = {}){
         <div class="card" style="background:var(--bg)"><div class="card-body" style="text-align:center"><div style="font-size:11px;color:var(--text-sm)">المدفوع</div><div style="font-size:20px;font-weight:800;color:var(--success)">${fmt(stmt.paid)}</div></div></div>
         <div class="card" style="background:var(--bg)"><div class="card-body" style="text-align:center"><div style="font-size:11px;color:var(--text-sm)">الرصيد الحالي</div><div style="font-size:20px;font-weight:800;color:${stmt.balance>0?'var(--warning)':'var(--success)'}">${fmt(stmt.balance)}</div></div></div>
       </div>
+      <div class="drawer-actions" style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <h4 style="margin:0">حركات الحساب</h4>
+        <input type="date" class="form-control filter-control" id="vstmtFrom" onchange="viewVendorStmt(${vid})" title="من تاريخ">
+        <input type="date" class="form-control filter-control" id="vstmtTo" onchange="viewVendorStmt(${vid})" title="إلى تاريخ">
+        <button class="btn btn-sm btn-outline" onclick="exportVendorStmtPDF(${vid})">📄 PDF</button>
+        <button class="btn btn-sm btn-outline" onclick="runBackendExport('vendor_statement','pdf',true,{id:${vid}})">🖨️ طباعة</button>
+        <button class="btn btn-sm btn-outline" onclick="exportVendorStmt(${vid})">📥 Excel</button>
+      </div>
+      <div class="drawer-actions" style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <h4 style="margin:0">حركات الحساب</h4>
+        <input type="date" class="form-control filter-control" id="vstmtFrom" onchange="viewVendorStmt(${vid})" title="من تاريخ">
+        <input type="date" class="form-control filter-control" id="vstmtTo" onchange="viewVendorStmt(${vid})" title="إلى تاريخ">
+        <button class="btn btn-sm btn-outline" onclick="exportVendorStmtPDF(${vid})">📄 PDF</button>
+        <button class="btn btn-sm btn-outline" onclick="runBackendExport('vendor_statement','pdf',true,{id:${vid}})">🖨️ طباعة</button>
+        <button class="btn btn-sm btn-outline" onclick="exportVendorStmt(${vid})">📥 Excel</button>
+      </div>
+      <div class="drawer-actions" style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <h4 style="margin:0">حركات الحساب</h4>
+        <input type="date" class="form-control filter-control" id="vstmtFrom" onchange="viewVendorStmt(${vid})" title="من تاريخ">
+        <input type="date" class="form-control filter-control" id="vstmtTo" onchange="viewVendorStmt(${vid})" title="إلى تاريخ">
+        <button class="btn btn-sm btn-outline" onclick="exportVendorStmtPDF(${vid})">📄 PDF</button>
+        <button class="btn btn-sm btn-outline" onclick="runBackendExport('vendor_statement','pdf',true,{id:${vid}})">🖨️ طباعة</button>
+        <button class="btn btn-sm btn-outline" onclick="exportVendorStmt(${vid})">📥 Excel</button>
+      </div>
       <div class="table-wrapper"><table class="table"><thead><tr><th>التاريخ</th><th>المرجع</th><th>البيان</th><th>مدين</th><th>دائن</th></tr></thead>
       <tbody>${rows.map(j=>`<tr><td>${j.date}</td><td>${j.ref}</td><td style="font-size:12px">${j.desc||''}</td><td>${signedAmount(j.debit,'var(--success)','var(--danger)')}</td><td>${signedAmount(j.credit,'var(--danger)','var(--success)')}</td></tr>`).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--text-sm)">لا توجد حركات</td></tr>'}</tbody></table></div>`;
   }catch(e){ document.getElementById('stmtBody').innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
-};
-
-exportClientStmt = async function(cid){
-  try{
-    const stmt = await apiFetch(`/clients/${cid}/statement`);
-    toExcelAndDownload((stmt.rows||[]).map(j=>({date:j.date,ref:j.ref,desc:j.desc,debit:j.debit||0,credit:j.credit||0,balance:j.balance})),['التاريخ','المرجع','البيان','مدين','دائن','الرصيد'],`كشف_حساب_${stmt.client?.name||cid}`);
-  }catch(e){ notify(e.message, 'error'); }
 };
 
 async function loadReport(type, params = {}){
@@ -901,199 +1832,189 @@ async function loadReport(type, params = {}){
   return data;
 }
 
-function rptOpsDateParams(){
-  return {
-    from: document.getElementById('rptOpsFrom')?.value || '',
-    to: document.getElementById('rptOpsTo')?.value || '',
-  };
-}
+function rptOpsDateParams(){ return rptDateParams(); }
 
 filterRptOps = function(){
+  REPORT_CACHE = {};
   renderRptContent();
 };
+
+function rptDateBarHtml(onChangeFn='filterRptOps'){
+  const d = rptDateParams();
+  return dateFilterBar('rptFrom', 'rptTo', onChangeFn, d.from, d.to);
+}
 
 renderRptContent = async function(){
   const wrap=document.getElementById('rptContent');
   if(!wrap)return;
   if(rptTab === 'ops'){
-    const dateParams = rptOpsDateParams();
-    wrap.innerHTML=`
-      <div class="filter-bar" style="margin-bottom:12px">
-        <input type="date" class="form-control filter-control" id="rptOpsFrom" value="${dateParams.from}" onchange="filterRptOps()" title="من تاريخ">
-        <input type="date" class="form-control filter-control" id="rptOpsTo" value="${dateParams.to}" onchange="filterRptOps()" title="إلى تاريخ">
-      </div>
-      <p style="padding:20px;text-align:center;color:var(--text-sm)">جاري تحميل تقرير العمليات...</p>`;
+    const dateParams = rptDateParams();
+    wrap.innerHTML=`${rptDateBarHtml()}<p style="padding:20px;text-align:center;color:var(--text-sm)">جاري تحميل تقرير العمليات...</p>`;
     try{
-      const data = await loadReport('operations', dateParams);
+      const data = await loadReport('operations', { ...dateParams, page: tablePages.rptOps || 1, per_page: LIST_PER_PAGE });
       const rows = data.rows || [];
       const totals = data.totals || {};
+      const meta = data.meta;
       wrap.innerHTML=`
-        <div class="filter-bar" style="margin-bottom:12px">
-          <input type="date" class="form-control filter-control" id="rptOpsFrom" value="${dateParams.from}" onchange="filterRptOps()" title="من تاريخ">
-          <input type="date" class="form-control filter-control" id="rptOpsTo" value="${dateParams.to}" onchange="filterRptOps()" title="إلى تاريخ">
-        </div>
+        ${rptDateBarHtml()}
+        <div style="margin-bottom:12px;display:flex;justify-content:flex-end">${exportActionBar('report', { ctx: { type: 'operations' } })}</div>
         <div class="grid-kpi-3">
           ${kpiCard('💰','إجمالي الإيرادات',fmt(totals.revenue||0),'var(--primary)','')}
           ${kpiCard('💸','إجمالي التكاليف',fmt(totals.cost||0),'var(--danger)','')}
           ${kpiCard('📈','صافي الربح',fmt(totals.profit||0),'var(--success)','')}
         </div>
         <div class="table-wrapper"><table class="table"><thead><tr><th>المرجع</th><th>التاريخ</th><th>العميل</th><th>الخدمة</th><th>الإيراد</th><th>التكلفة</th><th>الربح</th><th>الحالة</th></tr></thead>
-        <tbody>${rows.map(o=>`<tr><td><b>${o.ref}</b></td><td>${o.date}</td><td>${o.client||clientName(o.client_id)}</td><td>${o.service||serviceName(o.service_id)}</td><td>${fmt(o.client_price)}</td><td>${fmt(o.vendor_cost)}</td><td style="color:${o.profit>=0?'var(--success)':'var(--danger)'};font-weight:700">${fmt(o.profit)}</td><td><span class="badge ${statusClass[o.status]}">${statusLabel[o.status]}</span></td></tr>`).join('')||'<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-sm)">لا توجد عمليات في هذه الفترة</td></tr>'}</tbody></table></div>`;
-    }catch(e){ wrap.innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
+        <tbody>${rows.map(o=>`<tr><td><b>${o.ref}</b></td><td>${o.date}</td><td>${o.client||clientName(o.client_id)}</td><td>${o.service||serviceName(o.service_id)}</td><td>${fmt(o.client_price)}</td><td>${fmt(o.vendor_cost)}</td><td style="color:${o.profit>=0?'var(--success)':'var(--danger)'};font-weight:700">${fmt(o.profit)}</td><td><span class="badge ${statusClass[o.status]}">${statusLabel[o.status]}</span></td></tr>`).join('')||'<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-sm)">لا توجد عمليات في هذه الفترة</td></tr>'}</tbody></table></div>
+        ${meta ? serverPagerHtml('rptOps', meta, 'reloadRptOpsPage') : ''}`;
+    }catch(e){ wrap.innerHTML=`${rptDateBarHtml()}<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
     return;
   }
   if(rptTab === 'profit'){
-    wrap.innerHTML='<p style="padding:20px;text-align:center;color:var(--text-sm)">جاري تحميل تقرير الربحية...</p>';
+    const dateParams = rptDateParams();
+    wrap.innerHTML=`${rptDateBarHtml()}<p style="padding:20px;text-align:center;color:var(--text-sm)">جاري تحميل تقرير الربحية...</p>`;
     try{
-      const data = await loadReport('profit');
+      const data = await loadReport('profit', dateParams);
       const rows = data.rows || [];
-      wrap.innerHTML=`<div class="table-wrapper"><table class="table"><thead><tr><th>الخدمة</th><th>عدد العمليات</th><th>الإيرادات</th><th>التكاليف</th><th>الربح</th><th>هامش الربح</th></tr></thead>
+      wrap.innerHTML=`${rptDateBarHtml()}<div style="margin-bottom:12px;display:flex;justify-content:flex-end">${exportActionBar('report', { ctx: { type: 'profit' } })}</div><div class="table-wrapper"><table class="table"><thead><tr><th>الخدمة</th><th>عدد العمليات</th><th>الإيرادات</th><th>التكاليف</th><th>الربح</th><th>هامش الربح</th></tr></thead>
       <tbody>${rows.map(s=>`<tr><td>${s.icon||''} <b>${s.name}</b></td><td><span class="badge badge-info">${s.count}</span></td><td>${fmt(s.revenue)}</td><td>${fmt(s.cost)}</td><td style="color:var(--success);font-weight:700">${fmt(s.profit)}</td><td>${s.revenue>0?(s.profit/s.revenue*100).toFixed(1)+'%':'—'}</td></tr>`).join('')}</tbody></table></div>`;
-    }catch(e){ wrap.innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
+    }catch(e){ wrap.innerHTML=`${rptDateBarHtml()}<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
     return;
   }
   if(rptTab === 'aging'){
-    wrap.innerHTML='<p style="padding:20px;text-align:center;color:var(--text-sm)">جاري تحميل تقرير التقادم...</p>';
+    const dateParams = rptDateParams();
+    wrap.innerHTML=`${rptDateBarHtml()}<p style="padding:20px;text-align:center;color:var(--text-sm)">جاري تحميل تقرير التقادم...</p>`;
     try{
-      const data = await loadReport('aging');
+      const data = await loadReport('aging', dateParams);
       const aged = data.rows || [];
       wrap.innerHTML=`
-        <div style="margin-bottom:12px;display:flex;justify-content:flex-end"><button class="btn btn-sm btn-outline" onclick="exportAgingReport()">Excel</button></div>
+        ${rptDateBarHtml()}
+        <div style="margin-bottom:12px;display:flex;justify-content:flex-end">${exportActionBar('report', { ctx: { type: 'aging' } })}</div>
         <div class="table-wrapper"><table class="table"><thead><tr><th>العميل</th><th>الإجمالي</th><th>1-30 يوم</th><th>31-60 يوم</th><th>61-90 يوم</th><th>+90 يوم</th></tr></thead>
         <tbody>${aged.map(a=>`<tr><td><b>${a.name}</b><br><small style="color:var(--text-sm)">${a.days} يوم</small></td><td style="font-weight:700;color:var(--danger)">${fmt(a.balance)}</td><td>${a.b1>0?fmt(a.b1):'—'}</td><td style="color:${a.b2>0?'var(--warning)':'inherit'}">${a.b2>0?fmt(a.b2):'—'}</td><td style="color:${a.b3>0?'var(--danger)':'inherit'}">${a.b3>0?fmt(a.b3):'—'}</td><td style="color:${a.b4>0?'var(--danger)':'inherit'};font-weight:${a.b4>0?'700':'400'}">${a.b4>0?fmt(a.b4):'—'}</td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--success)">لا توجد ديون متأخرة</td></tr>'}</tbody></table></div>`;
-    }catch(e){ wrap.innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
+    }catch(e){ wrap.innerHTML=`${rptDateBarHtml()}<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
     return;
   }
   if(rptTab === 'cashflow'){
-    wrap.innerHTML='<p style="padding:20px;text-align:center;color:var(--text-sm)">جاري تحميل التدفق النقدي...</p>';
+    const dateParams = rptDateParams();
+    wrap.innerHTML=`${rptDateBarHtml()}<p style="padding:20px;text-align:center;color:var(--text-sm)">جاري تحميل التدفق النقدي...</p>`;
     try{
-      const data = await loadReport('cashflow');
+      const data = await loadReport('cashflow', dateParams);
       const safes = data.safes || [];
       const rows = data.rows || [];
       const safeHeaders = safes.map(s=>`<th>رصيد ${s.name}</th>`).join('');
       wrap.innerHTML=`
-        <div style="margin-bottom:12px;display:flex;justify-content:flex-end"><button class="btn btn-sm btn-outline" onclick="exportCashFlow()">Excel</button></div>
+        ${rptDateBarHtml()}
+        <div style="margin-bottom:12px;display:flex;justify-content:flex-end">${exportActionBar('report', { ctx: { type: 'cashflow' } })}</div>
         <div class="table-wrapper"><table class="table"><thead><tr><th>التاريخ</th><th>وارد</th><th>صادر</th><th>صافي</th>${safeHeaders}</tr></thead>
         <tbody>${rows.map(r=>`<tr><td>${r.date}</td><td style="color:var(--success)">${r.inflow!==0?fmt(r.inflow):'—'}</td><td style="color:var(--danger)">${r.outflow!==0?fmt(r.outflow):'—'}</td><td style="font-weight:700;color:${r.net>=0?'var(--success)':'var(--danger)'}">${fmt(r.net)}</td>${safes.map(s=>`<td>${fmt(r.safes?.[s.id]||0)}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="'+(4+safes.length)+'" style="text-align:center;color:var(--text-sm)">لا توجد حركات نقدية</td></tr>'}</tbody></table></div>`;
-    }catch(e){ wrap.innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
+    }catch(e){ wrap.innerHTML=`${rptDateBarHtml()}<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
     return;
   }
   if(rptTab === 'employee'){
-    wrap.innerHTML='<p style="padding:20px;text-align:center;color:var(--text-sm)">جاري تحميل أداء الموظفين...</p>';
+    const dateParams = rptDateParams();
+    wrap.innerHTML=`${rptDateBarHtml()}<p style="padding:20px;text-align:center;color:var(--text-sm)">جاري تحميل أداء الموظفين...</p>`;
     try{
-      const data = await loadReport('employee');
+      const data = await loadReport('employee', dateParams);
       const rows = data.rows || [];
-      wrap.innerHTML=`<div class="table-wrapper"><table class="table"><thead><tr><th>الموظف</th><th>الدور</th><th>العمليات</th><th>الإيراد</th><th>الربح</th></tr></thead>
+      wrap.innerHTML=`${rptDateBarHtml()}<div style="margin-bottom:12px;display:flex;justify-content:flex-end">${exportActionBar('report', { ctx: { type: 'employee' } })}</div><div class="table-wrapper"><table class="table"><thead><tr><th>الموظف</th><th>الدور</th><th>العمليات</th><th>الإيراد</th><th>الربح</th></tr></thead>
       <tbody>${rows.map(u=>`<tr><td><b>${u.name}</b></td><td>${u.role||''}</td><td><span class="badge badge-info">${u.count}</span></td><td>${fmt(u.revenue)}</td><td style="color:var(--success);font-weight:700">${fmt(u.profit)}</td></tr>`).join('')}</tbody></table></div>`;
-    }catch(e){ wrap.innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
+    }catch(e){ wrap.innerHTML=`${rptDateBarHtml()}<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
     return;
   }
   if(rptTab === 'clients_debt'){
-    wrap.innerHTML='<p style="padding:20px;text-align:center;color:var(--text-sm)">جاري تحميل مديونية العملاء...</p>';
+    const dateParams = rptDateParams();
+    wrap.innerHTML=`${rptDateBarHtml()}<p style="padding:20px;text-align:center;color:var(--text-sm)">جاري تحميل مديونية العملاء...</p>`;
     try{
-      const data = await loadReport('clients-debt');
+      const data = await loadReport('clients-debt', dateParams);
       const rows = data.rows || [];
-      wrap.innerHTML=`<div class="table-wrapper"><table class="table"><thead><tr><th>العميل</th><th>الهاتف</th><th>المشتريات</th><th>المدفوع</th><th>الرصيد</th><th>آخر عملية</th></tr></thead>
+      wrap.innerHTML=`${rptDateBarHtml()}<div style="margin-bottom:12px;display:flex;justify-content:flex-end">${exportActionBar('report', { ctx: { type: 'clients-debt' } })}</div><div class="table-wrapper"><table class="table"><thead><tr><th>العميل</th><th>الهاتف</th><th>المشتريات</th><th>المدفوع</th><th>الرصيد</th><th>آخر عملية</th></tr></thead>
       <tbody>${rows.map(c=>`<tr><td><b>${c.name}</b></td><td>${c.phone||''}</td><td>${fmt(c.totalPurchases)}</td><td>${fmt(c.totalPaid)}</td><td style="color:var(--danger);font-weight:700">${fmt(c.balance)}</td><td>${c.lastOpDate}</td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--success)">لا توجد مديونيات</td></tr>'}</tbody></table></div>`;
-    }catch(e){ wrap.innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
+    }catch(e){ wrap.innerHTML=`${rptDateBarHtml()}<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
     return;
   }
   if(rptTab === 'vendors_balance'){
-    wrap.innerHTML='<p style="padding:20px;text-align:center;color:var(--text-sm)">جاري تحميل أرصدة الموردين...</p>';
+    const dateParams = rptDateParams();
+    wrap.innerHTML=`${rptDateBarHtml()}<p style="padding:20px;text-align:center;color:var(--text-sm)">جاري تحميل أرصدة الموردين...</p>`;
     try{
-      const data = await loadReport('vendors-balance');
+      const data = await loadReport('vendors-balance', dateParams);
       const rows = data.rows || [];
-      wrap.innerHTML=`<div class="table-wrapper"><table class="table"><thead><tr><th>المورد</th><th>التصنيف</th><th>إجمالي الخدمات</th><th>المدفوع</th><th>الرصيد</th><th>آخر عملية</th></tr></thead>
+      wrap.innerHTML=`${rptDateBarHtml()}<div style="margin-bottom:12px;display:flex;justify-content:flex-end">${exportActionBar('report', { ctx: { type: 'vendors-balance' } })}</div><div class="table-wrapper"><table class="table"><thead><tr><th>المورد</th><th>التصنيف</th><th>إجمالي الخدمات</th><th>المدفوع</th><th>الرصيد</th><th>آخر عملية</th></tr></thead>
       <tbody>${rows.map(v=>`<tr><td><b>${v.name}</b></td><td>${v.category||''}</td><td>${fmt(v.totalServices)}</td><td>${fmt(v.totalPaid)}</td><td style="color:var(--warning);font-weight:700">${fmt(v.balance)}</td><td>${v.lastOpDate}</td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--success)">لا توجد أرصدة مستحقة</td></tr>'}</tbody></table></div>`;
-    }catch(e){ wrap.innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
+    }catch(e){ wrap.innerHTML=`${rptDateBarHtml()}<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
     return;
   }
   __originalRenderRptContent();
 };
 
-exportAgingReport = async function(){
-  try{
-    const data = await loadReport('aging');
-    const rows = data.rows || [];
-    toExcelAndDownload(rows.map(a=>({name:a.name,balance:a.balance,days:a.days,b1:a.b1,b2:a.b2,b3:a.b3,b4:a.b4})),['العميل','الرصيد','عمر الدين (أيام)','1-30 يوم','31-60 يوم','61-90 يوم','+90 يوم'],'تقرير_التقادم');
-  }catch(e){ notify(e.message, 'error'); }
-};
-
-exportCashFlow = async function(){
-  try{
-    const data = await loadReport('cashflow');
-    const safes = data.safes || [];
-    const headers = ['التاريخ','وارد','صادر','صافي',...safes.map(s=>'رصيد '+s.name)];
-    const rows = (data.rows||[]).map(r=>Object.fromEntries([
-      ['date', r.date],
-      ['inflow', r.inflow],
-      ['outflow', r.outflow],
-      ['net', r.net],
-      ...safes.map(s=>['safe_'+s.id, r.safes?.[s.id]||0])
-    ]));
-    toExcelAndDownload(rows,headers,'التدفق_النقدي');
-  }catch(e){ notify(e.message, 'error'); }
+reloadRptOpsPage = function(page){
+  tablePages.rptOps = page;
+  REPORT_CACHE = {};
+  renderRptContent();
 };
 
 saveProfile = async function(){
-  await withSaveGuard(null, async ()=>{
-    const data = await apiFetch('/profile',{method:'PATCH',body:JSON.stringify({name:document.getElementById('prof_name')?.value.trim()})});
-    currentUser=data.user;
-    document.getElementById('userName').textContent=currentUser.name;
+  clearProfileErrors();
+  const name = document.getElementById('prof_name')?.value?.trim();
+  const email = document.getElementById('prof_email')?.value?.trim();
+  if(!name){ showProfileError('profProfileError', 'الاسم مطلوب'); return; }
+  if(!email){ showProfileError('profProfileError', 'البريد الإلكتروني مطلوب'); return; }
+  await withSaveGuard('#saveProfileBtn', async ()=>{
+    const data = await apiFetch('/profile',{method:'PATCH',body:JSON.stringify({name, email})});
+    currentUser = data.user;
+    document.getElementById('userName').textContent = currentUser.name;
     notify('تم حفظ البيانات', 'success');
-  }).catch(e=> notify(e.message, 'error'));
+  }).catch(e => showProfileError('profProfileError', e.message));
 };
 
-exportClients = async function(){
-  try {
-    const rows = await fetchAllPages('/clients');
-    toExcelAndDownload(rows.map(c=>({id:c.id,name:c.name,phone:c.phone,civil_id:c.civil_id,email:c.email,nationality:c.nationality,balance:c.balance})),['#','الاسم','الهاتف','الرقم المدني','الإيميل','الجنسية','الرصيد'],'العملاء');
-  } catch (e) { notify(e.message, 'error'); }
-};
-exportVendors = async function(){
-  try {
-    const rows = await fetchAllPages('/vendors');
-    toExcelAndDownload(rows.map(v=>({id:v.id,name:v.name,category:categoryLabel[v.category]||v.category,phone:v.phone,contact:v.contact,balance:v.balance})),['#','الاسم','التصنيف','الهاتف','جهة الاتصال','الرصيد'],'الموردون');
-  } catch (e) { notify(e.message, 'error'); }
-};
-exportVouchers = async function(){
-  try {
-    const from = document.getElementById('vcFrom')?.value || '';
-    const to = document.getElementById('vcTo')?.value || '';
-    const params = { type: vcTab };
-    if (from) params.from = from;
-    if (to) params.to = to;
-    const rows = await fetchAllPages('/vouchers', params);
-    toExcelAndDownload(rows.map(v=>({ref:v.ref,type:vcTypeLabel[v.type],date:v.date,party:partyLabel(v),amount:v.amount,method:methodLabel(v.method),safe:safeName(v.safe_id),status:v.reversed?'ملغى':'فعّال',desc:displayVal(v.desc)})),['الرقم','النوع','التاريخ','الطرف','المبلغ','الطريقة','الصندوق','الحالة','البيان'],'السندات');
-  } catch (e) { notify(e.message, 'error'); }
+saveProfilePassword = async function(){
+  clearProfileErrors();
+  const current = document.getElementById('prof_current_password')?.value || '';
+  const password = document.getElementById('prof_new_password')?.value || '';
+  const confirmation = document.getElementById('prof_confirm_password')?.value || '';
+  if(!current){ showProfileError('profPasswordError', 'كلمة المرور الحالية مطلوبة'); return; }
+  if(!password){ showProfileError('profPasswordError', 'كلمة المرور الجديدة مطلوبة'); return; }
+  if(password.length < 8){ showProfileError('profPasswordError', 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'); return; }
+  if(password !== confirmation){ showProfileError('profPasswordError', 'تأكيد كلمة المرور غير متطابق'); return; }
+  await withSaveGuard('#saveProfilePasswordBtn', async ()=>{
+    await apiFetch('/profile/password', {
+      method:'PATCH',
+      body: JSON.stringify({
+        current_password: current,
+        password,
+        password_confirmation: confirmation,
+      }),
+    });
+    ['prof_current_password','prof_new_password','prof_confirm_password'].forEach(id => {
+      const input = document.getElementById(id);
+      if(input){ input.value = ''; input.type = 'password'; }
+    });
+    document.querySelectorAll('.password-toggle.is-visible').forEach(btn => btn.classList.remove('is-visible'));
+    notify('تم تحديث كلمة المرور بنجاح', 'success');
+  }).catch(e => showProfileError('profPasswordError', e.message));
 };
 
-exportOpsPDF = async function(){
-  try {
-    let rows;
-    if (currentPage === 'reports' && rptTab === 'ops') {
-      const data = await loadReport('operations', rptOpsDateParams());
-      rows = (data.rows || []).map(o => [
-        o.ref, o.date, o.client || clientName(o.client_id), o.service || serviceName(o.service_id), o.vendor || vendorName(o.vendor_id),
-        fmtN(o.client_price), fmtN(o.vendor_cost), fmtN(o.profit), statusLabel[o.status],
-      ]);
-    } else {
-      const search = document.getElementById('opSearchInput')?.value?.trim() || '';
-      const status = document.getElementById('opStatusFilter')?.value || 'all';
-      const service = document.getElementById('opSvcFilter')?.value || 'all';
-      const params = {};
-      if (search) params.search = search;
-      if (status !== 'all') params.status = status;
-      if (service !== 'all') params.service = service;
-      const ops = await fetchAllPages('/operations', params);
-      rows = ops.map(o => [
-        o.ref, o.date, o.client || clientName(o.client_id), o.service || serviceName(o.service_id), o.vendor || vendorName(o.vendor_id),
-        fmtN(o.client_price), fmtN(o.vendor_cost), fmtN(o.profit), statusLabel[o.status],
-      ]);
-    }
-    await toPDFAndDownload('قائمة العمليات', ['المرجع','التاريخ','العميل','الخدمة','المورد','سعر العميل','التكلفة','الربح','الحالة'], rows, 'العمليات');
-  } catch (e) { notify(e.message, 'error'); }
-};
+function clearProfileErrors(){
+  ['profProfileError','profPasswordError'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el){ el.style.display = 'none'; el.textContent = ''; }
+  });
+}
+
+function showProfileError(id, message){
+  const el = document.getElementById(id);
+  if(!el){ notify(message, 'error'); return; }
+  el.textContent = message;
+  el.style.display = 'block';
+}
+
+function togglePasswordVisibility(inputId, btn){
+  const input = document.getElementById(inputId);
+  if(!input || !btn) return;
+  const visible = input.type === 'password';
+  input.type = visible ? 'text' : 'password';
+  btn.classList.toggle('is-visible', visible);
+  btn.setAttribute('aria-label', visible ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور');
+}
 
 openEditClient = async function(id){
   let c = CLIENTS.find(x=>x.id===id);
@@ -1147,6 +2068,351 @@ deleteClient = async function(id){
     notify('تم حذف العميل بنجاح', 'success');
   }).catch(e=> notify(e.message, 'error'));
 };
+
+hideClient = async function(id){
+  let c = CLIENTS.find(x=>x.id===id);
+  if (!c) {
+    const res = await apiFetch('/clients?per_page=500');
+    c = (res.data||[]).find(x=>x.id===id);
+  }
+  if (!c) { notify('العميل غير موجود', 'error'); return; }
+  if (!confirm(`إخفاء العميل «${c.name}»؟\n\nسيُستبعد من القوائم والتقارير دون حذف بياناته أو قيوده المحاسبية.`)) return;
+  await withSaveGuard(null, async ()=>{
+    await apiFetch(`/clients/${id}/hide`, {method:'POST'});
+    await refreshAfterMutation();
+    if (currentPage === 'settings') await loadHiddenSettings();
+    notify('تم إخفاء العميل', 'success');
+  }).catch(e=> notify(e.message, 'error'));
+};
+
+restoreClient = async function(id){
+  const c = HIDDEN_CLIENTS.find(x=>x.id===id);
+  if (!c) { notify('العميل غير موجود', 'error'); return; }
+  if (!confirm(`استعادة العميل «${c.name}»؟`)) return;
+  await withSaveGuard(null, async ()=>{
+    await apiFetch(`/clients/${id}/restore`, {method:'POST'});
+    await refreshAfterMutation();
+    await loadHiddenSettings();
+    notify('تم استعادة العميل', 'success');
+  }).catch(e=> notify(e.message, 'error'));
+};
+
+hideOperation = async function(id){
+  let o = OPS.find(x=>x.id===id);
+  if (!o) {
+    try { o = await apiFetch(`/operations/${id}`); } catch (e) { notify('العملية غير موجودة', 'error'); return; }
+  }
+  if (!confirm(`إخفاء العملية «${o.ref}»؟\n\nسيُستبعد من القوائم والتقارير دون حذف بياناته أو قيوده المحاسبية.`)) return;
+  await withSaveGuard(null, async ()=>{
+    await apiFetch(`/operations/${id}/hide`, {method:'POST'});
+    await refreshAfterMutation();
+    if (currentPage === 'settings') await loadHiddenSettings();
+    notify('تم إخفاء العملية', 'success');
+  }).catch(e=> notify(e.message, 'error'));
+};
+
+restoreOperation = async function(id){
+  const o = HIDDEN_OPS.find(x=>x.id===id);
+  if (!o) { notify('العملية غير موجودة', 'error'); return; }
+  if (!confirm(`استعادة العملية «${o.ref}»؟`)) return;
+  await withSaveGuard(null, async ()=>{
+    await apiFetch(`/operations/${id}/restore`, {method:'POST'});
+    await refreshAfterMutation();
+    await loadHiddenSettings();
+    notify('تم استعادة العملية', 'success');
+  }).catch(e=> notify(e.message, 'error'));
+};
+
+let HIDDEN_CLIENTS = [];
+let HIDDEN_OPS = [];
+
+async function loadHiddenSettings(){
+  if (!canDo('write_master') && !canDo('cancel_op')) return;
+  try {
+    const [clientsRes, opsRes] = await Promise.all([
+      apiFetch('/clients?hidden=1&per_page=100'),
+      apiFetch('/operations?hidden=1&per_page=100'),
+    ]);
+    HIDDEN_CLIENTS = clientsRes.data || [];
+    HIDDEN_OPS = opsRes.data || [];
+    paintHiddenClientsSettings();
+    paintHiddenOperationsSettings();
+  } catch (e) { /* settings still usable */ }
+}
+
+function hiddenClientsSettingsRows(){
+  if (!HIDDEN_CLIENTS.length) return '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-sm)">لا يوجد عملاء مخفيون</td></tr>';
+  return HIDDEN_CLIENTS.map(c=>{
+    const bal = typeof c.balance === 'number' ? c.balance : 0;
+    const restoreBtn = canDo('write_master') ? `<button class="btn btn-sm btn-success" onclick="restoreClient(${c.id})">استعادة</button>` : '—';
+    return `<tr>
+      <td><b>${c.name}</b></td>
+      <td>${c.phone||'—'}</td>
+      <td style="font-weight:700;color:${bal>0?'var(--danger)':'var(--success)'}">${fmt(bal)}</td>
+      <td><span class="badge badge-warning">مخفي</span></td>
+      <td>${restoreBtn}</td>
+    </tr>`;
+  }).join('');
+}
+
+function hiddenOperationsSettingsRows(){
+  if (!HIDDEN_OPS.length) return '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-sm)">لا توجد عمليات مخفية</td></tr>';
+  return HIDDEN_OPS.map(o=>{
+    const restoreBtn = (canDo('write_master') || canDo('cancel_op')) ? `<button class="btn btn-sm btn-success" onclick="restoreOperation(${o.id})">استعادة</button>` : '—';
+    return `<tr>
+      <td><b>${o.ref}</b></td>
+      <td>${o.date||'—'}</td>
+      <td>${o.client||clientName(o.client_id)}</td>
+      <td>${fmt(o.client_price)}</td>
+      <td><span class="badge badge-warning">مخفي</span></td>
+      <td>${restoreBtn}</td>
+    </tr>`;
+  }).join('');
+}
+
+function paintHiddenClientsSettings(){
+  const body = document.getElementById('hiddenClientsBody');
+  if (body) body.innerHTML = hiddenClientsSettingsRows();
+}
+
+function paintHiddenOperationsSettings(){
+  const body = document.getElementById('hiddenOpsBody');
+  if (body) body.innerHTML = hiddenOperationsSettingsRows();
+}
+
+function canManageHiddenRecords(){
+  return canDo('write_master') || canDo('cancel_op');
+}
+
+let SAFE_TRANSFERS = [];
+let LIST_META_SAFES = { safes: null, transfers: null };
+let tablePagesSafes = { safes: 1, transfers: 1 };
+let safesTab = 'safes';
+
+async function reloadSafesList(page){
+  const wrap = document.getElementById('sfTableWrap');
+  if (wrap) wrap.innerHTML = '<p style="padding:24px;text-align:center;color:var(--text-sm)">جاري التحميل...</p>';
+  const search = document.getElementById('sfSearch')?.value?.trim() || '';
+  const type = document.getElementById('sfTypeFilter')?.value || 'all';
+  const active = document.getElementById('sfActiveFilter')?.value || 'all';
+  const p = page || tablePagesSafes.safes || 1;
+  const params = {};
+  if (search) params.search = search;
+  if (type !== 'all') params.type = type;
+  if (active !== 'all') params.active = active === 'active' ? '1' : '0';
+  const res = await fetchListPage('/safes', p, params);
+  replaceArray(SAFES, res.data || []);
+  LIST_META_SAFES.safes = res.meta || null;
+  tablePagesSafes.safes = res.meta?.current_page || 1;
+  paintSafesTable();
+}
+
+async function reloadTransfersList(page){
+  const wrap = document.getElementById('trTableWrap');
+  if (wrap) wrap.innerHTML = '<p style="padding:24px;text-align:center;color:var(--text-sm)">جاري التحميل...</p>';
+  const search = document.getElementById('trSearch')?.value?.trim() || '';
+  const p = page || tablePagesSafes.transfers || 1;
+  const params = {};
+  if (search) params.search = search;
+  applyDateParams(params, 'trFrom', 'trTo');
+  const res = await fetchListPage('/safe-transfers', p, params);
+  SAFE_TRANSFERS = res.data || [];
+  LIST_META_SAFES.transfers = res.meta || null;
+  tablePagesSafes.transfers = res.meta?.current_page || 1;
+  paintTransfersTable();
+}
+
+async function reloadSafesPage(){
+  if (safesTab === 'transfers') await reloadTransfersList(1);
+  else await reloadSafesList(1);
+}
+
+function paintSafesTable(){
+  const wrap = document.getElementById('sfTableWrap');
+  if (!wrap) return;
+  const meta = LIST_META_SAFES.safes;
+  wrap.innerHTML = `<div class="table-wrapper"><table class="table"><thead><tr><th>#</th><th>الاسم</th><th>النوع</th><th>رمز الحساب</th><th>الرصيد</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+  <tbody>${SAFES.map(s=>{
+    const bal = typeof s.balance === 'number' ? s.balance : getSafeBalance(s.id);
+    const active = s.is_active !== false;
+    const manage = canDo('manage_safes');
+    const editBtn = manage ? `<button class="btn btn-sm btn-outline" onclick="openEditSafe(${s.id})">تعديل</button> ` : '';
+    const toggleBtn = manage ? `<button class="btn btn-sm ${active ? 'btn-danger' : 'btn-success'}" onclick="toggleSafeActive(${s.id}, ${active ? 0 : 1})">${active ? 'تعطيل' : 'تفعيل'}</button> ` : '';
+    return `<tr>
+      <td>${s.id}</td>
+      <td><b>${s.type==='cash'?'💵':'🏦'} ${s.name}</b></td>
+      <td>${s.type==='cash'?'صندوق':'بنك'}</td>
+      <td>${s.account_code||'—'}</td>
+      <td style="font-weight:700;color:${bal>=0?'var(--success)':'var(--danger)'}">${fmt(bal)}</td>
+      <td><span class="badge ${active?'badge-success':'badge-danger'}">${active?'مفعل':'معطل'}</span></td>
+      <td style="white-space:nowrap">${editBtn}${toggleBtn}</td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-sm)">لا توجد صناديق</td></tr>'}</tbody></table></div>${serverPagerHtml('safes', meta, 'reloadSafesList')}`;
+}
+
+function paintTransfersTable(){
+  const wrap = document.getElementById('trTableWrap');
+  if (!wrap) return;
+  const meta = LIST_META_SAFES.transfers;
+  wrap.innerHTML = `<div class="table-wrapper"><table class="table"><thead><tr><th>المرجع</th><th>التاريخ</th><th>من</th><th>إلى</th><th>المبلغ</th><th>بواسطة</th><th>ملاحظات</th></tr></thead>
+  <tbody>${SAFE_TRANSFERS.map(t=>`<tr>
+    <td><b style="color:var(--primary)">${t.ref}</b></td>
+    <td>${t.date||t.transfer_date||'—'}</td>
+    <td>${t.from_type==='bank'?'🏦':'💵'} ${t.from_safe||'—'}</td>
+    <td>${t.to_type==='bank'?'🏦':'💵'} ${t.to_safe||'—'}</td>
+    <td style="font-weight:700">${fmt(t.amount)}</td>
+    <td>${t.creator||'—'}</td>
+    <td style="font-size:12px">${displayVal(t.notes)}</td>
+  </tr>`).join('')||'<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-sm)">لا توجد تحويلات</td></tr>'}</tbody></table></div>${serverPagerHtml('transfers', meta, 'reloadTransfersList')}`;
+}
+
+function populateTransferForm(){
+  const activeSafes = SAFES.filter(s => s.is_active !== false);
+  const opts = activeSafes.map(s=>`<option value="${s.id}">${s.type==='bank'?'🏦':'💵'} ${s.name} (${fmt(typeof s.balance==='number'?s.balance:getSafeBalance(s.id))})</option>`).join('');
+  const from = document.getElementById('tr_from');
+  const to = document.getElementById('tr_to');
+  if (from) from.innerHTML = opts;
+  if (to) to.innerHTML = opts;
+  const dt = document.getElementById('tr_date');
+  if (dt) dt.value = today();
+  ['tr_amount','tr_notes'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+}
+
+async function saveSafe(){
+  const name = document.getElementById('sf_name')?.value?.trim();
+  const type = document.getElementById('sf_type')?.value;
+  const opening = +(document.getElementById('sf_opening')?.value||0);
+  if (!name || !type) { showModalError('newSafeModal','الاسم والنوع مطلوبان'); return; }
+  await withSaveGuard('#newSafeModal .btn-primary', async ()=>{
+    await apiFetch('/safes', { method:'POST', body: JSON.stringify({ name, type, opening_balance: opening, currency: 'KWD' }) });
+    closeModal('newSafeModal');
+    await refreshAfterMutation();
+    if (currentPage === 'safes') await reloadSafesList(tablePagesSafes.safes);
+    notify('تم إنشاء الصندوق بنجاح', 'success');
+  }).catch(e=> showModalError('newSafeModal', e.message));
+}
+
+function openEditSafe(id){
+  const s = SAFES.find(x=>+x.id===+id);
+  if (!s) { notify('الصندوق غير موجود', 'error'); return; }
+  document.getElementById('esf_id').value = s.id;
+  document.getElementById('esf_name').value = s.name||'';
+  document.getElementById('esf_type').value = s.type||'cash';
+  document.getElementById('esf_opening').value = s.opening_balance ?? s.initial ?? 0;
+  document.getElementById('esf_account_code').value = s.account_code||'—';
+  clearModalError('editSafeModal');
+  showModal('editSafeModal');
+}
+
+async function saveSafeEdit(){
+  const id = +document.getElementById('esf_id')?.value;
+  await withSaveGuard('#editSafeModal .btn-primary', async ()=>{
+    await apiFetch(`/safes/${id}`, { method:'PATCH', body: JSON.stringify({
+      name: document.getElementById('esf_name').value.trim(),
+      type: document.getElementById('esf_type').value,
+      opening_balance: +document.getElementById('esf_opening').value||0,
+    })});
+    closeModal('editSafeModal');
+    await refreshAfterMutation();
+    if (currentPage === 'safes') await reloadSafesList(tablePagesSafes.safes);
+    notify('تم تحديث الصندوق', 'success');
+  }).catch(e=> showModalError('editSafeModal', e.message));
+}
+
+async function toggleSafeActive(id, active){
+  const s = SAFES.find(x=>+x.id===+id);
+  if (!s) return;
+  const label = active ? 'تفعيل' : 'تعطيل';
+  if (!confirm(`${label} «${s.name}»؟`)) return;
+  await withSaveGuard(null, async ()=>{
+    await apiFetch(`/safes/${id}/toggle`, { method:'PATCH' });
+    await refreshAfterMutation();
+    if (currentPage === 'safes') await reloadSafesList(tablePagesSafes.safes);
+    notify(`تم ${label} الصندوق`, 'success');
+  }).catch(e=> notify(e.message, 'error'));
+}
+
+async function saveTransfer(){
+  const fromId = +document.getElementById('tr_from')?.value;
+  const toId = +document.getElementById('tr_to')?.value;
+  const amount = +document.getElementById('tr_amount')?.value;
+  const transferDate = document.getElementById('tr_date')?.value;
+  const notes = document.getElementById('tr_notes')?.value||'';
+  if (!fromId || !toId || !amount) { showModalError('newTransferModal','يرجى تعبئة المصدر والوجهة والمبلغ'); return; }
+  if (fromId === toId) { showModalError('newTransferModal','يجب أن يكون المصدر مختلفاً عن الوجهة'); return; }
+  await withSaveGuard('#newTransferModal .btn-primary', async ()=>{
+    await apiFetch('/safe-transfers', { method:'POST', body: JSON.stringify({
+      from_safe_id: fromId, to_safe_id: toId, amount, transfer_date: transferDate||undefined, notes,
+    })});
+    closeModal('newTransferModal');
+    await refreshAfterMutation();
+    safesTab = 'transfers';
+    if (currentPage === 'safes') { renderSafes(document.getElementById('pageContent')); await reloadTransfersList(1); }
+    notify('تم تنفيذ التحويل بنجاح', 'success');
+  }).catch(e=> showModalError('newTransferModal', e.message));
+}
+
+let __sfSearchTimer = null;
+function filterSafesList(){
+  clearTimeout(__sfSearchTimer);
+  __sfSearchTimer = setTimeout(()=> reloadSafesList(1), 300);
+}
+function filterTransfersList(){
+  clearTimeout(__sfSearchTimer);
+  __sfSearchTimer = setTimeout(()=> reloadTransfersList(1), 300);
+}
+
+function switchSafesTab(tab){
+  safesTab = tab;
+  renderSafes(document.getElementById('pageContent'));
+  reloadSafesPage();
+}
+
+const __originalRenderSafes = renderSafes;
+renderSafes = function(pc){
+  pc.innerHTML = `
+  <div class="page-shell">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-body">
+        <div class="tabs" style="margin-bottom:16px">
+          <button class="tab-btn ${safesTab==='safes'?'active':''}" onclick="switchSafesTab('safes')">💵 الصناديق والبنوك</button>
+          <button class="tab-btn ${safesTab==='transfers'?'active':''}" onclick="switchSafesTab('transfers')">🔄 سجل التحويلات</button>
+        </div>
+        ${safesTab==='safes' ? `
+          <div class="filter-bar" style="margin-bottom:12px">
+            <input type="text" class="form-control filter-control" id="sfSearch" placeholder="بحث بالاسم..." oninput="filterSafesList()">
+            <select class="form-control filter-control" id="sfTypeFilter" onchange="reloadSafesList(1)"><option value="all">كل الأنواع</option><option value="cash">صناديق</option><option value="bank">بنوك</option></select>
+            <select class="form-control filter-control" id="sfActiveFilter" onchange="reloadSafesList(1)"><option value="all">كل الحالات</option><option value="active">مفعل</option><option value="inactive">معطل</option></select>
+            ${canDo('manage_safes')?`<button class="btn btn-primary" onclick="showModal('newSafeModal')">➕ صندوق / بنك جديد</button>`:''}
+            ${canDo('manage_safes')?`<button class="btn btn-outline" onclick="populateTransferForm();showModal('newTransferModal')">🔄 تحويل</button>`:''}
+          </div>
+          <div id="sfTableWrap"><p style="padding:24px;text-align:center;color:var(--text-sm)">جاري التحميل...</p></div>
+        ` : `
+          <div class="filter-bar" style="margin-bottom:12px">
+            <input type="date" class="form-control filter-control" id="trFrom" onchange="reloadTransfersList(1)">
+            <input type="date" class="form-control filter-control" id="trTo" onchange="reloadTransfersList(1)">
+            <input type="text" class="form-control filter-control" id="trSearch" placeholder="بحث..." oninput="filterTransfersList()">
+            ${canDo('manage_safes')?`<button class="btn btn-primary" onclick="populateTransferForm();showModal('newTransferModal')">➕ تحويل جديد</button>`:''}
+          </div>
+          <div id="trTableWrap"><p style="padding:24px;text-align:center;color:var(--text-sm)">جاري التحميل...</p></div>
+        `}
+      </div>
+    </div>
+    ${safesTab==='safes' ? `<div class="grid-2">${SAFES.slice(0,4).map(s=>{
+      const bal = typeof s.balance === 'number' ? s.balance : getSafeBalance(s.id);
+      const movements = (s.movements&&s.movements.length)?s.movements:[];
+      return `<div class="card"><div class="card-body">
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px"><div><h3>${s.type==='cash'?'💵':'🏦'} ${s.name}</h3><small style="color:var(--text-sm)">رصيد مبدئي: ${fmt(s.opening_balance??s.initial??0)}</small></div>
+        <div style="font-size:22px;font-weight:800;color:${bal>=0?'var(--success)':'var(--danger)'}">${fmt(bal)}</div></div>
+        <div class="table-wrapper"><table class="table"><thead><tr><th>التاريخ</th><th>المرجع</th><th>وارد</th><th>صادر</th></tr></thead>
+        <tbody>${movements.slice(0,5).map(j=>`<tr><td>${j.date}</td><td>${displayVal(j.ref)}</td><td style="color:var(--success)">${j.debit>0?fmt(j.debit):'—'}</td><td style="color:var(--danger)">${j.credit>0?fmt(j.credit):'—'}</td></tr>`).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--text-sm)">لا توجد حركات</td></tr>'}</tbody></table></div>
+      </div></div>`;
+    }).join('')}</div>` : ''}
+  </div>`;
+  reloadSafesPage();
+};
+
+
 
 openEditVendor = async function(id){
   let v = VENDORS.find(x=>x.id===id);
@@ -1268,7 +2534,6 @@ renderDashboard = function(pc){
     const debtors = (DASHBOARD_DATA.top_debtors||[]).map(c=>({...c, bal:c.balance}));
     const creditors = (DASHBOARD_DATA.top_creditors||[]).map(v=>({...v, bal:v.balance}));
     const overdueList = DASHBOARD_DATA.overdue_operations||[];
-    const todayStr = today();
     const todaySales = DASHBOARD_DATA.today_sales ?? 0;
     const todayProfit = DASHBOARD_DATA.today_profit ?? 0;
     const totalReceipts = DASHBOARD_DATA.total_cash_receipts ?? 0;
@@ -1277,13 +2542,16 @@ renderDashboard = function(pc){
     const weekReceipts = DASHBOARD_DATA.week?.receipts || [];
     const weekPayments = DASHBOARD_DATA.week?.payments || [];
     const svcCount = DASHBOARD_DATA.services || [];
-    const todayOpsCount = OPS.filter(o=>o.date===todayStr&&o.status!=='cancelled').length;
+    const salesLabel = DASHBOARD_DATA.sales_label || 'مبيعات اليوم';
+    const profitLabel = DASHBOARD_DATA.profit_label || 'ربح متوقع اليوم';
+    const salesSub = DASHBOARD_DATA.sales_sub || '';
 
     pc.innerHTML=`
   <div class="page-shell">
+    ${dateFilterBar('dashFrom', 'dashTo', 'filterDashboard', DASHBOARD_DATA.from||'', DASHBOARD_DATA.to||today(), '<span style="font-size:12px;color:var(--text-sm);align-self:center">فترة الإحصائيات:</span>')}
     <div class="grid-kpi-4">
-      ${kpiCard('💰','مبيعات اليوم',fmt(todaySales),'var(--primary)','اليوم: '+todayOpsCount+' عمليات')}
-      ${kpiCard('📈','ربح متوقع اليوم',fmt(todayProfit),'var(--success)',formatMargin(todayProfit,todaySales))}
+      ${kpiCard('💰', salesLabel, fmt(todaySales), 'var(--primary)', salesSub)}
+      ${kpiCard('📈', profitLabel, fmt(todayProfit), 'var(--success)', formatMargin(todayProfit,todaySales))}
       ${kpiCard('🧾','التحصيلات النقدية',fmt(totalReceipts),'var(--info)','')}
       ${kpiCard('💸','إجمالي المدفوعات',fmt(totalPayments),'var(--warning)','')}
     </div>
@@ -1326,15 +2594,51 @@ renderDashboard = function(pc){
 const __originalRenderSettings = renderSettings;
 renderSettings = function(pc){
   __originalRenderSettings(pc);
+  if (canManageHiddenRecords()) {
+    const shell = pc.querySelector('.page-shell .grid-2') || pc.querySelector('.grid-2');
+    if (shell) {
+      const hiddenCard = document.createElement('div');
+      hiddenCard.className = 'card';
+      hiddenCard.innerHTML = `<div class="card-header"><h3>👤 العملاء المخفيون</h3></div>
+        <div class="card-body" style="padding:0"><div class="table-wrapper">
+          <table class="table"><thead><tr><th>الاسم</th><th>الهاتف</th><th>الرصيد</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+          <tbody id="hiddenClientsBody"><tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-sm)">جاري التحميل...</td></tr></tbody>
+        </table></div></div>`;
+      shell.appendChild(hiddenCard);
+
+      const hiddenOpsCard = document.createElement('div');
+      hiddenOpsCard.className = 'card';
+      hiddenOpsCard.innerHTML = `<div class="card-header"><h3>📋 العمليات المخفية</h3></div>
+        <div class="card-body" style="padding:0"><div class="table-wrapper">
+          <table class="table"><thead><tr><th>المرجع</th><th>التاريخ</th><th>العميل</th><th>المبلغ</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+          <tbody id="hiddenOpsBody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-sm)">جاري التحميل...</td></tr></tbody>
+        </table></div></div>`;
+      shell.appendChild(hiddenOpsCard);
+      loadHiddenSettings();
+    }
+  }
   if(currentUser?.role !== 'super_admin') return;
   const shell = pc.querySelector('.page-shell .grid-2') || pc.querySelector('.grid-2');
   if(!shell) return;
   const card = document.createElement('div');
   card.className = 'card';
-  card.innerHTML = `<div class="card-header"><h3>🏢 فروع الوكالة</h3><button class="btn btn-primary btn-sm" onclick="showModal('newOfficeModal')">➕ مكتب جديد</button></div>
+  card.innerHTML = `<div class="card-header"><h3>🏢 فروع الوكالة</h3><button class="btn btn-primary btn-sm" onclick="resetNewOfficeForm();showModal('newOfficeModal')">➕ مكتب جديد</button></div>
     <div class="card-body" style="padding:0"><div class="table-wrapper">
-      <table class="table"><thead><tr><th>الرمز</th><th>الاسم</th><th>الحالة</th><th>إجراء</th></tr></thead>
-      <tbody>${OFFICES.map(o=>`<tr><td><b>${o.office_code}</b></td><td>${o.office_name}</td><td><span class="badge ${o.is_active?'badge-success':'badge-danger'}">${o.is_active?'مفعل':'معطل'}</span></td><td><button class="btn btn-sm btn-outline" onclick="toggleOfficeActive(${o.id},${o.is_active?0:1})">${o.is_active?'تعطيل':'تفعيل'}</button></td></tr>`).join('')}</tbody>
+      <table class="table"><thead><tr><th>الشعار</th><th>الرمز</th><th>الاسم</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+      <tbody>${OFFICES.map(o=>{
+        const url = officeLogoUrl(o);
+        const logoCell = url ? `<img src="${url}" alt="" style="width:36px;height:36px;object-fit:contain;border-radius:8px;border:1px solid var(--border)">` : '<span style="font-size:22px" title="بدون شعار">🏢</span>';
+        return `<tr>
+          <td>${logoCell}</td>
+          <td><b>${o.office_code}</b></td>
+          <td>${o.office_name}</td>
+          <td><span class="badge ${o.is_active?'badge-success':'badge-danger'}">${o.is_active?'مفعل':'معطل'}</span></td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-sm btn-outline" onclick="openEditOffice(${o.id})">تعديل</button>
+            <button class="btn btn-sm ${o.is_active?'btn-danger':'btn-success'}" onclick="toggleOfficeActive(${o.id},${o.is_active?0:1})">${o.is_active?'تعطيل':'تفعيل'}</button>
+          </td>
+        </tr>`;
+      }).join('')}</tbody>
     </table></div></div>`;
   shell.prepend(card);
   renderOfficeSwitcher();

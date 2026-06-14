@@ -9,7 +9,7 @@ services:
       MARIADB_USER: travel_erp
       MARIADB_PASSWORD: travel_erp
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - travel_erp_mariadb:/var/lib/mysql
 

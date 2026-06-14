@@ -333,6 +333,7 @@ body[data-auth="app"] #loginPage{display:none!important}
       <div class="nav-item" data-page="activity" onclick="navigate('activity')"><span class="nav-icon"><i class='bx bx-history'></i></span> سجل النشاط</div>
       <div class="nav-section">الإعدادات</div>
       <div class="nav-item" data-page="settings" onclick="navigate('settings')"><span class="nav-icon"><i class='bx bxs-cog'></i></span> الإعدادات</div>
+      <div class="nav-item" data-page="offices" onclick="navigate('offices')" id="menuOffices" style="display:none"><span class="nav-icon"><i class='bx bx-building'></i></span> إدارة المكاتب</div>
     </nav>
     <div class="sidebar-footer">
       <div class="user-info" onclick="navigate('settings')">
@@ -686,7 +687,7 @@ function navigate(page){
   if(chartRenderTimer){ clearTimeout(chartRenderTimer); chartRenderTimer=null; }
   Object.values(charts).forEach(c=>{try{c.destroy();}catch(e){}});
   charts={};
-  const pages={dashboard:renderDashboard,operations:renderOperations,clients:renderClients,vendors:renderVendors,vouchers:renderVouchers,journal:renderJournal,safes:renderSafes,reports:renderReports,activity:typeof renderActivityLogs==='function'?renderActivityLogs:null,settings:renderSettings};
+  const pages={dashboard:renderDashboard,operations:renderOperations,clients:renderClients,vendors:renderVendors,vouchers:renderVouchers,journal:renderJournal,safes:renderSafes,reports:renderReports,activity:typeof renderActivityLogs==='function'?renderActivityLogs:null,settings:renderSettings,offices:typeof renderOffices==='function'?renderOffices:null};
   if(pages[page])pages[page](pc);
 }
 
@@ -925,6 +926,7 @@ function getFilteredOps(){
 }
 function canViewPage(page){
   const r=currentUser?.role;
+  if(page === 'offices') return r === 'super_admin';
   if(r==='super_admin'||r==='admin')return true;
   const access={
     dashboard:['sales','accountant','auditor'],

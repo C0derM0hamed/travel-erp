@@ -514,7 +514,7 @@ function renderOfficeSwitcher(){
   const el = document.getElementById('officeSwitcher');
   if(!el) return;
   const offices = OFFICES.length ? OFFICES : (currentOffice ? [currentOffice] : []);
-  if(offices.length <= 1 && currentUser?.role !== 'super_admin'){
+  if(offices.length <= 1 && currentUser?.role !== 'super_admin' && currentUser?.role !== 'admin'){
     el.style.display = 'none';
     return;
   }
@@ -655,7 +655,11 @@ async function saveOffice(){
     closeModal('newOfficeModal');
     resetNewOfficeForm();
     await refreshBootstrap();
-    renderSettings(document.getElementById('pageContent'));
+    if(currentPage === 'offices' && typeof renderOffices === 'function') {
+      renderOffices(document.getElementById('pageContent'));
+    } else if(currentPage === 'settings') {
+      renderSettings(document.getElementById('pageContent'));
+    }
     notify('تم إنشاء المكتب بنجاح', 'success');
   }).catch(e => {
     const err = document.getElementById('newOfficeModalError');
@@ -679,7 +683,11 @@ async function saveOfficeEdit(){
     }
     closeModal('editOfficeModal');
     await refreshBootstrap();
-    renderSettings(document.getElementById('pageContent'));
+    if(currentPage === 'offices' && typeof renderOffices === 'function') {
+      renderOffices(document.getElementById('pageContent'));
+    } else if(currentPage === 'settings') {
+      renderSettings(document.getElementById('pageContent'));
+    }
     if(+currentOffice?.id === +id){
       currentOffice = OFFICES.find(o => +o.id === +id) || currentOffice;
       renderOfficeBranding();
@@ -714,7 +722,11 @@ async function removeOfficeLogo(){
 async function toggleOfficeActive(officeId, active){
   await apiFetch(`/offices/${officeId}`, {method:'PATCH', body:JSON.stringify({is_active:active})});
   await refreshBootstrap();
-  renderSettings(document.getElementById('pageContent'));
+  if(currentPage === 'offices' && typeof renderOffices === 'function') {
+    renderOffices(document.getElementById('pageContent'));
+  } else if(currentPage === 'settings') {
+    renderSettings(document.getElementById('pageContent'));
+  }
   notify(active ? 'تم تفعيل المكتب' : 'تم تعطيل المكتب', 'success');
 }
 
@@ -724,12 +736,7 @@ function populateUserForm(){
   if(!sel || !roleSel) return;
   const offices = OFFICES.length ? OFFICES : (currentOffice ? [currentOffice] : []);
   sel.innerHTML = '<option value="">-- اختر المكتب --</option>' + offices.map(o => `<option value="${o.id}">${o.office_name || o.office_code}</option>`).join('');
-  if(currentUser?.role === 'admin' && currentUser?.office_id){
-    sel.value = String(currentUser.office_id);
-    sel.disabled = true;
-  } else {
-    sel.disabled = false;
-  }
+  sel.disabled = false;
   if(currentUser?.role === 'super_admin' && !roleSel.querySelector('option[value="super_admin"]')){
     roleSel.insertAdjacentHTML('beforeend', '<option value="super_admin">مدير عام</option>');
   }
@@ -794,17 +801,10 @@ function populateEditUserForm(user){
   document.getElementById('eusr_email').value = user.email || '';
   roleSel.value = user.role || 'sales';
   sel.value = user.office_id ? String(user.office_id) : '';
-  if(currentUser?.role === 'admin'){
-    sel.value = String(currentUser.office_id || user.office_id || '');
-    sel.disabled = true;
-  } else {
-    sel.disabled = roleSel.value === 'super_admin';
-  }
+  sel.disabled = roleSel.value === 'super_admin';
   roleSel.onchange = () => {
-    if(currentUser?.role === 'super_admin'){
-      sel.disabled = roleSel.value === 'super_admin';
-      if(roleSel.value === 'super_admin') sel.value = '';
-    }
+    sel.disabled = roleSel.value === 'super_admin';
+    if(roleSel.value === 'super_admin') sel.value = '';
   };
 }
 
@@ -2632,31 +2632,47 @@ renderSettings = function(pc){
       loadHiddenSettings();
     }
   }
-  if(currentUser?.role !== 'super_admin') return;
-  const shell = pc.querySelector('.page-shell .grid-2') || pc.querySelector('.grid-2');
-  if(!shell) return;
-  const card = document.createElement('div');
-  card.className = 'card';
-  card.innerHTML = `<div class="card-header"><h3><i class='bx bx-building'></i> فروع الوكالة</h3><button class="btn btn-primary btn-sm" onclick="resetNewOfficeForm();showModal('newOfficeModal')"><i class='bx bx-plus'></i> مكتب جديد</button></div>
-    <div class="card-body" style="padding:0"><div class="table-wrapper">
-      <table class="table"><thead><tr><th>الشعار</th><th>الرمز</th><th>الاسم</th><th>الحالة</th><th>إجراءات</th></tr></thead>
-      <tbody>${OFFICES.map(o=>{
-        const url = officeLogoUrl(o);
-        const logoCell = url ? `<img src="${url}" alt="" style="width:36px;height:36px;object-fit:contain;border-radius:8px;border:1px solid var(--border)" onerror="this.src='logo.png'; this.onerror=null;">` : '<img src="logo.png" alt="" style="width:36px;height:36px;object-fit:contain;border-radius:8px;border:1px solid var(--border)" onerror="this.src=\'logo.png\'; this.onerror=null;">';
-        return `<tr>
-          <td>${logoCell}</td>
-          <td><b>${o.office_code}</b></td>
-          <td>${o.office_name}</td>
-          <td><span class="badge ${o.is_active?'badge-success':'badge-danger'}">${o.is_active?'مفعل':'معطل'}</span></td>
-          <td style="white-space:nowrap">
-            <button class="btn btn-sm btn-outline" onclick="openEditOffice(${o.id})">تعديل</button>
-            <button class="btn btn-sm ${o.is_active?'btn-danger':'btn-success'}" onclick="toggleOfficeActive(${o.id},${o.is_active?0:1})">${o.is_active?'تعطيل':'تفعيل'}</button>
-          </td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table></div></div>`;
-  shell.prepend(card);
   renderOfficeSwitcher();
+};
+
+window.renderOffices = function(pc){
+  if(currentUser?.role !== 'super_admin') return;
+  pc.innerHTML = `
+  <div class="page-shell">
+    <div class="card">
+      <div class="card-header">
+        <h3><i class='bx bx-building'></i> إدارة المكاتب وفروع الوكالة</h3>
+        <button class="btn btn-primary btn-sm" onclick="resetNewOfficeForm();showModal('newOfficeModal')">
+          <i class='bx bx-plus'></i> مكتب جديد
+        </button>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="table-wrapper">
+          <table class="table">
+            <thead>
+              <tr><th>الشعار</th><th>الرمز</th><th>الاسم</th><th>الحالة</th><th>إجراءات</th></tr>
+            </thead>
+            <tbody>
+              ${OFFICES.map(o => {
+                const url = officeLogoUrl(o);
+                const logoCell = url ? \`<img src="\${url}" alt="" style="width:36px;height:36px;object-fit:contain;border-radius:8px;border:1px solid var(--border)" onerror="this.src='logo.png'; this.onerror=null;">\` : '<img src="logo.png" alt="" style="width:36px;height:36px;object-fit:contain;border-radius:8px;border:1px solid var(--border)" onerror="this.src=\\'logo.png\\'; this.onerror=null;">';
+                return \`<tr>
+                  <td>\${logoCell}</td>
+                  <td><b>\${o.office_code}</b></td>
+                  <td>\${o.office_name}</td>
+                  <td><span class="badge \${o.is_active?'badge-success':'badge-danger'}">\${o.is_active?'مفعل':'معطل'}</span></td>
+                  <td style="white-space:nowrap">
+                    <button class="btn btn-sm btn-outline" onclick="openEditOffice(\${o.id})">تعديل</button>
+                    <button class="btn btn-sm \${o.is_active?'btn-danger':'btn-success'}" onclick="toggleOfficeActive(\${o.id},\${o.is_active?0:1})">\${o.is_active?'تعطيل':'تفعيل'}</button>
+                  </td>
+                </tr>\`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>`;
 };
 
 async function restoreSession(){

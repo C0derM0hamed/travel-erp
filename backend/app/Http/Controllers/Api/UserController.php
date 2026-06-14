@@ -45,11 +45,13 @@ class UserController extends ApiController
             'office_id' => ['nullable', 'exists:offices,id'],
         ]);
 
-        if (in_array($authUser->role, ['super_admin', 'admin'], true)) {
+        if ($authUser->role === 'admin') {
+            $data['office_id'] = $authUser->office_id;
+        } elseif ($authUser->role === 'super_admin') {
             if (($data['role'] ?? '') === 'super_admin') {
                 $data['office_id'] = null;
             } else {
-                $data['office_id'] = $data['office_id'] ?? $authUser->office_id;
+                $data['office_id'] = $data['office_id'] ?? null;
             }
         }
 
@@ -84,7 +86,11 @@ class UserController extends ApiController
             'must_change_password' => ['sometimes', 'boolean'],
         ]);
 
-        if (in_array($authUser->role, ['super_admin', 'admin'], true)) {
+        if ($authUser->role === 'admin') {
+            if (array_key_exists('office_id', $data)) {
+                $data['office_id'] = $authUser->office_id;
+            }
+        } elseif ($authUser->role === 'super_admin') {
             if (isset($data['role']) && $data['role'] === 'super_admin') {
                 $data['office_id'] = null;
             }

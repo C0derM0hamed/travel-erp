@@ -734,7 +734,9 @@ function populateUserForm(){
   const sel = document.getElementById('usr_office_id');
   const roleSel = document.getElementById('usr_role');
   if(!sel || !roleSel) return;
-  const offices = OFFICES.length ? OFFICES : (currentOffice ? [currentOffice] : []);
+  const offices = (currentUser?.role === 'super_admin') 
+    ? (OFFICES.length ? OFFICES : (currentOffice ? [currentOffice] : []))
+    : (currentOffice ? [currentOffice] : []);
   sel.innerHTML = '<option value="">-- اختر المكتب --</option>' + offices.map(o => `<option value="${o.id}">${o.office_name || o.office_code}</option>`).join('');
   sel.disabled = false;
   if(currentUser?.role === 'super_admin' && !roleSel.querySelector('option[value="super_admin"]')){
@@ -791,7 +793,9 @@ function populateEditUserForm(user){
   const sel = document.getElementById('eusr_office_id');
   const roleSel = document.getElementById('eusr_role');
   if(!sel || !roleSel || !user) return;
-  const offices = OFFICES.length ? OFFICES : (currentOffice ? [currentOffice] : []);
+  const offices = (currentUser?.role === 'super_admin') 
+    ? (OFFICES.length ? OFFICES : (currentOffice ? [currentOffice] : []))
+    : (currentOffice ? [currentOffice] : []);
   sel.innerHTML = '<option value="">-- بدون مكتب --</option>' + offices.map(o => `<option value="${o.id}">${o.office_name || o.office_code}</option>`).join('');
   if(currentUser?.role === 'super_admin' && !roleSel.querySelector('option[value="super_admin"]')){
     roleSel.insertAdjacentHTML('beforeend', '<option value="super_admin">مدير عام</option>');

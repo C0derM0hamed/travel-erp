@@ -1816,22 +1816,6 @@ viewVendorStmt = async function(vid, opts = {}){
         <button class="btn btn-sm btn-outline" onclick="runBackendExport('vendor_statement','pdf',true,{id:${vid}})"><i class='bx bx-printer'></i> طباعة</button>
         <button class="btn btn-sm btn-outline" onclick="exportVendorStmt(${vid})"><i class='bx bx-download'></i> Excel</button>
       </div>
-      <div class="drawer-actions" style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <h4 style="margin:0">حركات الحساب</h4>
-        <input type="date" class="form-control filter-control" id="vstmtFrom" onchange="viewVendorStmt(${vid})" title="من تاريخ">
-        <input type="date" class="form-control filter-control" id="vstmtTo" onchange="viewVendorStmt(${vid})" title="إلى تاريخ">
-        <button class="btn btn-sm btn-outline" onclick="exportVendorStmtPDF(${vid})"><i class='bx bx-file'></i> PDF</button>
-        <button class="btn btn-sm btn-outline" onclick="runBackendExport('vendor_statement','pdf',true,{id:${vid}})"><i class='bx bx-printer'></i> طباعة</button>
-        <button class="btn btn-sm btn-outline" onclick="exportVendorStmt(${vid})"><i class='bx bx-download'></i> Excel</button>
-      </div>
-      <div class="drawer-actions" style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <h4 style="margin:0">حركات الحساب</h4>
-        <input type="date" class="form-control filter-control" id="vstmtFrom" onchange="viewVendorStmt(${vid})" title="من تاريخ">
-        <input type="date" class="form-control filter-control" id="vstmtTo" onchange="viewVendorStmt(${vid})" title="إلى تاريخ">
-        <button class="btn btn-sm btn-outline" onclick="exportVendorStmtPDF(${vid})"><i class='bx bx-file'></i> PDF</button>
-        <button class="btn btn-sm btn-outline" onclick="runBackendExport('vendor_statement','pdf',true,{id:${vid}})"><i class='bx bx-printer'></i> طباعة</button>
-        <button class="btn btn-sm btn-outline" onclick="exportVendorStmt(${vid})"><i class='bx bx-download'></i> Excel</button>
-      </div>
       <div class="table-wrapper"><table class="table"><thead><tr><th>التاريخ</th><th>المرجع</th><th>البيان</th><th>مدين</th><th>دائن</th></tr></thead>
       <tbody>${rows.map(j=>`<tr><td>${j.date}</td><td>${j.ref}</td><td style="font-size:12px">${j.desc||''}</td><td>${signedAmount(j.debit,'var(--success)','var(--danger)')}</td><td>${signedAmount(j.credit,'var(--danger)','var(--success)')}</td></tr>`).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--text-sm)">لا توجد حركات</td></tr>'}</tbody></table></div>`;
   }catch(e){ document.getElementById('stmtBody').innerHTML=`<p style="padding:20px;text-align:center;color:var(--danger)">${e.message}</p>`; }
@@ -2636,7 +2620,7 @@ renderSettings = function(pc){
 };
 
 window.renderOffices = function(pc){
-  if(currentUser?.role !== 'super_admin') return;
+  if(currentUser?.role !== 'super_admin' && currentUser?.role !== 'admin') return;
   pc.innerHTML = `
   <div class="page-shell">
     <div class="card">
@@ -2655,17 +2639,17 @@ window.renderOffices = function(pc){
             <tbody>
               ${OFFICES.map(o => {
                 const url = officeLogoUrl(o);
-                const logoCell = url ? \`<img src="\${url}" alt="" style="width:36px;height:36px;object-fit:contain;border-radius:8px;border:1px solid var(--border)" onerror="this.src='logo.png'; this.onerror=null;">\` : '<img src="logo.png" alt="" style="width:36px;height:36px;object-fit:contain;border-radius:8px;border:1px solid var(--border)" onerror="this.src=\\'logo.png\\'; this.onerror=null;">';
-                return \`<tr>
-                  <td>\${logoCell}</td>
-                  <td><b>\${o.office_code}</b></td>
-                  <td>\${o.office_name}</td>
-                  <td><span class="badge \${o.is_active?'badge-success':'badge-danger'}">\${o.is_active?'مفعل':'معطل'}</span></td>
+                const logoCell = url ? `<img src="${url}" alt="" style="width:36px;height:36px;object-fit:contain;border-radius:8px;border:1px solid var(--border)" onerror="this.src='logo.png'; this.onerror=null;">` : '<img src="logo.png" alt="" style="width:36px;height:36px;object-fit:contain;border-radius:8px;border:1px solid var(--border)" onerror="this.src=\'logo.png\'; this.onerror=null;">';
+                return `<tr>
+                  <td>${logoCell}</td>
+                  <td><b>${o.office_code}</b></td>
+                  <td>${o.office_name}</td>
+                  <td><span class="badge ${o.is_active?'badge-success':'badge-danger'}">${o.is_active?'مفعل':'معطل'}</span></td>
                   <td style="white-space:nowrap">
-                    <button class="btn btn-sm btn-outline" onclick="openEditOffice(\${o.id})">تعديل</button>
-                    <button class="btn btn-sm \${o.is_active?'btn-danger':'btn-success'}" onclick="toggleOfficeActive(\${o.id},\${o.is_active?0:1})">\${o.is_active?'تعطيل':'تفعيل'}</button>
+                    <button class="btn btn-sm btn-outline" onclick="openEditOffice(${o.id})">تعديل</button>
+                    <button class="btn btn-sm ${o.is_active?'btn-danger':'btn-success'}" onclick="toggleOfficeActive(${o.id},${o.is_active?0:1})">${o.is_active?'تعطيل':'تفعيل'}</button>
                   </td>
-                </tr>\`;
+                </tr>`;
               }).join('')}
             </tbody>
           </table>

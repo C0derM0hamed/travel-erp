@@ -926,7 +926,7 @@ function getFilteredOps(){
 }
 function canViewPage(page){
   const r=currentUser?.role;
-  if(page === 'offices') return r === 'super_admin';
+  if(page === 'offices') return r === 'super_admin' || r === 'admin';
   if(r==='super_admin'||r==='admin')return true;
   const access={
     dashboard:['sales','accountant','auditor'],

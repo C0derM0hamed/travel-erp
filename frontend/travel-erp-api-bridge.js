@@ -546,13 +546,14 @@ async function switchOffice(officeId){
 }
 
 function officeLogoUrl(office){
-  if(!office) return null;
-  if(office.logo_url) return office.logo_url;
-  if(office.logo && !String(office.logo).startsWith('http')) {
-    const base = typeof API_BASE !== 'undefined' ? API_BASE.replace(/\/api\/?$/, '') : '';
-    return base + '/storage/' + String(office.logo).replace(/^\/+/, '');
+  if(!office || !office.logo) return office?.logo_url || null;
+  
+  if (String(office.logo).startsWith('http')) {
+    return office.logo;
   }
-  return office.logo || null;
+  
+  const base = typeof API_BASE !== 'undefined' ? API_BASE.replace(/\/api\/?$/, '') : '';
+  return base + '/storage/' + String(office.logo).replace(/^\/+/, '');
 }
 
 function renderOfficeBranding(){

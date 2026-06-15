@@ -1,4 +1,5 @@
-const API_BASE = '/api';
+const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:' || !window.location.hostname;
+const API_BASE = isLocalDev ? 'http://127.0.0.1:8000/api' : '/api';
 let __apiBootstrapped = false;
 let __journalLoaded = false;
 let __saveInFlight = false;
@@ -547,7 +548,10 @@ async function switchOffice(officeId){
 function officeLogoUrl(office){
   if(!office) return null;
   if(office.logo_url) return office.logo_url;
-  if(office.logo && !String(office.logo).startsWith('http')) return '/storage/' + String(office.logo).replace(/^\/+/, '');
+  if(office.logo && !String(office.logo).startsWith('http')) {
+    const base = typeof API_BASE !== 'undefined' ? API_BASE.replace(/\/api\/?$/, '') : '';
+    return base + '/storage/' + String(office.logo).replace(/^\/+/, '');
+  }
   return office.logo || null;
 }
 
@@ -593,7 +597,7 @@ function previewOfficeLogo(inputId, previewId, clearBtnId){
   const file = input.files[0];
   const allowed = ['image/jpeg','image/jpg','image/png','image/webp'];
   if(!allowed.includes(file.type)){ notify('نوع الملف غير مدعوم. المسموح: JPG, PNG, WEBP', 'warning'); input.value=''; return; }
-  if(file.size > 5 * 1024 * 1024){ notify('حجم الشعار يجب ألا يتجاوز 5MB', 'warning'); input.value=''; return; }
+  if(file.size > 2 * 1024 * 1024){ notify('حجم الشعار يجب ألا يتجاوز 2MB', 'warning'); input.value=''; return; }
   const reader = new FileReader();
   reader.onload = () => { preview.innerHTML = `<img src="${reader.result}" alt="معاينة الشعار">`; };
   reader.readAsDataURL(file);
@@ -688,8 +692,10 @@ async function saveOfficeEdit(){
     } else if(currentPage === 'settings') {
       renderSettings(document.getElementById('pageContent'));
     }
-    if(+currentOffice?.id === +id){
-      currentOffice = OFFICES.find(o => +o.id === +id) || currentOffice;
+    const activeOfficeId = currentOffice?.id || currentUser?.office_id || currentUser?.office?.id;
+    if(+activeOfficeId === +id){
+      if(currentOffice?.id === +id) currentOffice = OFFICES.find(o => +o.id === +id) || currentOffice;
+      if(currentUser?.office?.id === +id) currentUser.office = OFFICES.find(o => +o.id === +id) || currentUser.office;
       renderOfficeBranding();
     }
     notify('تم تحديث المكتب', 'success');
@@ -711,8 +717,10 @@ async function removeOfficeLogo(){
     document.getElementById('eoffice_logo_remove').style.display = 'none';
     await refreshBootstrap();
     renderSettings(document.getElementById('pageContent'));
-    if(+currentOffice?.id === +id){
-      currentOffice = OFFICES.find(o => +o.id === +id) || currentOffice;
+    const activeOfficeId = currentOffice?.id || currentUser?.office_id || currentUser?.office?.id;
+    if(+activeOfficeId === +id){
+      if(currentOffice?.id === +id) currentOffice = OFFICES.find(o => +o.id === +id) || currentOffice;
+      if(currentUser?.office?.id === +id) currentUser.office = OFFICES.find(o => +o.id === +id) || currentUser.office;
       renderOfficeBranding();
     }
     notify('تم حذف الشعار', 'success');

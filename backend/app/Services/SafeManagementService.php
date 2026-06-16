@@ -10,7 +10,7 @@ use Illuminate\Validation\ValidationException;
 
 class SafeManagementService
 {
-    public function __construct(private OfficeContext $officeContext, private CurrencyService $currencies) {}
+    public function __construct(private OfficeContext $officeContext, private CurrencyService $currencies, private AccountingService $accounting) {}
 
     public function create(array $data): Safe
     {
@@ -39,7 +39,19 @@ class SafeManagementService
                 'safe_id' => $safe->id,
             ]);
 
-            return $safe->fresh('account');
+            $safe = $safe->fresh('account');
+
+            $this->accounting->syncOpeningBalance(
+                'safe',
+                $safe->id,
+                (float) $safe->opening_balance,
+                'debit',
+                $safe->currency,
+                $safe->currency_id,
+                $officeId
+            );
+
+            return $safe;
         });
     }
 
@@ -58,7 +70,21 @@ class SafeManagementService
             $safe->account->update(['name' => $safe->name]);
         }
 
-        return $safe->fresh('account');
+        $safe = $safe->fresh('account');
+
+        if ($safe->wasChanged('opening_balance') || $safe->wasChanged('currency')) {
+            $this->accounting->syncOpeningBalance(
+                'safe',
+                $safe->id,
+                (float) $safe->opening_balance,
+                'debit',
+                $safe->currency,
+                $safe->currency_id,
+                $safe->office_id
+            );
+        }
+
+        return $safe;
     }
 
     public function toggleActive(Safe $safe): Safe

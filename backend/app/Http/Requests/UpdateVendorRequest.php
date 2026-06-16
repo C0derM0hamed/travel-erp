@@ -43,6 +43,9 @@ class UpdateVendorRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:50'],
             'contact' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:255'],
+            'opening_balance_amount' => ['nullable', 'numeric', 'decimal:0,3', 'gte:0', 'max:9999999.999'],
+            'opening_balance_currency' => ['nullable', \Illuminate\Validation\Rule::exists('currencies', 'code')->where('is_active', true)],
+            'opening_balance_type' => ['nullable', \Illuminate\Validation\Rule::in(['receivable', 'payable'])],
         ];
     }
 

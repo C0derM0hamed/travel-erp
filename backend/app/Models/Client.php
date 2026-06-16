@@ -11,12 +11,13 @@ class Client extends Model
 {
     use BelongsToOffice, HasFactory, HasHiddenState;
 
-    protected $fillable = ['office_id', 'name', 'phone', 'alt_phone', 'civil_id', 'email', 'nationality', 'notes', 'is_hidden'];
+    protected $fillable = ['office_id', 'name', 'phone', 'alt_phone', 'civil_id', 'email', 'nationality', 'notes', 'is_hidden', 'opening_balance_amount', 'opening_balance_currency_id', 'opening_balance_type'];
 
     protected function casts(): array
     {
         return [
             'is_hidden' => 'boolean',
+            'opening_balance_amount' => 'decimal:3',
         ];
     }
 

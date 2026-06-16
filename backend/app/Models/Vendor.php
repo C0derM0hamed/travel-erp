@@ -10,7 +10,14 @@ class Vendor extends Model
 {
     use BelongsToOffice, HasFactory;
 
-    protected $fillable = ['office_id', 'name', 'category', 'phone', 'contact', 'address'];
+    protected $fillable = ['office_id', 'name', 'category', 'phone', 'contact', 'address', 'opening_balance_amount', 'opening_balance_currency_id', 'opening_balance_type'];
+
+    protected function casts(): array
+    {
+        return [
+            'opening_balance_amount' => 'decimal:3',
+        ];
+    }
 
     public function operations()
     {

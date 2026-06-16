@@ -321,7 +321,7 @@ class AccountingService
             ->where('account_id', $safe->account->id)
             ->sum(\Illuminate\Support\Facades\DB::raw('debit - credit'));
 
-        return (float) $safe->opening_balance + (float) $movement;
+        return (float) $movement;
     }
 
     public function journalQuery(?int $officeId = null)
@@ -434,5 +434,68 @@ class AccountingService
             'currency_id' => $currencyId,
             'description' => $description,
         ]);
+    }
+
+    public function syncOpeningBalance(string $sourceType, int $sourceId, float $amount, string $balanceType, ?string $currencyCode, ?int $currencyId, int $officeId): void
+    {
+        $this->journalQuery($officeId)
+            ->where('source_type', "opening_{$sourceType}")
+            ->where('source_id', $sourceId)
+            ->delete();
+
+        if ($amount <= 0) {
+            return;
+        }
+
+        $openingBalancesAccount = $this->account('3100', $officeId);
+
+        $partyType = 'none';
+        $partyId = null;
+        $partyName = null;
+
+        if ($sourceType === 'client') {
+            $client = Client::withoutGlobalScopes()->find($sourceId);
+            $date = $client->created_at->toDateString();
+            $account = $this->account('1100', $officeId);
+            $partyType = 'client';
+            $partyId = $client->id;
+            $partyName = $client->name;
+            $desc = "رصيد افتتاحي - عميل: {$client->name}";
+            $ref = "OB-C-{$client->id}";
+            
+            if ($balanceType === 'receivable') {
+                $this->line($officeId, $date, $ref, "opening_{$sourceType}", $sourceId, null, null, $account, $partyType, $partyId, $partyName, $amount, 0, $desc, $currencyCode, $currencyId);
+                $this->line($officeId, $date, $ref, "opening_{$sourceType}", $sourceId, null, null, $openingBalancesAccount, $partyType, $partyId, $partyName, 0, $amount, $desc, $currencyCode, $currencyId);
+            } else {
+                $this->line($officeId, $date, $ref, "opening_{$sourceType}", $sourceId, null, null, $openingBalancesAccount, $partyType, $partyId, $partyName, $amount, 0, $desc, $currencyCode, $currencyId);
+                $this->line($officeId, $date, $ref, "opening_{$sourceType}", $sourceId, null, null, $account, $partyType, $partyId, $partyName, 0, $amount, $desc, $currencyCode, $currencyId);
+            }
+        } elseif ($sourceType === 'vendor') {
+            $vendor = Vendor::withoutGlobalScopes()->find($sourceId);
+            $date = $vendor->created_at->toDateString();
+            $account = $this->account('2100', $officeId);
+            $partyType = 'vendor';
+            $partyId = $vendor->id;
+            $partyName = $vendor->name;
+            $desc = "رصيد افتتاحي - مورد: {$vendor->name}";
+            $ref = "OB-V-{$vendor->id}";
+
+            if ($balanceType === 'payable') {
+                $this->line($officeId, $date, $ref, "opening_{$sourceType}", $sourceId, null, null, $openingBalancesAccount, $partyType, $partyId, $partyName, $amount, 0, $desc, $currencyCode, $currencyId);
+                $this->line($officeId, $date, $ref, "opening_{$sourceType}", $sourceId, null, null, $account, $partyType, $partyId, $partyName, 0, $amount, $desc, $currencyCode, $currencyId);
+            } else {
+                $this->line($officeId, $date, $ref, "opening_{$sourceType}", $sourceId, null, null, $account, $partyType, $partyId, $partyName, $amount, 0, $desc, $currencyCode, $currencyId);
+                $this->line($officeId, $date, $ref, "opening_{$sourceType}", $sourceId, null, null, $openingBalancesAccount, $partyType, $partyId, $partyName, 0, $amount, $desc, $currencyCode, $currencyId);
+            }
+        } elseif ($sourceType === 'safe') {
+            $safe = Safe::withoutGlobalScopes()->with('account')->find($sourceId);
+            $date = $safe->created_at->toDateString();
+            $account = $safe->account;
+            $desc = "رصيد افتتاحي - صندوق: {$safe->name}";
+            $ref = "OB-S-{$safe->id}";
+            
+            $this->line($officeId, $date, $ref, "opening_{$sourceType}", $sourceId, null, null, $account, $partyType, $partyId, $partyName, $amount, 0, $desc, $currencyCode, $currencyId);
+            $this->line($officeId, $date, $ref, "opening_{$sourceType}", $sourceId, null, null, $openingBalancesAccount, $partyType, $partyId, $partyName, 0, $amount, $desc, $currencyCode, $currencyId);
+        }
     }
 }

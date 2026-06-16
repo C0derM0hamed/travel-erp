@@ -76,6 +76,7 @@ class OfficeProvisioningService
         $accounts = [
             ['1100', 'ذمم العملاء', 'asset', null],
             ['2100', 'ذمم الموردين', 'liability', null],
+            ['3100', 'أرصدة افتتاحية', 'equity', null],
             ['4100', 'إيرادات الخدمات', 'revenue', null],
             ['5100', 'تكلفة الخدمات', 'expense', null],
             ['1001', 'الصندوق الرئيسي', 'asset', $cashSafe->id],

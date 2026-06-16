@@ -73,18 +73,29 @@ class DatabaseSeeder extends Seeder
                 [8, 'شركة الخليج للتجارة', '22345678', '22345679', '', 'info@gulfco.kw', 'شركة كويتية', 'اعتماد شهري'],
             ])->each(fn ($c) => Client::withoutGlobalScopes()->create(['id' => $c[0], 'office_id' => $officeId, 'name' => $c[1], 'phone' => $c[2], 'alt_phone' => $c[3] ?: null, 'civil_id' => $c[4] ?: null, 'email' => $c[5] ?: null, 'nationality' => $c[6], 'notes' => $c[7] ?: null, 'is_hidden' => false]));
 
-            Safe::withoutGlobalScopes()->create(['id' => 1, 'office_id' => $officeId, 'name' => 'الصندوق الرئيسي', 'type' => 'cash', 'currency' => 'KWD', 'opening_balance' => 5000]);
-            Safe::withoutGlobalScopes()->create(['id' => 2, 'office_id' => $officeId, 'name' => 'البنك الأهلي الكويتي', 'type' => 'bank', 'currency' => 'KWD', 'opening_balance' => 25000]);
+            $safesData = [
+                ['id' => 1, 'office_id' => $officeId, 'name' => 'الصندوق الرئيسي', 'type' => 'cash', 'currency' => 'KWD', 'opening_balance' => 5000],
+                ['id' => 2, 'office_id' => $officeId, 'name' => 'البنك الأهلي الكويتي', 'type' => 'bank', 'currency' => 'KWD', 'opening_balance' => 25000]
+            ];
+            foreach ($safesData as $data) {
+                Safe::withoutGlobalScopes()->create($data);
+            }
 
             collect([
                 ['1100', 'ذمم العملاء', 'asset', null],
                 ['2100', 'ذمم الموردين', 'liability', null],
+                ['3100', 'أرصدة افتتاحية', 'equity', null],
                 ['4100', 'إيرادات الخدمات', 'revenue', null],
                 ['5100', 'تكلفة الخدمات', 'expense', null],
                 ['1001', 'الصندوق الرئيسي', 'asset', 1],
                 ['1002', 'البنك الأهلي الكويتي', 'asset', 2],
                 ['9999', 'حساب عام', 'asset', null],
             ])->each(fn ($a) => ChartOfAccount::withoutGlobalScopes()->create(['office_id' => $officeId, 'code' => $a[0], 'name' => $a[1], 'type' => $a[2], 'safe_id' => $a[3]]));
+
+            foreach ($safesData as $data) {
+                $safe = Safe::withoutGlobalScopes()->find($data['id']);
+                app(\App\Services\AccountingService::class)->syncOpeningBalance('safe', $safe->id, (float) $safe->opening_balance, 'debit', $safe->currency, null, $officeId);
+            }
 
             app(\App\Support\OfficeContext::class)->setOfficeId($officeId);
             $accounting = app(AccountingService::class);

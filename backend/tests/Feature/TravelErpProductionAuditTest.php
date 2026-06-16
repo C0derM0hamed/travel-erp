@@ -278,6 +278,7 @@ class TravelErpProductionAuditTest extends TestCase
 
         $safe = Safe::create(['name' => 'صندوق إضافي', 'type' => 'cash', 'currency' => 'KWD', 'opening_balance' => 10]);
         ChartOfAccount::create(['code' => '1003', 'name' => 'صندوق إضافي', 'type' => 'asset', 'safe_id' => $safe->id]);
+        app(AccountingService::class)->syncOpeningBalance('safe', $safe->id, 10, 'debit', 'KWD', null, $safe->office_id);
 
         $this->actingAs($accountant)->postJson('/api/vouchers', [
             'type' => 'receipt',

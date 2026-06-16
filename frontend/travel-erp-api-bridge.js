@@ -619,20 +619,24 @@ function clearOfficeLogoPick(inputId, previewId, clearBtnId){
 }
 
 function resetNewClientForm(){
-  ['cl_name','cl_phone','cl_alt_phone','cl_civil_id','cl_email','cl_nationality','cl_notes'].forEach(id => {
+  ['cl_name','cl_phone','cl_alt_phone','cl_civil_id','cl_email','cl_nationality','cl_notes','cl_opening_balance_amount'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.value = '';
+    if (el) el.value = id.includes('amount') ? '0' : '';
   });
+  if(document.getElementById('cl_opening_balance_type')) document.getElementById('cl_opening_balance_type').value = 'receivable';
+  populateCurrencySelect('cl_opening_balance_currency', null, { officeDefault: true });
   clearModalError('newClientModal');
 }
 
 function resetNewVendorForm(){
-  ['vn_name','vn_phone','vn_contact','vn_address'].forEach(id => {
+  ['vn_name','vn_phone','vn_contact','vn_address','vn_opening_balance_amount'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.value = '';
+    if (el) el.value = id.includes('amount') ? '0' : '';
   });
   const cat = document.getElementById('vn_category');
   if (cat) cat.value = 'airline';
+  if(document.getElementById('vn_opening_balance_type')) document.getElementById('vn_opening_balance_type').value = 'payable';
+  populateCurrencySelect('vn_opening_balance_currency', null, { officeDefault: true });
   clearModalError('newVendorModal');
 }
 
@@ -1769,7 +1773,10 @@ saveClient = async function(){
   await withSaveGuard('#newClientModal .btn-primary', async ()=>{
     await apiFetch('/clients',{method:'POST',body:JSON.stringify({
       name, phone, alt_phone:normalizePhone(document.getElementById('cl_alt_phone').value)||null,
-      civil_id:document.getElementById('cl_civil_id').value, email:document.getElementById('cl_email').value, nationality:document.getElementById('cl_nationality').value, notes:document.getElementById('cl_notes').value
+      civil_id:document.getElementById('cl_civil_id').value, email:document.getElementById('cl_email').value, nationality:document.getElementById('cl_nationality').value, notes:document.getElementById('cl_notes').value,
+      opening_balance_amount: +document.getElementById('cl_opening_balance_amount')?.value || 0,
+      opening_balance_currency: document.getElementById('cl_opening_balance_currency')?.value || null,
+      opening_balance_type: document.getElementById('cl_opening_balance_type')?.value || 'receivable'
     })});
     closeModal('newClientModal'); await refreshAfterMutation(); await navigate('clients');
     notify('تم حفظ العميل بنجاح', 'success');
@@ -1783,7 +1790,10 @@ saveVendor = async function(){
   await withSaveGuard('#newVendorModal .btn-primary', async ()=>{
     await apiFetch('/vendors',{method:'POST',body:JSON.stringify({
       name, category:document.getElementById('vn_category').value, phone:document.getElementById('vn_phone').value,
-      contact:document.getElementById('vn_contact').value, address:document.getElementById('vn_address').value
+      contact:document.getElementById('vn_contact').value, address:document.getElementById('vn_address').value,
+      opening_balance_amount: +document.getElementById('vn_opening_balance_amount')?.value || 0,
+      opening_balance_currency: document.getElementById('vn_opening_balance_currency')?.value || null,
+      opening_balance_type: document.getElementById('vn_opening_balance_type')?.value || 'payable'
     })});
     closeModal('newVendorModal'); await refreshAfterMutation(); await navigate('vendors');
     notify('تم حفظ المورد بنجاح', 'success');
@@ -2262,6 +2272,9 @@ openEditClient = async function(id){
   document.getElementById('ecl_email').value = c.email||'';
   document.getElementById('ecl_nationality').value = c.nationality||'';
   document.getElementById('ecl_notes').value = c.notes||'';
+  document.getElementById('ecl_opening_balance_amount').value = c.opening_balance_amount||'0';
+  document.getElementById('ecl_opening_balance_type').value = c.opening_balance_type||'receivable';
+  populateCurrencySelect('ecl_opening_balance_currency', CURRENCIES.find(x => x.id === c.opening_balance_currency_id)?.code || null, { officeDefault: true });
   clearModalError('editClientModal');
   showModal('editClientModal');
 };
@@ -2277,6 +2290,9 @@ saveClientEdit = async function(){
       email: document.getElementById('ecl_email').value,
       nationality: document.getElementById('ecl_nationality').value,
       notes: document.getElementById('ecl_notes').value,
+      opening_balance_amount: +document.getElementById('ecl_opening_balance_amount')?.value || 0,
+      opening_balance_currency: document.getElementById('ecl_opening_balance_currency')?.value || null,
+      opening_balance_type: document.getElementById('ecl_opening_balance_type')?.value || 'receivable'
     })});
     closeModal('editClientModal');
     await refreshAfterMutation();
@@ -2660,6 +2676,9 @@ openEditVendor = async function(id){
   document.getElementById('evn_phone').value = v.phone||'';
   document.getElementById('evn_contact').value = v.contact||'';
   document.getElementById('evn_address').value = v.address||'';
+  document.getElementById('evn_opening_balance_amount').value = v.opening_balance_amount||'0';
+  document.getElementById('evn_opening_balance_type').value = v.opening_balance_type||'payable';
+  populateCurrencySelect('evn_opening_balance_currency', CURRENCIES.find(x => x.id === v.opening_balance_currency_id)?.code || null, { officeDefault: true });
   showModal('editVendorModal');
 };
 
@@ -2672,6 +2691,9 @@ saveVendorEdit = async function(){
       phone: document.getElementById('evn_phone').value,
       contact: document.getElementById('evn_contact').value,
       address: document.getElementById('evn_address').value,
+      opening_balance_amount: +document.getElementById('evn_opening_balance_amount')?.value || 0,
+      opening_balance_currency: document.getElementById('evn_opening_balance_currency')?.value || null,
+      opening_balance_type: document.getElementById('evn_opening_balance_type')?.value || 'payable'
     })});
     closeModal('editVendorModal');
     await refreshAfterMutation();

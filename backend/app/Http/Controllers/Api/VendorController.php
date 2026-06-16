@@ -35,7 +35,25 @@ class VendorController extends ApiController
     {
         Gate::authorize('create', Vendor::class);
 
-        $vendor = Vendor::create($request->validated() + ['category' => $request->input('category', 'other')]);
+        $data = $request->validated() + ['category' => $request->input('category', 'other')];
+        if (!empty($data['opening_balance_currency'])) {
+            $data['opening_balance_currency_id'] = app(\App\Services\CurrencyService::class)->activeByCode($data['opening_balance_currency'])->id;
+        }
+
+        $vendor = Vendor::create($data);
+
+        if ((float) $vendor->opening_balance_amount > 0) {
+            $this->accounting->syncOpeningBalance(
+                'vendor',
+                $vendor->id,
+                (float) $vendor->opening_balance_amount,
+                $vendor->opening_balance_type ?: 'payable',
+                $data['opening_balance_currency'] ?? null,
+                $vendor->opening_balance_currency_id,
+                $vendor->office_id
+            );
+        }
+
         app(ActivityLogger::class)->log('vendor.created', $vendor, ['name' => $vendor->name], $request->user()->id);
 
         return response()->json($this->vendorPayload($vendor), 201);
@@ -43,7 +61,26 @@ class VendorController extends ApiController
 
     public function update(UpdateVendorRequest $request, Vendor $vendor): JsonResponse
     {
-        $vendor->update($request->validated());
+        $data = $request->validated();
+        if (array_key_exists('opening_balance_currency', $data)) {
+            $data['opening_balance_currency_id'] = empty($data['opening_balance_currency']) ? null : app(\App\Services\CurrencyService::class)->activeByCode($data['opening_balance_currency'])->id;
+        }
+
+        $vendor->update($data);
+
+        if ($vendor->wasChanged(['opening_balance_amount', 'opening_balance_currency_id', 'opening_balance_type'])) {
+            $currencyCode = $vendor->opening_balance_currency_id ? \Illuminate\Support\Facades\DB::table('currencies')->where('id', $vendor->opening_balance_currency_id)->value('code') : null;
+            $this->accounting->syncOpeningBalance(
+                'vendor',
+                $vendor->id,
+                (float) $vendor->opening_balance_amount,
+                $vendor->opening_balance_type ?: 'payable',
+                $currencyCode,
+                $vendor->opening_balance_currency_id,
+                $vendor->office_id
+            );
+        }
+
         app(ActivityLogger::class)->log('vendor.updated', $vendor, ['name' => $vendor->name], $request->user()->id);
 
         return response()->json($this->vendorPayload($vendor->fresh()));

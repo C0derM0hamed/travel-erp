@@ -186,11 +186,21 @@ class ReportController extends ApiController
     private function cashflow(Request $request): array
     {
         $safes = Safe::orderBy('id')->get();
-        $running = $safes->mapWithKeys(fn (Safe $safe) => [$safe->id => (float) $safe->opening_balance])->all();
+        $running = $safes->mapWithKeys(fn (Safe $safe) => [$safe->id => 0.0])->all();
 
         $datesQuery = JournalEntry::whereHas('account', fn ($query) => $query->whereNotNull('safe_id'));
         if ($request->filled('from')) {
             $datesQuery->whereDate('entry_date', '>=', $request->from);
+            
+            // Calculate running balance before 'from' date
+            $beforeEntries = JournalEntry::with('account')
+                ->whereDate('entry_date', '<', $request->from)
+                ->whereHas('account', fn ($query) => $query->whereNotNull('safe_id'))
+                ->get();
+            foreach ($beforeEntries as $journal) {
+                $safeId = (int) $journal->account->safe_id;
+                $running[$safeId] = ($running[$safeId] ?? 0) + (float) $journal->debit - (float) $journal->credit;
+            }
         }
         if ($request->filled('to')) {
             $datesQuery->whereDate('entry_date', '<=', $request->to);
@@ -212,8 +222,8 @@ class ReportController extends ApiController
             ])->values(),
             'rows' => $dates->map(function ($date) use (&$running, $safes) {
                 $safeEntries = JournalEntry::with('account')->whereDate('entry_date', $date)->whereHas('account', fn ($query) => $query->whereNotNull('safe_id'))->get();
-                $in = (float) $safeEntries->sum('debit');
-                $out = (float) $safeEntries->sum('credit');
+                $in = (float) $safeEntries->where('source_type', '!=', 'opening_safe')->sum('debit');
+                $out = (float) $safeEntries->where('source_type', '!=', 'opening_safe')->sum('credit');
                 foreach ($safeEntries as $journal) {
                     $safeId = (int) $journal->account->safe_id;
                     $running[$safeId] = ($running[$safeId] ?? 0) + (float) $journal->debit - (float) $journal->credit;

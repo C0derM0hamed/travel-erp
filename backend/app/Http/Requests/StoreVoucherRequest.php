@@ -81,27 +81,23 @@ class StoreVoucherRequest extends FormRequest
                 }
             }
 
-            if ($type === 'receipt' && $partyType === 'client' && $partyId) {
-                $outstanding = $this->filled('operation_id')
-                    ? $accounting->operationClientOutstanding((int) $this->input('operation_id'), $officeId)
-                    : $accounting->clientBalance((int) $partyId, $officeId);
-
+            if ($type === 'receipt' && $partyType === 'client' && $partyId && $this->filled('operation_id')) {
+                $outstanding = $accounting->operationClientOutstanding((int) $this->input('operation_id'), $officeId);
+                
                 if ($outstanding <= 0) {
-                    $validator->errors()->add('amount', 'لا يوجد رصيد مستحق على هذا العميل');
+                    $validator->errors()->add('amount', 'لا يوجد رصيد مستحق على هذه العملية');
                 } elseif ($amount > $outstanding + 0.001) {
-                    $validator->errors()->add('amount', 'المبلغ يتجاوز الرصيد المستحق ('.number_format($outstanding, 3).')');
+                    $validator->errors()->add('amount', 'المبلغ يتجاوز الرصيد المستحق للعملية ('.number_format($outstanding, 3).')');
                 }
             }
 
-            if ($type === 'payment' && $partyType === 'vendor' && $partyId) {
-                $owed = $this->filled('operation_id')
-                    ? $accounting->operationVendorOutstanding((int) $this->input('operation_id'), $officeId)
-                    : $accounting->vendorBalance((int) $partyId, $officeId);
+            if ($type === 'payment' && $partyType === 'vendor' && $partyId && $this->filled('operation_id')) {
+                $owed = $accounting->operationVendorOutstanding((int) $this->input('operation_id'), $officeId);
 
                 if ($owed <= 0) {
-                    $validator->errors()->add('amount', 'لا يوجد رصيد مستحق لهذا المورد');
+                    $validator->errors()->add('amount', 'لا يوجد رصيد مستحق لهذه العملية');
                 } elseif ($amount > $owed + 0.001) {
-                    $validator->errors()->add('amount', 'المبلغ يتجاوز الرصيد المستحق ('.number_format($owed, 3).')');
+                    $validator->errors()->add('amount', 'المبلغ يتجاوز الرصيد المستحق للعملية ('.number_format($owed, 3).')');
                 }
             }
         });

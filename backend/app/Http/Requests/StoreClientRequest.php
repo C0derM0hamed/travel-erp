@@ -38,6 +38,9 @@ class StoreClientRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:255'],
             'nationality' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'opening_balance_amount' => ['nullable', 'numeric', 'decimal:0,3', 'gte:0', 'max:9999999.999'],
+            'opening_balance_currency' => ['nullable', \Illuminate\Validation\Rule::exists('currencies', 'code')->where('is_active', true)],
+            'opening_balance_type' => ['nullable', \Illuminate\Validation\Rule::in(['receivable', 'payable'])],
         ];
     }
 

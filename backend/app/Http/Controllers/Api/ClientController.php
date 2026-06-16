@@ -37,7 +37,25 @@ class ClientController extends ApiController
     {
         Gate::authorize('create', Client::class);
 
-        $client = Client::create($request->validated());
+        $data = $request->validated();
+        if (!empty($data['opening_balance_currency'])) {
+            $data['opening_balance_currency_id'] = app(\App\Services\CurrencyService::class)->activeByCode($data['opening_balance_currency'])->id;
+        }
+
+        $client = Client::create($data);
+        
+        if ((float) $client->opening_balance_amount > 0) {
+            $this->accounting->syncOpeningBalance(
+                'client',
+                $client->id,
+                (float) $client->opening_balance_amount,
+                $client->opening_balance_type ?: 'receivable',
+                $data['opening_balance_currency'] ?? null,
+                $client->opening_balance_currency_id,
+                $client->office_id
+            );
+        }
+
         app(ActivityLogger::class)->log('client.created', $client, ['name' => $client->name], $request->user()->id);
 
         return response()->json($this->clientPayload($client), 201);
@@ -45,7 +63,26 @@ class ClientController extends ApiController
 
     public function update(UpdateClientRequest $request, Client $client): JsonResponse
     {
-        $client->update($request->validated());
+        $data = $request->validated();
+        if (array_key_exists('opening_balance_currency', $data)) {
+            $data['opening_balance_currency_id'] = empty($data['opening_balance_currency']) ? null : app(\App\Services\CurrencyService::class)->activeByCode($data['opening_balance_currency'])->id;
+        }
+
+        $client->update($data);
+
+        if ($client->wasChanged(['opening_balance_amount', 'opening_balance_currency_id', 'opening_balance_type'])) {
+            $currencyCode = $client->opening_balance_currency_id ? \Illuminate\Support\Facades\DB::table('currencies')->where('id', $client->opening_balance_currency_id)->value('code') : null;
+            $this->accounting->syncOpeningBalance(
+                'client',
+                $client->id,
+                (float) $client->opening_balance_amount,
+                $client->opening_balance_type ?: 'receivable',
+                $currencyCode,
+                $client->opening_balance_currency_id,
+                $client->office_id
+            );
+        }
+
         app(ActivityLogger::class)->log('client.updated', $client, ['name' => $client->name], $request->user()->id);
 
         return response()->json($this->clientPayload($client->fresh()));

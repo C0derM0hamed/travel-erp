@@ -15,6 +15,10 @@ class OperationService
     public function create(array $data, int $userId): Operation
     {
         return DB::transaction(function () use ($data, $userId) {
+            app(OfficeProvisioningService::class)->ensureOfficeProvisioned(
+                app(\App\Support\OfficeContext::class)->requireId()
+            );
+
             $currency = isset($data['currency'])
                 ? $this->currencies->activeByCode($data['currency'])
                 : $this->currencies->officeCurrency(officeId: app(\App\Support\OfficeContext::class)->requireId());

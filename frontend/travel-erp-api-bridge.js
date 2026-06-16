@@ -180,7 +180,7 @@ async function apiFetch(path, options = {}){
     }catch(e){}
     if(res.status === 403) msg = translateApiMessage(msg);
     else if(res.status === 401) msg = 'يرجى تسجيل الدخول للمتابعة.';
-    else if(res.status === 404) msg = 'العنصر المطلوب غير موجود.';
+    else if(res.status === 404 && msg === 'حدث خطأ في الاتصال بالخادم') msg = 'العنصر المطلوب غير موجود.';
     else if(res.status === 419) msg = 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى.';
     else if(res.status === 429) msg = 'محاولات كثيرة، يرجى الانتظار قليلاً.';
     else if(res.status === 500) msg = 'حدث خطأ غير متوقع، يرجى المحاولة مرة أخرى.';

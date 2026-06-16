@@ -20,10 +20,26 @@ class AccountingService
     {
         $officeId ??= $this->officeContext->requireId();
 
-        return ChartOfAccount::withoutGlobalScopes()
+        $account = ChartOfAccount::withoutGlobalScopes()
             ->where('office_id', $officeId)
             ->where('code', $code)
-            ->firstOrFail();
+            ->first();
+
+        if (! $account) {
+            app(OfficeProvisioningService::class)->ensureOfficeProvisioned($officeId);
+            $account = ChartOfAccount::withoutGlobalScopes()
+                ->where('office_id', $officeId)
+                ->where('code', $code)
+                ->first();
+        }
+
+        if (! $account) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'accounting' => 'الإعداد المحاسبي للمكتب غير مكتمل. يرجى التواصل مع مدير النظام.',
+            ]);
+        }
+
+        return $account;
     }
 
     public function postOperation(Operation $operation, int $multiplier = 1): void

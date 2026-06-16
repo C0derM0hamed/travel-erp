@@ -315,4 +315,45 @@ class OperationCreateValidationTest extends TestCase
         $this->assertStringContainsString('العميل', $response['message']);
         $this->assertSame('العميل المحدد غير موجود أو لا ينتمي إلى المكتب الحالي.', $response['errors']['client_id'][0]);
     }
+
+    public function test_create_succeeds_when_office_chart_accounts_are_missing(): void
+    {
+        $office = Office::create([
+            'office_code' => 'UNPROV',
+            'office_name' => 'Unprovisioned Office',
+            'is_active' => true,
+            'default_currency_id' => 1,
+        ]);
+
+        $client = Client::withoutGlobalScopes()->create([
+            'office_id' => $office->id,
+            'name' => 'Client Without COA',
+            'phone' => '5550001',
+            'nationality' => 'KW',
+        ]);
+        $vendor = Vendor::withoutGlobalScopes()->create([
+            'office_id' => $office->id,
+            'name' => 'Vendor Without COA',
+            'category' => 'hotel',
+            'phone' => '5550002',
+        ]);
+
+        $sales = User::where('email', 'sales@travel.kw')->first();
+        $sales->update(['office_id' => $office->id]);
+
+        $this->assertSame(0, \App\Models\ChartOfAccount::withoutGlobalScopes()->where('office_id', $office->id)->count());
+
+        $this->actingAs($sales)
+            ->postJson('/api/operations', [
+                'client_id' => $client->id,
+                'service_id' => 1,
+                'vendor_id' => $vendor->id,
+                'currency' => 'KWD',
+                'client_price' => 100,
+                'vendor_cost' => 80,
+            ])
+            ->assertCreated();
+
+        $this->assertGreaterThanOrEqual(7, \App\Models\ChartOfAccount::withoutGlobalScopes()->where('office_id', $office->id)->count());
+    }
 }

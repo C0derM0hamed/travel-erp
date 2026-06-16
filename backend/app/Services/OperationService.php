@@ -10,17 +10,22 @@ use Illuminate\Validation\ValidationException;
 
 class OperationService
 {
-    public function __construct(private AccountingService $accounting, private ReferenceService $references, private SafeResolver $safeResolver, private ActivityLogger $activityLogger) {}
+    public function __construct(private AccountingService $accounting, private ReferenceService $references, private SafeResolver $safeResolver, private ActivityLogger $activityLogger, private CurrencyService $currencies) {}
 
     public function create(array $data, int $userId): Operation
     {
         return DB::transaction(function () use ($data, $userId) {
+            $currency = isset($data['currency'])
+                ? $this->currencies->activeByCode($data['currency'])
+                : $this->currencies->officeCurrency(officeId: app(\App\Support\OfficeContext::class)->requireId());
+
             $operation = Operation::create([
                 'ref' => $this->references->operationRef(),
                 'client_id' => $data['client_id'],
                 'service_id' => $data['service_id'],
                 'vendor_id' => $data['vendor_id'],
-                'currency' => $data['currency'] ?? 'KWD',
+                'currency' => $currency->code,
+                'currency_id' => $currency->id,
                 'client_price' => $data['client_price'],
                 'vendor_cost' => $data['vendor_cost'],
                 'profit' => (float) $data['client_price'] - (float) $data['vendor_cost'],
@@ -35,7 +40,7 @@ class OperationService
             $this->accounting->postOperation($operation);
 
             if ((float) $operation->initial_payment > 0) {
-                $safeId = $this->safeResolver->resolveForPaymentMethod($operation->payment_method);
+                $safeId = $this->safeResolver->resolveForPaymentMethod($operation->payment_method, currency: $operation->currency);
                 $voucher = Voucher::create([
                     'ref' => $this->references->voucherRef('receipt'),
                     'type' => 'receipt',
@@ -43,6 +48,7 @@ class OperationService
                     'party_id' => $operation->client_id,
                     'amount' => $operation->initial_payment,
                     'currency' => $operation->currency,
+                    'currency_id' => $operation->currency_id,
                     'method' => $operation->payment_method,
                     'safe_id' => $safeId,
                     'operation_id' => $operation->id,
@@ -181,7 +187,8 @@ class OperationService
             'client_id' => $data['client_id'] ?? $operation->client_id,
             'service_id' => $data['service_id'] ?? $operation->service_id,
             'vendor_id' => $data['vendor_id'] ?? $operation->vendor_id,
-            'currency' => $data['currency'] ?? $operation->currency,
+            'currency' => $this->operationCurrency($data, $operation)->code,
+            'currency_id' => $this->operationCurrency($data, $operation)->id,
             'client_price' => $clientPrice,
             'vendor_cost' => $vendorCost,
             'profit' => $clientPrice - $vendorCost,
@@ -208,7 +215,7 @@ class OperationService
             return;
         }
 
-        $safeId = $this->safeResolver->resolveForPaymentMethod($operation->payment_method);
+        $safeId = $this->safeResolver->resolveForPaymentMethod($operation->payment_method, currency: $operation->currency);
         $voucher = Voucher::create([
             'ref' => $this->references->voucherRef('receipt'),
             'type' => 'receipt',
@@ -216,6 +223,7 @@ class OperationService
             'party_id' => $operation->client_id,
             'amount' => $operation->initial_payment,
             'currency' => $operation->currency,
+            'currency_id' => $operation->currency_id,
             'method' => $operation->payment_method,
             'safe_id' => $safeId,
             'operation_id' => $operation->id,
@@ -224,5 +232,12 @@ class OperationService
             'created_by' => $userId,
         ]);
         $this->accounting->postVoucher($voucher);
+    }
+
+    private function operationCurrency(array $data, Operation $operation): \App\Models\Currency
+    {
+        return isset($data['currency'])
+            ? $this->currencies->activeByCode($data['currency'])
+            : ($this->currencies->byCode($operation->currency) ?? $this->currencies->officeCurrency(officeId: $operation->office_id));
     }
 }

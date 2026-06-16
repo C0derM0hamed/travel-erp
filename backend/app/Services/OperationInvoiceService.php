@@ -9,6 +9,7 @@ use App\Services\Exports\ExportContext;
 use App\Services\Exports\ExportLabels;
 use App\Services\Exports\PdfExportService;
 use App\Support\OfficeContext;
+use App\Services\CurrencyService;
 use Illuminate\Support\Facades\URL;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -19,6 +20,7 @@ class OperationInvoiceService
         private PdfExportService $pdf,
         private ExportContext $exportContext,
         private OfficeContext $officeContext,
+        private CurrencyService $currencies,
     ) {}
 
     public function signedUrl(Operation $operation, int $days = 30): string
@@ -79,7 +81,7 @@ class OperationInvoiceService
             ->map(fn (Voucher $v) => [
                 'ref' => $v->ref,
                 'date' => $v->voucher_date?->toDateString() ?? '',
-                'amount' => ExportLabels::formatAmount((float) $v->amount),
+                'amount' => ExportLabels::formatAmount((float) $v->amount, $v->currency, $v->office_id),
                 'method' => ExportLabels::method($v->method),
             ])->values()->all();
 
@@ -103,12 +105,14 @@ class OperationInvoiceService
                 'amount' => (float) $operation->client_price,
             ]],
             'summary' => [
-                ['label' => 'إجمالي الفاتورة', 'value' => ExportLabels::formatAmount((float) $operation->client_price)],
-                ['label' => 'المدفوع', 'value' => ExportLabels::formatAmount($paid)],
-                ['label' => 'المتبقي', 'value' => ExportLabels::formatAmount($outstanding)],
+                ['label' => 'إجمالي الفاتورة', 'value' => ExportLabels::formatAmount((float) $operation->client_price, $operation->currency, $operation->office_id)],
+                ['label' => 'المدفوع', 'value' => ExportLabels::formatAmount($paid, $operation->currency, $operation->office_id)],
+                ['label' => 'المتبقي', 'value' => ExportLabels::formatAmount($outstanding, $operation->currency, $operation->office_id)],
             ],
             'payment_method' => ExportLabels::method($operation->payment_method),
-            'currency' => 'د.ك',
+            'currency' => $this->currencies->payloadForCode($operation->currency, $operation->office_id)['symbol'] ?? $operation->currency,
+            'currency_code' => $operation->currency,
+            'currency_label' => $this->currencies->payloadForCode($operation->currency, $operation->office_id)['name'] ?? $operation->currency,
             'receipts' => $receipts,
             'notes' => $operation->notes,
         ];

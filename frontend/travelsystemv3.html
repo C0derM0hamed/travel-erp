@@ -437,7 +437,7 @@ body[data-auth="app"] #loginPage{display:none!important}
     </div>
     <div class="form-row">
       <div class="form-group"><label>المكتب/المزود *</label><select class="form-control" id="op_vendor"><option value="">-- اختر مكتب --</option></select></div>
-      <div class="form-group"><label>العملة</label><select class="form-control" id="op_currency"><option value="KWD">دينار كويتي (KWD)</option><option value="USD">دولار أمريكي (USD)</option><option value="SAR">ريال سعودي (SAR)</option></select></div>
+      <div class="form-group"><label>العملة</label><select class="form-control" id="op_currency"></select></div>
     </div>
     <div class="form-row three">
       <div class="form-group"><label>سعر العميل (إجمالي) *</label><input type="number" class="form-control" id="op_client_price" placeholder="0.000" step="0.001" min="1" oninput="calcProfit()"></div>
@@ -490,6 +490,7 @@ body[data-auth="app"] #loginPage{display:none!important}
   <div class="modal-body">
     <div id="newOfficeModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
     <div class="form-row"><div class="form-group"><label>رمز المكتب *</label><input type="text" class="form-control" id="office_code" placeholder="مثال: JAH"></div><div class="form-group"><label>اسم المكتب *</label><input type="text" class="form-control" id="office_name" placeholder="مثال: فرع الجهراء"></div></div>
+    <div class="form-row"><div class="form-group"><label>العملة الافتراضية</label><select class="form-control" id="office_default_currency"></select></div></div>
     <div class="form-row full">
       <div class="form-group">
         <label>شعار المكتب</label>
@@ -515,6 +516,7 @@ body[data-auth="app"] #loginPage{display:none!important}
     <div id="editOfficeModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
     <input type="hidden" id="eoffice_id">
     <div class="form-row"><div class="form-group"><label>رمز المكتب *</label><input type="text" class="form-control" id="eoffice_code"></div><div class="form-group"><label>اسم المكتب *</label><input type="text" class="form-control" id="eoffice_name"></div></div>
+    <div class="form-row"><div class="form-group"><label>العملة الافتراضية</label><select class="form-control" id="eoffice_default_currency"></select></div></div>
     <div class="form-row full">
       <div class="form-group">
         <label>شعار المكتب</label>
@@ -593,9 +595,10 @@ body[data-auth="app"] #loginPage{display:none!important}
     <div id="eop_financial_fields">
       <div class="form-row"><div class="form-group"><label>العميل</label><select class="form-control" id="eop_client"></select></div><div class="form-group"><label>الخدمة</label><select class="form-control" id="eop_service"></select></div></div>
       <div class="form-row"><div class="form-group"><label>المورد</label><select class="form-control" id="eop_vendor"></select></div><div class="form-group"><label>تاريخ العملية</label><input type="date" class="form-control" id="eop_date"></div></div>
-      <div class="form-row"><div class="form-group"><label>سعر العميل (د.ك)</label><input type="number" step="0.001" class="form-control" id="eop_client_price"></div><div class="form-group"><label>تكلفة المورد (د.ك)</label><input type="number" step="0.001" class="form-control" id="eop_vendor_cost"></div></div>
+      <div class="form-row"><div class="form-group"><label>سعر العميل</label><input type="number" step="0.001" class="form-control" id="eop_client_price"></div><div class="form-group"><label>تكلفة المورد</label><input type="number" step="0.001" class="form-control" id="eop_vendor_cost"></div></div>
       <div class="form-row"><div class="form-group"><label>دفعة أولى</label><input type="number" step="0.001" class="form-control" id="eop_initial_payment"></div><div class="form-group"><label>طريقة الدفع</label><select class="form-control" id="eop_payment_method"><option value="cash">نقد</option><option value="bank">تحويل بنكي</option><option value="knet">كي-نت</option><option value="check">شيك</option></select></div></div>
     </div>
+    <div class="form-row" id="eop_currency_row"><div class="form-group"><label>العملة</label><select class="form-control" id="eop_currency"></select></div></div>
     <div class="form-row full"><div class="form-group"><label>ملاحظات</label><textarea class="form-control" id="eop_notes"></textarea></div></div>
   </div>
   <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('editOpModal')">إلغاء</button><button class="btn btn-primary" onclick="saveOperationEdit()">حفظ التعديلات</button></div>
@@ -607,7 +610,7 @@ body[data-auth="app"] #loginPage{display:none!important}
   <div class="modal-body">
     <div id="newSafeModalError" class="alert alert-danger" style="display:none;margin-bottom:12px"></div>
     <div class="form-row"><div class="form-group"><label>الاسم *</label><input class="form-control" id="sf_name"></div><div class="form-group"><label>النوع *</label><select class="form-control" id="sf_type"><option value="cash">صندوق نقدي</option><option value="bank">حساب بنكي</option></select></div></div>
-    <div class="form-row"><div class="form-group"><label>الرصيد الافتتاحي</label><input type="number" step="0.001" class="form-control" id="sf_opening" value="0"></div><div class="form-group"><label>العملة</label><select class="form-control" id="sf_currency"><option value="KWD">دينار كويتي</option></select></div></div>
+    <div class="form-row"><div class="form-group"><label>الرصيد الافتتاحي</label><input type="number" step="0.001" class="form-control" id="sf_opening" value="0"></div><div class="form-group"><label>العملة</label><select class="form-control" id="sf_currency"></select></div></div>
   </div>
   <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('newSafeModal')">إلغاء</button><button class="btn btn-primary" onclick="saveSafe()">حفظ</button></div>
 </div>
@@ -642,7 +645,7 @@ body[data-auth="app"] #loginPage{display:none!important}
   <div class="modal-header"><h3 id="voucherModalTitle">سند جديد</h3><button class="modal-close" onclick="closeModal('newVoucherModal')"><i class='bx bx-x'></i></button></div>
   <div class="modal-body">
     <div class="form-row"><div class="form-group"><label>نوع الطرف</label><select class="form-control" id="vc_party_type" onchange="updateVoucherParties()"><option value="client">عميل</option><option value="vendor">مكتب/مزود</option><option value="general">عام</option></select></div><div class="form-group"><label>الطرف</label><select class="form-control" id="vc_party_id"><option value="">-- اختر --</option></select></div></div>
-    <div class="form-row"><div class="form-group"><label>المبلغ *</label><input type="number" class="form-control" id="vc_amount" placeholder="0.000" step="0.001"></div><div class="form-group"><label>العملة</label><select class="form-control" id="vc_currency"><option value="KWD">دينار كويتي</option><option value="USD">دولار أمريكي</option></select></div></div>
+    <div class="form-row"><div class="form-group"><label>المبلغ *</label><input type="number" class="form-control" id="vc_amount" placeholder="0.000" step="0.001"></div><div class="form-group"><label>العملة</label><select class="form-control" id="vc_currency"></select></div></div>
     <div class="form-row"><div class="form-group"><label>طريقة الدفع</label><select class="form-control" id="vc_method"><option value="cash">نقد</option><option value="bank">تحويل بنكي</option><option value="knet">كي-نت</option><option value="check">شيك</option></select></div><div class="form-group"><label>الصندوق/البنك</label><select class="form-control" id="vc_safe"><option value="1">الصندوق الرئيسي</option><option value="2">البنك الأهلي</option></select></div></div>
     <div class="form-row"><div class="form-group"><label>ربط بعملية (اختياري)</label><select class="form-control" id="vc_operation"><option value="">-- بدون ربط --</option></select></div><div class="form-group"><label>رقم المرجع</label><input type="text" class="form-control" id="vc_ref"></div></div>
     <div class="form-row full"><div class="form-group"><label>البيان</label><textarea class="form-control" id="vc_desc"></textarea></div></div>
@@ -761,22 +764,164 @@ function navigate(page){
 }
 
 // ==================== HELPERS ====================
-const fmt=(n)=>(+n||0).toLocaleString('ar-KW',{minimumFractionDigits:3,maximumFractionDigits:3})+' د.ك';
+let CURRENCIES = [];
+let ACTIVE_CURRENCIES = [];
+let DEFAULT_CURRENCY = null;
+
+function currencyByCode(code){
+  if(!code) return null;
+  const upper = String(code).toUpperCase();
+  return CURRENCIES.find(c=>c.code===upper) || ACTIVE_CURRENCIES.find(c=>c.code===upper) || (DEFAULT_CURRENCY?.code===upper ? DEFAULT_CURRENCY : null);
+}
+function officeDefaultCurrency(){
+  return currentOffice?.default_currency || currentUser?.office?.default_currency || DEFAULT_CURRENCY || currencyByCode('KWD');
+}
+function currencySymbol(codeOrRecord){
+  if(codeOrRecord && typeof codeOrRecord==='object'){
+    return codeOrRecord.currency_symbol || codeOrRecord.symbol || currencySymbol(codeOrRecord.currency || codeOrRecord.code);
+  }
+  const c = currencyByCode(codeOrRecord);
+  return c?.symbol || '';
+}
+function currencyLabel(c){
+  const meta = currencyByCode(c);
+  return meta ? `${meta.name} (${meta.code})` : displayVal(c);
+}
+function fmt(n, currency){
+  const amount = (+n||0).toLocaleString('ar-KW',{minimumFractionDigits:3,maximumFractionDigits:3});
+  const sym = currencySymbol(currency);
+  return sym ? `${amount} ${sym}` : amount;
+}
+function fmtRecord(n, record){
+  if(record && typeof record==='object'){
+    if(record.currency_symbol) return fmt(n, { currency_symbol: record.currency_symbol });
+    return fmt(n, record.currency || record.currency_code);
+  }
+  return fmt(n, record);
+}
+function groupedTotalsHtml(groups, field='amount', emptyLabel='—'){
+  const rows = (groups||[]).filter(g=>Math.abs(+g[field]||0)>0.0005);
+  if(!rows.length) return fmt(0, officeDefaultCurrency());
+  if(rows.length===1) return fmt(rows[0][field], rows[0]);
+  return rows.map(g=>`<div style="font-size:14px;font-weight:800;line-height:1.5">${fmt(g[field], g)}</div>`).join('');
+}
+function summaryCard(label, value, color){
+  return `<div style="text-align:center"><div style="font-size:11px;color:var(--text-sm)">${label}</div><div style="font-size:18px;font-weight:800;color:${color}">${value}</div></div>`;
+}
+function statementSummaryByCurrencyHtml(groups, labels={}){
+  const list = groups||[];
+  const purchasesLabel = labels.purchasesLabel || 'إجمالي المشتريات';
+  const paidLabel = labels.paidLabel || 'المدفوع';
+  const balanceLabel = labels.balanceLabel || 'الرصيد المتبقي';
+  const creditsLabel = labels.creditsLabel || null;
+  if(!list.length){
+    return `<div class="grid-3" style="margin-bottom:20px">${summaryCard(purchasesLabel, fmt(0, officeDefaultCurrency()), 'var(--primary)')}${summaryCard(paidLabel, fmt(0, officeDefaultCurrency()), 'var(--success)')}${summaryCard(balanceLabel, fmt(0, officeDefaultCurrency()), 'var(--success)')}</div>`;
+  }
+  return list.map(g=>{
+    const bal = +(g.balance||0);
+    const balColor = bal>0.001 ? 'var(--danger)' : 'var(--success)';
+    const firstLabel = creditsLabel || purchasesLabel;
+    const firstValue = creditsLabel ? g.credits : g.purchases;
+    return `<div class="card" style="margin-bottom:12px;background:var(--bg)"><div class="card-body">
+      <div style="font-size:12px;font-weight:700;color:var(--text-sm);margin-bottom:10px">${g.name||g.code} (${g.code})</div>
+      <div class="grid-3">
+        ${summaryCard(firstLabel, fmt(firstValue||0, g), creditsLabel?'var(--warning)':'var(--primary)')}
+        ${summaryCard(paidLabel, fmt(g.paid||0, g), 'var(--success)')}
+        ${summaryCard(balanceLabel, fmt(bal, g), balColor)}
+      </div>
+    </div></div>`;
+  }).join('');
+}
+function formatBalanceGroups(groups, field='balance'){
+  const rows = (groups||[]).filter(g=>Math.abs(+(g[field]??0))>0.001);
+  if(!rows.length) return {text:fmt(0, officeDefaultCurrency()), color:'var(--success)', title:'الحساب مسوّى'};
+  const hasDebit = rows.some(g=>(g[field]??0)>0.001);
+  const hasCredit = rows.some(g=>(g[field]??0)<-0.001);
+  return {
+    text: groupedTotalsHtml(rows, field),
+    color: hasDebit ? 'var(--danger)' : 'var(--success)',
+    title: hasDebit ? 'رصيد مدين على العميل' : (hasCredit ? 'رصيد دائن للعميل' : 'الحساب مسوّى'),
+  };
+}
+function formatVendorBalanceGroups(groups){
+  const rows = (groups||[]).filter(g=>Math.abs(+(g.balance??0))>0.001);
+  if(!rows.length) return {text:fmt(0, officeDefaultCurrency()), color:'var(--success)', title:'لا يوجد رصيد مستحق'};
+  const hasOwed = rows.some(g=>(g.balance??0)>0.001);
+  return {
+    text: groupedTotalsHtml(rows, 'balance'),
+    color: hasOwed ? 'var(--warning)' : 'var(--success)',
+    title: hasOwed ? 'رصيد مستحق للمورد' : 'مسدد',
+  };
+}
+function journalGroupedTotalsHtml(entries, field){
+  const groups = {};
+  (entries||[]).forEach(j=>{
+    const code = j.currency || officeDefaultCurrency()?.code;
+    if(!code) return;
+    if(!groups[code]) groups[code] = { code, ...(currencyByCode(code)||{}), amount: 0 };
+    groups[code].amount += (+j[field]||0);
+  });
+  return groupedTotalsHtml(Object.values(groups), 'amount');
+}
+const WEEK_RECEIPT_COLORS=['rgba(5,150,105,.75)','rgba(16,185,129,.75)','rgba(52,211,153,.75)','rgba(110,231,183,.75)'];
+const WEEK_PAYMENT_COLORS=['rgba(220,38,38,.75)','rgba(239,68,68,.75)','rgba(248,113,113,.75)','rgba(252,165,165,.75)'];
+function buildLocalWeekVoucherGroups(days, type){
+  const byCur={};
+  (VOUCHERS||[]).filter(v=>v.type===type&&!v.voided_at&&!v.voided).forEach(v=>{
+    const d=v.date||v.voucher_date; const di=days.indexOf(d); if(di<0) return;
+    const code=v.currency||v.currency_code||officeDefaultCurrency()?.code||'KWD';
+    if(!byCur[code]) byCur[code]={code,symbol:currencySymbol({code}),amounts:days.map(()=>0)};
+    byCur[code].amounts[di]+=+(v.amount||0);
+  });
+  return Object.values(byCur);
+}
+function buildWeekChartDatasets(receiptGroups, paymentGroups){
+  const datasets=[];
+  (receiptGroups||[]).forEach((g,i)=>{
+    datasets.push({ label:`مقبوضات ${g.symbol||g.code}`, data:g.amounts||[], backgroundColor:WEEK_RECEIPT_COLORS[i%WEEK_RECEIPT_COLORS.length], borderRadius:6 });
+  });
+  (paymentGroups||[]).forEach((g,i)=>{
+    datasets.push({ label:`مدفوعات ${g.symbol||g.code}`, data:g.amounts||[], backgroundColor:WEEK_PAYMENT_COLORS[i%WEEK_PAYMENT_COLORS.length], borderRadius:6 });
+  });
+  return datasets;
+}
+function populateCurrencySelect(selectId, selectedCode, { officeDefault=false, includeEmpty=false }={}){
+  const sel = document.getElementById(selectId);
+  if(!sel) return;
+  const list = ACTIVE_CURRENCIES.length ? ACTIVE_CURRENCIES : CURRENCIES.filter(c=>c.is_active!==false);
+  const fallback = officeDefault ? officeDefaultCurrency()?.code : (DEFAULT_CURRENCY?.code || list[0]?.code || 'KWD');
+  const selected = selectedCode || fallback;
+  sel.innerHTML = (includeEmpty ? '<option value="">-- اختر العملة --</option>' : '') +
+    list.map(c=>`<option value="${c.code}" ${c.code===selected?'selected':''}>${c.name} (${c.code})</option>`).join('');
+  if(!sel.value && fallback) sel.value = fallback;
+}
+function populateOfficeCurrencySelect(selectId, selectedId){
+  const sel = document.getElementById(selectId);
+  if(!sel) return;
+  const list = ACTIVE_CURRENCIES.length ? ACTIVE_CURRENCIES : CURRENCIES.filter(c=>c.is_active!==false);
+  sel.innerHTML = list.map(c=>`<option value="${c.id}" ${String(c.id)===String(selectedId)?'selected':''}>${c.name} (${c.code})</option>`).join('');
+}
+function minAmountLabel(){
+  const sym = currencySymbol(officeDefaultCurrency());
+  return sym ? `1 ${sym}` : '1';
+}
 const fmtN=(n,d=3)=>(+n||0).toFixed(d);
 const statusLabel={new:'جديدة',processing:'قيد التنفيذ',completed:'مكتملة',cancelled:'ملغاة'};
 const statusClass={new:'badge-info',processing:'badge-warning',completed:'badge-success',cancelled:'badge-danger'};
 const vcTypeLabel={receipt:'سند قبض',payment:'سند صرف'};
 const categoryLabel={airline:'شركة طيران',hotel:'فندق',visa:'تأشيرات',transport:'نقل',other:'أخرى'};
 const methodLabels={cash:'نقد',bank:'تحويل بنكي',knet:'كي-نت',check:'شيك',cheque:'شيك'};
-const currencyLabels={KWD:'دينار كويتي',USD:'دولار أمريكي',SAR:'ريال سعودي'};
-function formatBalance(bal){
-  if(bal<-0.001) return {text:fmt(Math.abs(bal))+' (دائن)',color:'var(--success)',title:'رصيد دائن للعميل'};
-  if(bal>0.001) return {text:fmt(bal),color:'var(--danger)',title:'رصيد مدين على العميل'};
-  return {text:fmt(0),color:'var(--success)',title:'الحساب مسوّى'};
+function formatBalance(bal, currencyOrRecord){
+  if(currencyOrRecord && typeof currencyOrRecord==='object' && currencyOrRecord.balance_by_currency){
+    return formatBalanceGroups(currencyOrRecord.balance_by_currency, 'balance');
+  }
+  const cur = currencyOrRecord || officeDefaultCurrency();
+  if(bal<-0.001) return {text:fmt(Math.abs(bal), cur)+' (دائن)',color:'var(--success)',title:'رصيد دائن للعميل'};
+  if(bal>0.001) return {text:fmt(bal, cur),color:'var(--danger)',title:'رصيد مدين على العميل'};
+  return {text:fmt(0, cur),color:'var(--success)',title:'الحساب مسوّى'};
 }
 function displayVal(v){return v==null||v===''||v==='null'||v==='undefined'?'—':v;}
 function methodLabel(m){return methodLabels[m]||displayVal(m);}
-function currencyLabel(c){return currencyLabels[c]||displayVal(c);}
 function formatMargin(profit,sales){if(sales<=0)return '—';const pct=(profit/sales)*100;if(pct>0&&pct<0.1)return 'أقل من 0.1%';return 'هامش '+pct.toFixed(1)+'%';}
 function clientName(id){return CLIENTS.find(c=>c.id===id)?.name||'—';}
 function vendorName(id){return VENDORS.find(v=>v.id===id)?.name||'—';}
@@ -884,17 +1029,23 @@ function renderDashboard(pc){
   // weekly data (last 7 days)
   const days=[];
   for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
-  const weekReceipts=DASHBOARD_DATA?.week?.receipts||days.map(d=>getJournal().filter(j=>j.account==='ذمم العملاء'&&j.party==='client'&&j.date===d).reduce((s,j)=>s+j.credit,0));
-  const weekPayments=DASHBOARD_DATA?.week?.payments||days.map(d=>getJournal().filter(j=>j.account==='ذمم الموردين'&&j.party==='vendor'&&j.date===d).reduce((s,j)=>s+j.debit,0));
   const svcCount=SERVICES.map(s=>({name:s.name,count:OPS.filter(o=>o.service_id===s.id&&o.status!=='cancelled').length}));
+
+  const weekReceiptGroups=DASHBOARD_DATA?.week?.receipts_by_currency||buildLocalWeekVoucherGroups(days,'receipt');
+  const weekPaymentGroups=DASHBOARD_DATA?.week?.payments_by_currency||buildLocalWeekVoucherGroups(days,'payment');
+  const weekDays=DASHBOARD_DATA?.week?.days||days.map(d=>d.slice(5));
+  const salesKpi=DASHBOARD_DATA?.sales_by_currency?groupedTotalsHtml(DASHBOARD_DATA.sales_by_currency,'amount'):fmt(todaySales, officeDefaultCurrency());
+  const profitKpi=DASHBOARD_DATA?.profit_by_currency?groupedTotalsHtml(DASHBOARD_DATA.profit_by_currency,'amount'):fmt(todayProfit, officeDefaultCurrency());
+  const receiptsKpi=DASHBOARD_DATA?.receipts_by_currency?groupedTotalsHtml(DASHBOARD_DATA.receipts_by_currency,'amount'):fmt(totalReceipts, officeDefaultCurrency());
+  const paymentsKpi=DASHBOARD_DATA?.payments_by_currency?groupedTotalsHtml(DASHBOARD_DATA.payments_by_currency,'amount'):fmt(totalPayments, officeDefaultCurrency());
 
   pc.innerHTML=`
   <div class="page-shell">
     <div class="grid-kpi-4">
-      ${kpiCard('<i class="bx bxs-dollar-circle" style="font-size:24px"></i>','مبيعات اليوم',fmt(todaySales),'var(--primary)','اليوم: '+todayOps.length+' عمليات')}
-      ${kpiCard('<i class="bx bxs-wallet" style="font-size:24px"></i>','ربح متوقع اليوم',fmt(todayProfit),'var(--success)',formatMargin(todayProfit,todaySales))}
-      ${kpiCard('<i class="bx bxs-receipt" style="font-size:24px"></i>','التحصيلات النقدية',fmt(totalReceipts),'var(--info)',VOUCHERS.filter(v=>v.type==='receipt').length+' سند قبض')}
-      ${kpiCard('<i class="bx bxs-credit-card" style="font-size:24px"></i>','إجمالي المدفوعات',fmt(totalPayments),'var(--warning)',VOUCHERS.filter(v=>v.type==='payment').length+' سند صرف')}
+      ${kpiCard('<i class="bx bxs-dollar-circle" style="font-size:24px"></i>','مبيعات اليوم',salesKpi,'var(--primary)','اليوم: '+todayOps.length+' عمليات')}
+      ${kpiCard('<i class="bx bxs-wallet" style="font-size:24px"></i>','ربح متوقع اليوم',profitKpi,'var(--success)',formatMargin(todayProfit,todaySales))}
+      ${kpiCard('<i class="bx bxs-receipt" style="font-size:24px"></i>','التحصيلات النقدية',receiptsKpi,'var(--info)',VOUCHERS.filter(v=>v.type==='receipt').length+' سند قبض')}
+      ${kpiCard('<i class="bx bxs-credit-card" style="font-size:24px"></i>','إجمالي المدفوعات',paymentsKpi,'var(--warning)',VOUCHERS.filter(v=>v.type==='payment').length+' سند صرف')}
     </div>
     <div class="grid-charts-2-1">
       <div class="card"><div class="card-header"><h3>حركة الأسبوع (قبض ودفع)</h3></div><div class="card-body" style="min-height:240px"><div class="chart-box"><canvas id="weekChart"></canvas></div></div></div>
@@ -905,15 +1056,15 @@ function renderDashboard(pc){
         <div class="card-header"><h3>آخر 10 عمليات</h3><button class="btn btn-sm btn-outline" onclick="navigate('operations')">عرض الكل</button></div>
         <div class="card-body" style="padding:0"><div class="table-wrapper">
         <table class="table"><thead><tr><th>الرقم</th><th>العميل</th><th>الخدمة</th><th>المبلغ</th><th>الربح</th><th>الحالة</th></tr></thead>
-        <tbody>${lastOps.map(o=>`<tr onclick="viewOp(${o.id})" style="cursor:pointer"><td><b>${o.ref}</b></td><td>${clientName(o.client_id)}</td><td>${serviceName(o.service_id)}</td><td>${fmt(o.client_price)}</td><td style="color:${o.profit>=0?'var(--success)':'var(--danger)'}">${fmt(o.profit)}</td><td><span class="badge ${statusClass[o.status]}">${statusLabel[o.status]}</span></td></tr>`).join('')}</tbody></table>
+        <tbody>${lastOps.map(o=>`<tr onclick="viewOp(${o.id})" style="cursor:pointer"><td><b>${o.ref}</b></td><td>${clientName(o.client_id)}</td><td>${serviceName(o.service_id)}</td><td>${fmtRecord(o.client_price,o)}</td><td style="color:${o.profit>=0?'var(--success)':'var(--danger)'}">${fmtRecord(o.profit,o)}</td><td><span class="badge ${statusClass[o.status]}">${statusLabel[o.status]}</span></td></tr>`).join('')}</tbody></table>
         </div></div>
       </div>
       <div class="grid-stack">
-        ${overdueList.length>0?`<div class="card" style="border-right:4px solid var(--warning)"><div class="card-header"><h3>متأخر التحصيل (+7 أيام)</h3></div><div class="card-body">${overdueList.map(o=>`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><b>${o.ref}</b> - ${clientName(o.client_id)}<br><small style="color:var(--danger)">تاريخ: ${o.date} | ${statusLabel[o.status]} | متبقي: ${fmt(+o.client_outstanding||getClientBalance(o.client_id))}</small></div>`).join('')}</div></div>`:''}
+        ${overdueList.length>0?`<div class="card" style="border-right:4px solid var(--warning)"><div class="card-header"><h3>متأخر التحصيل (+7 أيام)</h3></div><div class="card-body">${overdueList.map(o=>`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><b>${o.ref}</b> - ${clientName(o.client_id)}<br><small style="color:var(--danger)">تاريخ: ${o.date} | ${statusLabel[o.status]} | متبقي: ${fmtRecord(+o.client_outstanding||getClientBalance(o.client_id),o)}</small></div>`).join('')}</div></div>`:''}
         <div class="card"><div class="card-header"><h3>أعلى 5 مدينين</h3></div><div class="card-body" style="padding:0"><div class="table-wrapper">
-        <table class="table"><thead><tr><th>العميل</th><th>المبلغ</th></tr></thead><tbody>${debtors.map(c=>`<tr><td>${c.name}</td><td style="color:var(--danger);font-weight:700">${fmt(c.bal)}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text-sm)">لا يوجد مدينون</td></tr>'}</tbody></table></div></div></div>
+        <table class="table"><thead><tr><th>العميل</th><th>المبلغ</th></tr></thead><tbody>${debtors.map(c=>`<tr><td>${c.name}</td><td style="color:var(--danger);font-weight:700">${fmt(c.bal, officeDefaultCurrency())}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text-sm)">لا يوجد مدينون</td></tr>'}</tbody></table></div></div></div>
         <div class="card"><div class="card-header"><h3>أعلى 5 دائنين</h3></div><div class="card-body" style="padding:0"><div class="table-wrapper">
-        <table class="table"><thead><tr><th>المورد</th><th>المبلغ</th></tr></thead><tbody>${creditors.map(v=>`<tr><td>${v.name}</td><td style="color:var(--warning);font-weight:700">${fmt(v.bal)}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text-sm)">لا يوجد دائنون</td></tr>'}</tbody></table></div></div></div>
+        <table class="table"><thead><tr><th>المورد</th><th>المبلغ</th></tr></thead><tbody>${creditors.map(v=>`<tr><td>${v.name}</td><td style="color:var(--warning);font-weight:700">${fmt(v.bal, officeDefaultCurrency())}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text-sm)">لا يوجد دائنون</td></tr>'}</tbody></table></div></div></div>
       </div>
     </div>
   </div>`;
@@ -923,7 +1074,7 @@ function renderDashboard(pc){
     if(currentPage!=='dashboard')return;
     requestAnimationFrame(()=>{
       const wctx=document.getElementById('weekChart')?.getContext('2d');
-      if(wctx){if(charts.week){try{charts.week.destroy();}catch(e){}} charts.week=new Chart(wctx,{type:'bar',data:{labels:days.map(d=>d.slice(5)),datasets:[{label:'مقبوضات',data:weekReceipts,backgroundColor:'rgba(5,150,105,.7)',borderRadius:6},{label:'مدفوعات',data:weekPayments,backgroundColor:'rgba(220,38,38,.7)',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true}}}});}
+      if(wctx){if(charts.week){try{charts.week.destroy();}catch(e){}} charts.week=new Chart(wctx,{type:'bar',data:{labels:weekDays,datasets:buildWeekChartDatasets(weekReceiptGroups, weekPaymentGroups)},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true}}}});}
       const sctx=document.getElementById('svcChart')?.getContext('2d');
       if(sctx){if(charts.svc){try{charts.svc.destroy();}catch(e){}} charts.svc=new Chart(sctx,{type:'doughnut',data:{labels:svcCount.map(s=>s.name),datasets:[{data:svcCount.map(s=>s.count),backgroundColor:['#696CFF','#71DD37','#FFAB00','#FF3E1D','#03C3EC'],borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom'}}}});}
     });
@@ -1049,8 +1200,9 @@ function calcProfit(){
   const vc=+document.getElementById('op_vendor_cost')?.value||0;
   const ip=+document.getElementById('op_initial_payment')?.value||0;
   const pr=cp-vc;
+  const cur = document.getElementById('op_currency')?.value || officeDefaultCurrency()?.code;
   const pEl=document.getElementById('op_profit');
-  if(pEl){pEl.value=fmtN(pr)+' د.ك'; pEl.style.color=pr>=0?'var(--success)':'var(--danger)';}
+  if(pEl){pEl.value=fmtN(pr)+' '+currencySymbol(cur); pEl.style.color=pr>=0?'var(--success)':'var(--danger)';}
   const jp=document.getElementById('op_journal_preview');
   const jl=document.getElementById('op_journal_lines');
   if(cp>0&&vc>0&&jp&&jl){
@@ -1645,10 +1797,10 @@ function printClientsDebtReport(){
   .balance{color:#DC2626;font-weight:800}.paid{color:#059669;font-weight:700}
   @media print{@page{margin:1cm}body{padding:0}}</style></head><body>
   <div class="header"><div>${typeof officeBrandBlock==='function'?officeBrandBlock('تقرير مديونية العملاء'):`<div><h1>نظام إدارة خدمات السفر</h1><div class="sub">تقرير مديونية العملاء</div><div class="meta">تاريخ الطباعة: ${new Date().toLocaleDateString('ar-KW')}</div></div>`}</div><div style="text-align:left;font-size:12px;color:#64748b">${debtors.length} عميل مدين</div></div>
-  <div class="summary"><div class="sum-box"><div class="val">${debtors.length}</div><div class="lbl">عدد العملاء المدينين</div></div><div class="sum-box"><div class="val">${fmtN(totalDebt,3)} د.ك</div><div class="lbl">إجمالي المديونية</div></div><div class="sum-box"><div class="val">${debtors.length?fmtN(totalDebt/debtors.length,3):0} د.ك</div><div class="lbl">متوسط المديونية</div></div></div>
+  <div class="summary"><div class="sum-box"><div class="val">${debtors.length}</div><div class="lbl">عدد العملاء المدينين</div></div><div class="sum-box"><div class="val">${fmt(totalDebt, officeDefaultCurrency())}</div><div class="lbl">إجمالي المديونية</div></div><div class="sum-box"><div class="val">${debtors.length?fmt(totalDebt/debtors.length, officeDefaultCurrency()):fmt(0, officeDefaultCurrency())}</div><div class="lbl">متوسط المديونية</div></div></div>
   <table><thead><tr><th>#</th><th>اسم العميل</th><th>الهاتف</th><th>الجنسية</th><th>إجمالي المشتريات</th><th>المدفوع</th><th>الرصيد المدين</th><th>العمليات</th></tr></thead>
-  <tbody>${debtors.map((c,i)=>`<tr><td>${i+1}</td><td><b>${c.name}</b></td><td>${c.phone}</td><td>${displayVal(c.nationality)}</td><td>${fmtN(c.totalPurchases,3)} د.ك</td><td class="paid">${fmtN(c.totalPaid,3)} د.ك</td><td class="balance">${fmtN(c.balance,3)} د.ك</td><td>${c.opsCount}</td></tr>`).join('')}
-  <tr class="total-row"><td colspan="6" style="text-align:center">الإجمالي</td><td class="balance">${fmtN(totalDebt,3)} د.ك</td><td></td></tr>
+  <tbody>${debtors.map((c,i)=>`<tr><td>${i+1}</td><td><b>${c.name}</b></td><td>${c.phone}</td><td>${displayVal(c.nationality)}</td><td>${fmt(c.totalPurchases, officeDefaultCurrency())}</td><td class="paid">${fmt(c.totalPaid, officeDefaultCurrency())}</td><td class="balance">${fmt(c.balance, officeDefaultCurrency())}</td><td>${c.opsCount}</td></tr>`).join('')}
+  <tr class="total-row"><td colspan="6" style="text-align:center">الإجمالي</td><td class="balance">${fmt(totalDebt, officeDefaultCurrency())}</td><td></td></tr>
   </tbody></table>
   <script>window.onload=function(){window.print();}<\/script>
 
@@ -1691,10 +1843,10 @@ function printVendorsBalanceReport(){
   .balance{color:#D97706;font-weight:800}.paid{color:#059669;font-weight:700}
   @media print{@page{margin:1cm}body{padding:0}}</style></head><body>
   <div class="header"><div>${typeof officeBrandBlock==='function'?officeBrandBlock('تقرير أرصدة المكاتب والموردين'):`<div><h1>نظام إدارة خدمات السفر</h1><div class="sub">تقرير أرصدة المكاتب والموردين</div><div class="meta">تاريخ الطباعة: ${new Date().toLocaleDateString('ar-KW')}</div></div>`}</div><div style="text-align:left;font-size:12px;color:#64748b">${creditors.length} مكتب دائن</div></div>
-  <div class="summary"><div class="sum-box"><div class="val">${creditors.length}</div><div class="lbl">عدد المكاتب الدائنة</div></div><div class="sum-box"><div class="val">${fmtN(totalOwed,3)} د.ك</div><div class="lbl">إجمالي المستحقات</div></div><div class="sum-box"><div class="val">${creditors.length?fmtN(totalOwed/creditors.length,3):0} د.ك</div><div class="lbl">متوسط المستحق</div></div></div>
+  <div class="summary"><div class="sum-box"><div class="val">${creditors.length}</div><div class="lbl">عدد المكاتب الدائنة</div></div><div class="sum-box"><div class="val">${fmt(totalOwed, officeDefaultCurrency())}</div><div class="lbl">إجمالي المستحقات</div></div><div class="sum-box"><div class="val">${creditors.length?fmt(totalOwed/creditors.length, officeDefaultCurrency()):fmt(0, officeDefaultCurrency())}</div><div class="lbl">متوسط المستحق</div></div></div>
   <table><thead><tr><th>#</th><th>اسم المكتب</th><th>التصنيف</th><th>الهاتف</th><th>جهة الاتصال</th><th>إجمالي الخدمات</th><th>المدفوع</th><th>الرصيد المستحق</th><th>العمليات</th></tr></thead>
-  <tbody>${creditors.map((v,i)=>`<tr><td>${i+1}</td><td><b>${v.name}</b></td><td>${v.category}</td><td>${v.phone}</td><td>${v.contact}</td><td>${fmtN(v.totalServices,3)} د.ك</td><td class="paid">${fmtN(v.totalPaid,3)} د.ك</td><td class="balance">${fmtN(v.balance,3)} د.ك</td><td>${v.opsCount}</td></tr>`).join('')}
-  <tr class="total-row"><td colspan="7" style="text-align:center">الإجمالي</td><td class="balance">${fmtN(totalOwed,3)} د.ك</td><td></td></tr>
+  <tbody>${creditors.map((v,i)=>`<tr><td>${i+1}</td><td><b>${v.name}</b></td><td>${v.category}</td><td>${v.phone}</td><td>${v.contact}</td><td>${fmt(v.totalServices, officeDefaultCurrency())}</td><td class="paid">${fmt(v.totalPaid, officeDefaultCurrency())}</td><td class="balance">${fmt(v.balance, officeDefaultCurrency())}</td><td>${v.opsCount}</td></tr>`).join('')}
+  <tr class="total-row"><td colspan="7" style="text-align:center">الإجمالي</td><td class="balance">${fmt(totalOwed, officeDefaultCurrency())}</td><td></td></tr>
   </tbody></table>
   <script>window.onload=function(){window.print();}<\/script>
 

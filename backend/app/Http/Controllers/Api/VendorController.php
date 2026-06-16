@@ -80,11 +80,21 @@ class VendorController extends ApiController
             $rowsQuery->whereDate('entry_date', '<=', $request->to);
         }
 
+        $rows = $rowsQuery->get();
+        $summaryByCurrency = $this->accounting->vendorStatementSummary(
+            $vendor->id,
+            $vendor->office_id,
+            $request->input('from'),
+            $request->input('to'),
+        );
+
         return response()->json([
             'vendor' => $this->vendorPayload($vendor),
-            'balance' => $this->accounting->vendorBalance($vendor->id),
-            'paid' => $this->accounting->vendorPaymentsTotal($vendor->id),
-            'rows' => $rowsQuery->get()->map(fn (JournalEntry $journal) => $this->journalPayload($journal)),
+            'balance' => (float) collect($summaryByCurrency)->sum('balance'),
+            'paid' => (float) collect($summaryByCurrency)->sum('paid'),
+            'credits' => (float) collect($summaryByCurrency)->sum('credits'),
+            'summary_by_currency' => $summaryByCurrency,
+            'rows' => $rows->map(fn (JournalEntry $journal) => $this->journalPayload($journal)),
         ]);
     }
 

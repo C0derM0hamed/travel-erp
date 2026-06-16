@@ -6,6 +6,8 @@ use App\Models\Client;
 use App\Models\Operation;
 use App\Models\Service;
 use App\Models\Vendor;
+use App\Models\Voucher;
+use App\Services\CurrencyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -28,9 +30,6 @@ class DashboardController extends ApiController
         $today = now()->toDateString();
         $todayOps = Operation::visible()->whereDate('op_date', $today)->where('status', '!=', 'cancelled')->get();
         $days = collect(range(6, 0))->map(fn ($i) => now()->subDays($i)->toDateString());
-        $receipts = $days->map(fn ($day) => $this->accounting->clientReceiptsOnDate($day));
-        $payments = $days->map(fn ($day) => $this->accounting->vendorPaymentsOnDate($day));
-
         return $this->buildPayload(
             salesLabel: 'مبيعات اليوم',
             profitLabel: 'ربح متوقع اليوم',
@@ -38,9 +37,8 @@ class DashboardController extends ApiController
             profit: (float) $todayOps->sum('profit'),
             salesSub: 'اليوم: '.$todayOps->count().' عمليات',
             days: $days,
-            receipts: $receipts,
-            payments: $payments,
             rangeOps: null,
+            opsForTotals: $todayOps,
         );
     }
 
@@ -58,9 +56,6 @@ class DashboardController extends ApiController
         for ($date = $start->copy(); $date->lte($end) && $days->count() < 31; $date->addDay()) {
             $days->push($date->toDateString());
         }
-        $receipts = $days->map(fn ($day) => $this->accounting->clientReceiptsOnDate($day));
-        $payments = $days->map(fn ($day) => $this->accounting->vendorPaymentsOnDate($day));
-
         return $this->buildPayload(
             salesLabel: 'مبيعات الفترة',
             profitLabel: 'ربح الفترة',
@@ -68,11 +63,10 @@ class DashboardController extends ApiController
             profit: (float) $rangeOps->sum('profit'),
             salesSub: $rangeOps->count().' عملية',
             days: $days,
-            receipts: $receipts,
-            payments: $payments,
             rangeOps: $rangeOps,
             from: $from,
             to: $to,
+            opsForTotals: $rangeOps,
         );
     }
 
@@ -83,18 +77,52 @@ class DashboardController extends ApiController
         float $profit,
         string $salesSub,
         $days,
-        $receipts,
-        $payments,
         $rangeOps,
         ?string $from = null,
         ?string $to = null,
+        $opsForTotals = null,
     ): array {
+        $currencies = app(CurrencyService::class);
+        $totalsOps = $opsForTotals ?? $rangeOps ?? collect();
+        $salesByCurrency = $currencies->groupedSums($totalsOps, ['client_price']);
+        $profitByCurrency = $currencies->groupedSums($totalsOps, ['profit']);
+
+        $voucherQuery = Voucher::query()->whereNull('voided_at');
+        if ($from && $to) {
+            $voucherQuery->whereDate('voucher_date', '>=', $from)->whereDate('voucher_date', '<=', $to);
+        } elseif (! $from) {
+            $voucherQuery->whereDate('voucher_date', now()->toDateString());
+        }
+        $receiptsByCurrency = $currencies->groupedSums(
+            (clone $voucherQuery)->where('type', 'receipt')->get(),
+            ['amount'],
+        );
+        $paymentsByCurrency = $currencies->groupedSums(
+            (clone $voucherQuery)->where('type', 'payment')->get(),
+            ['amount'],
+        );
         $debtors = Client::query()->visible()->select(['id', 'name'])->get()
-            ->map(fn (Client $client) => ['id' => $client->id, 'name' => $client->name, 'balance' => $this->accounting->clientBalance($client->id)])
-            ->where('balance', '>', 0)->sortByDesc('balance')->values()->take(5);
+            ->map(fn (Client $client) => [
+                'id' => $client->id,
+                'name' => $client->name,
+                'balance' => $this->accounting->clientBalance($client->id),
+                'balance_by_currency' => $this->accounting->clientBalanceByCurrency($client->id),
+            ])
+            ->filter(fn (array $row) => collect($row['balance_by_currency'])->contains(fn (array $group) => ($group['balance'] ?? 0) > 0.001)
+                || ($row['balance'] ?? 0) > 0.001)
+            ->sortByDesc(fn (array $row) => collect($row['balance_by_currency'])->max('balance') ?: ($row['balance'] ?? 0))
+            ->values()->take(5);
         $creditors = Vendor::query()->select(['id', 'name'])->get()
-            ->map(fn (Vendor $vendor) => ['id' => $vendor->id, 'name' => $vendor->name, 'balance' => $this->accounting->vendorBalance($vendor->id)])
-            ->where('balance', '>', 0)->sortByDesc('balance')->values()->take(5);
+            ->map(fn (Vendor $vendor) => [
+                'id' => $vendor->id,
+                'name' => $vendor->name,
+                'balance' => $this->accounting->vendorBalance($vendor->id),
+                'balance_by_currency' => $this->accounting->vendorBalanceByCurrency($vendor->id),
+            ])
+            ->filter(fn (array $row) => collect($row['balance_by_currency'])->contains(fn (array $group) => ($group['balance'] ?? 0) > 0.001)
+                || ($row['balance'] ?? 0) > 0.001)
+            ->sortByDesc(fn (array $row) => collect($row['balance_by_currency'])->max('balance') ?: ($row['balance'] ?? 0))
+            ->values()->take(5);
 
         $overdueCutoff = now()->subDays(7)->toDateString();
         $overdueQuery = Operation::visible()->with(['client', 'service', 'vendor'])
@@ -143,12 +171,79 @@ class DashboardController extends ApiController
             'total_receipts' => $this->accounting->totalClientReceipts(),
             'total_cash_receipts' => $this->accounting->totalCashReceipts(),
             'total_payments' => $this->accounting->totalVendorPayments(),
-            'week' => ['days' => $days->map(fn ($day) => substr($day, 5))->values(), 'receipts' => $receipts, 'payments' => $payments],
+            'week' => [
+                'days' => $days->map(fn ($day) => substr((string) $day, 5))->values(),
+                'receipts_by_currency' => $this->weekVoucherAmountsByCurrency($days, 'receipt', $from, $to),
+                'payments_by_currency' => $this->weekVoucherAmountsByCurrency($days, 'payment', $from, $to),
+            ],
             'services' => $services,
             'last_operations' => $lastOps->map(fn (Operation $operation) => $this->operationPayload($operation)),
             'overdue_operations' => $overdue->map(fn (Operation $operation) => $this->operationPayload($operation)),
             'top_debtors' => $debtors,
             'top_creditors' => $creditors,
+            'sales_by_currency' => collect($salesByCurrency)->map(fn (array $row) => [
+                'code' => $row['code'],
+                'symbol' => $row['symbol'],
+                'name' => $row['name'],
+                'amount' => (float) ($row['client_price'] ?? 0),
+            ])->values(),
+            'profit_by_currency' => collect($profitByCurrency)->map(fn (array $row) => [
+                'code' => $row['code'],
+                'symbol' => $row['symbol'],
+                'name' => $row['name'],
+                'amount' => (float) ($row['profit'] ?? 0),
+            ])->values(),
+            'receipts_by_currency' => collect($receiptsByCurrency)->map(fn (array $row) => [
+                'code' => $row['code'],
+                'symbol' => $row['symbol'],
+                'name' => $row['name'],
+                'amount' => (float) ($row['amount'] ?? 0),
+            ])->values(),
+            'payments_by_currency' => collect($paymentsByCurrency)->map(fn (array $row) => [
+                'code' => $row['code'],
+                'symbol' => $row['symbol'],
+                'name' => $row['name'],
+                'amount' => (float) ($row['amount'] ?? 0),
+            ])->values(),
         ];
+    }
+
+    /** @return array<int, array{code:string,symbol:string,name:string,amounts:array<int,float>}> */
+    private function weekVoucherAmountsByCurrency($days, string $type, ?string $from, ?string $to): array
+    {
+        $currencies = app(CurrencyService::class);
+        $dayStrings = collect($days)->map(fn ($day) => (string) $day)->values();
+
+        $query = Voucher::query()->whereNull('voided_at')->where('type', $type);
+        if ($dayStrings->isNotEmpty()) {
+            $query->whereDate('voucher_date', '>=', $dayStrings->first())
+                ->whereDate('voucher_date', '<=', $dayStrings->last());
+        }
+        if ($from && $to) {
+            $query->whereDate('voucher_date', '>=', $from)->whereDate('voucher_date', '<=', $to);
+        } elseif (! $from) {
+            $query->whereDate('voucher_date', now()->toDateString());
+        }
+
+        $vouchers = $query->get();
+
+        return $vouchers->groupBy(fn (Voucher $voucher) => strtoupper((string) ($voucher->currency ?: $currencies->officeCurrency(officeId: $voucher->office_id)->code)))
+            ->map(function ($group, string $code) use ($dayStrings, $currencies) {
+                $currency = $currencies->byCode($code) ?? $currencies->defaultCurrency();
+                $payload = $currencies->payload($currency);
+
+                return [
+                    'code' => $payload['code'],
+                    'symbol' => $payload['symbol'],
+                    'name' => $payload['name'],
+                    'amounts' => $dayStrings->map(function (string $day) use ($group) {
+                        return (float) $group
+                            ->filter(fn (Voucher $voucher) => $voucher->voucher_date?->toDateString() === $day)
+                            ->sum('amount');
+                    })->values()->all(),
+                ];
+            })
+            ->values()
+            ->all();
     }
 }

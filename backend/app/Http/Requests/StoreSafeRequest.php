@@ -21,7 +21,7 @@ class StoreSafeRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:120'],
             'type' => ['required', Rule::in(['cash', 'bank'])],
-            'currency' => ['nullable', Rule::in(['KWD'])],
+            'currency' => ['nullable', Rule::exists('currencies', 'code')->where('is_active', true)],
             'opening_balance' => ['nullable', 'numeric', 'decimal:0,3', 'gte:0', 'max:999999.999'],
             'is_active' => ['nullable', 'boolean'],
         ];
@@ -33,7 +33,7 @@ class StoreSafeRequest extends FormRequest
             'name.required' => 'اسم الصندوق مطلوب.',
             'type.required' => 'يرجى تحديد نوع الصندوق (نقدي أو بنكي).',
             'type.in' => 'نوع الصندوق غير مسموح.',
-            'currency.in' => 'النظام المحاسبي يدعم الدينار الكويتي فقط حالياً.',
+            'currency.exists' => 'العملة المحددة غير مفعلة أو غير موجودة.',
         ]);
     }
 }

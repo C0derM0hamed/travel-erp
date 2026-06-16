@@ -8,6 +8,7 @@ use App\Models\Operation;
 use App\Models\Safe;
 use App\Models\Vendor;
 use App\Models\Voucher;
+use App\Services\CurrencyService;
 use App\Support\ArabicMessages;
 
 class ExportLabels
@@ -87,13 +88,55 @@ class ExportLabels
         return Safe::find($safeId)?->name ?? '—';
     }
 
-    public static function formatAmount(float $value): string
+    public static function formatAmount(float $value, ?string $currencyCode = null, ?int $officeId = null): string
     {
         if (abs($value) < 0.0005) {
             return '—';
         }
 
-        return number_format($value, 3, '.', ',');
+        $formatted = number_format($value, 3, '.', ',');
+        if (! $currencyCode) {
+            return $formatted;
+        }
+
+        $symbol = app(CurrencyService::class)->payloadForCode($currencyCode, $officeId)['symbol'] ?? $currencyCode;
+
+        return $formatted.' '.$symbol;
+    }
+
+    /** @param list<array<string, mixed>> $groups @param array<string, string> $labels */
+    public static function statementSummaryEntries(array $groups, array $labels, ?int $officeId = null): array
+    {
+        $entries = [];
+        foreach ($groups as $group) {
+            $code = $group['code'] ?? '';
+            foreach ($labels as $field => $label) {
+                if (! array_key_exists($field, $group)) {
+                    continue;
+                }
+                $entries[] = [
+                    'label' => $label.' ('.$code.')',
+                    'value' => self::formatAmount((float) $group[$field], $code, $officeId),
+                ];
+            }
+        }
+
+        return $entries;
+    }
+
+    /** @param list<array<string, mixed>> $groups */
+    public static function formatGroupedBalances(array $groups, string $field = 'balance', ?int $officeId = null): string
+    {
+        $parts = [];
+        foreach ($groups as $group) {
+            $value = (float) ($group[$field] ?? 0);
+            if (abs($value) < 0.0005) {
+                continue;
+            }
+            $parts[] = self::formatAmount($value, $group['code'] ?? null, $officeId);
+        }
+
+        return $parts ? implode("\n", $parts) : '—';
     }
 
     public static function journalPayload(JournalEntry $journal): array
@@ -117,9 +160,10 @@ class ExportLabels
             ['label' => 'الخدمة', 'value' => $operation->service?->name ?? ''],
             ['label' => 'المورد', 'value' => $operation->vendor?->name ?? ''],
             ['label' => 'الحالة', 'value' => self::operationStatus($operation->status)],
-            ['label' => 'سعر العميل', 'value' => self::formatAmount((float) $operation->client_price)],
-            ['label' => 'تكلفة المورد', 'value' => self::formatAmount((float) $operation->vendor_cost)],
-            ['label' => 'الربح', 'value' => self::formatAmount((float) $operation->profit)],
+            ['label' => 'العملة', 'value' => app(CurrencyService::class)->payloadForCode($operation->currency, $operation->office_id)['name'] ?? $operation->currency],
+            ['label' => 'سعر العميل', 'value' => self::formatAmount((float) $operation->client_price, $operation->currency, $operation->office_id)],
+            ['label' => 'تكلفة المورد', 'value' => self::formatAmount((float) $operation->vendor_cost, $operation->currency, $operation->office_id)],
+            ['label' => 'الربح', 'value' => self::formatAmount((float) $operation->profit, $operation->currency, $operation->office_id)],
             ['label' => 'ملاحظات', 'value' => $operation->notes ?? ''],
         ];
     }

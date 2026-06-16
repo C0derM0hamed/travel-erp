@@ -21,7 +21,7 @@
                 <div class="meta-line"><strong>رقم الفاتورة:</strong> {{ $invoice['ref'] ?? '' }}</div>
                 <div class="meta-line"><strong>التاريخ:</strong> {{ $invoice['date'] ?? '' }}</div>
                 <div class="meta-line"><strong>الحالة:</strong> {{ $invoice['status'] ?? '' }}</div>
-                <div class="meta-line"><strong>العملة:</strong> {{ $currency ?? 'د.ك' }}</div>
+                <div class="meta-line"><strong>العملة:</strong> {{ $currency_label ?? $currency_code ?? $currency ?? '' }}</div>
             </td>
         </tr>
     </table>
@@ -31,7 +31,7 @@
         <thead>
             <tr>
                 <th style="width:55%">الوصف / Description</th>
-                <th>المبلغ / Amount ({{ $currency ?? 'د.ك' }})</th>
+                <th>المبلغ / Amount ({{ $currency ?? $currency_symbol ?? '' }})</th>
             </tr>
         </thead>
         <tbody>

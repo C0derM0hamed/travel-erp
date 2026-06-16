@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Office extends Model
 {
-    protected $fillable = ['office_code', 'office_name', 'logo', 'is_active'];
+    protected $fillable = ['office_code', 'office_name', 'logo', 'is_active', 'default_currency_id'];
 
     protected function casts(): array
     {
@@ -37,5 +37,10 @@ class Office extends Model
     public function operations(): HasMany
     {
         return $this->hasMany(Operation::class);
+    }
+
+    public function defaultCurrency()
+    {
+        return $this->belongsTo(Currency::class, 'default_currency_id');
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\CurrencyService;
 use App\Services\AccountingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -19,7 +20,11 @@ class OperationResource extends JsonResource
             'service_id' => $this->service_id,
             'vendor_id' => $this->vendor_id,
             'currency' => $this->currency,
-            'currency_label' => 'دينار كويتي',
+            'currency_code' => $this->currency,
+            'currency_id' => $this->currency_id,
+            'currency_label' => app(CurrencyService::class)->payloadForCode($this->currency, $this->office_id)['name'] ?? $this->currency,
+            'currency_symbol' => app(CurrencyService::class)->payloadForCode($this->currency, $this->office_id)['symbol'] ?? $this->currency,
+            'currency_meta' => app(CurrencyService::class)->payloadForCode($this->currency, $this->office_id),
             'client_price' => (float) $this->client_price,
             'vendor_cost' => (float) $this->vendor_cost,
             'profit' => (float) $this->profit,

@@ -36,7 +36,7 @@ class DeliveryReadinessTest extends TestCase
         $this->assertSame(1, Client::where('phone', '90007771')->count());
     }
 
-    public function test_non_kwd_operation_and_voucher_currency_are_rejected(): void
+    public function test_inactive_currency_is_rejected_and_active_usd_is_allowed(): void
     {
         $sales = User::where('role', 'sales')->first();
         $accountant = User::where('role', 'accountant')->first();
@@ -45,16 +45,25 @@ class DeliveryReadinessTest extends TestCase
             'client_id' => 1,
             'service_id' => 1,
             'vendor_id' => 1,
-            'currency' => 'USD',
+            'currency' => 'XXX',
             'client_price' => 100,
             'vendor_cost' => 50,
         ])->assertStatus(422)->assertJsonValidationErrors(['currency']);
+
+        $this->actingAs($sales)->postJson('/api/operations', [
+            'client_id' => 1,
+            'service_id' => 1,
+            'vendor_id' => 1,
+            'currency' => 'USD',
+            'client_price' => 100,
+            'vendor_cost' => 50,
+        ])->assertCreated();
 
         $this->actingAs($accountant)->postJson('/api/vouchers', [
             'type' => 'receipt',
             'party_type' => 'client',
             'party_id' => 1,
-            'currency' => 'USD',
+            'currency' => 'XXX',
             'amount' => 10,
             'safe_id' => 1,
         ])->assertStatus(422)->assertJsonValidationErrors(['currency']);

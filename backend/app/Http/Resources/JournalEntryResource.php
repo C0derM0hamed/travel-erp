@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\CurrencyService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -22,6 +23,11 @@ class JournalEntryResource extends JsonResource
             'party_name' => $this->party_name ?? '',
             'debit' => (float) $this->debit,
             'credit' => (float) $this->credit,
+            'currency' => $this->currency,
+            'currency_code' => $this->currency,
+            'currency_id' => $this->currency_id,
+            'currency_symbol' => app(CurrencyService::class)->payloadForCode($this->currency, $this->office_id)['symbol'] ?? $this->currency,
+            'currency_meta' => app(CurrencyService::class)->payloadForCode($this->currency, $this->office_id),
             'desc' => $this->description ?? '',
         ];
     }

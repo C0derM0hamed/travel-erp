@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BootstrapController;
 use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\CurrencyController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\JournalController;
@@ -101,4 +102,10 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     Route::patch('/offices/{office}', [OfficeController::class, 'update']);
     Route::post('/offices/{office}/logo', [OfficeController::class, 'uploadLogo']);
     Route::delete('/offices/{office}/logo', [OfficeController::class, 'deleteLogo']);
+    Route::get('/currencies', [CurrencyController::class, 'index']);
+    Route::post('/currencies', [CurrencyController::class, 'store'])->middleware('idempotency');
+    Route::patch('/currencies/{currency}', [CurrencyController::class, 'update']);
+    Route::patch('/currencies/{currency}/activate', [CurrencyController::class, 'activate']);
+    Route::patch('/currencies/{currency}/deactivate', [CurrencyController::class, 'deactivate']);
+    Route::patch('/currencies/{currency}/default', [CurrencyController::class, 'setDefault']);
 });

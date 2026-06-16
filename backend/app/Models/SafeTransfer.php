@@ -11,7 +11,7 @@ class SafeTransfer extends Model
     use BelongsToOffice, HasFactory;
 
     protected $fillable = [
-        'office_id', 'ref', 'from_safe_id', 'to_safe_id', 'amount', 'currency',
+        'office_id', 'ref', 'from_safe_id', 'to_safe_id', 'amount', 'currency', 'currency_id',
         'transfer_date', 'notes', 'created_by',
     ];
 
@@ -36,5 +36,10 @@ class SafeTransfer extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function currencyModel()
+    {
+        return $this->belongsTo(Currency::class, 'currency_id');
     }
 }

@@ -34,7 +34,7 @@ class StoreVoucherRequest extends FormRequest
                 'integer',
             ],
             'amount' => ['required', 'numeric', 'decimal:0,3', 'gt:0', 'min:1', 'max:99999.999'],
-            'currency' => ['nullable', Rule::in(['KWD'])],
+            'currency' => ['nullable', Rule::exists('currencies', 'code')->where('is_active', true)],
             'method' => ['nullable', Rule::in(['cash', 'bank', 'knet', 'check'])],
             'safe_id' => ['required', $this->scopedExists('safes')],
             'operation_id' => ['nullable', $this->scopedExists('operations')],
@@ -58,7 +58,7 @@ class StoreVoucherRequest extends FormRequest
             if ($type === 'payment' && $this->filled('safe_id') && Safe::whereKey($this->input('safe_id'))->exists()) {
                 $safeBalance = $accounting->safeBalance((int) $this->input('safe_id'), $officeId);
                 if ($amount > $safeBalance + 0.001) {
-                    $validator->errors()->add('amount', 'المبلغ يتجاوز رصيد الصندوق/البنك المتاح ('.number_format($safeBalance, 3).' د.ك)');
+                    $validator->errors()->add('amount', 'المبلغ يتجاوز رصيد الصندوق/البنك المتاح ('.number_format($safeBalance, 3).')');
                 }
             }
 
@@ -89,7 +89,7 @@ class StoreVoucherRequest extends FormRequest
                 if ($outstanding <= 0) {
                     $validator->errors()->add('amount', 'لا يوجد رصيد مستحق على هذا العميل');
                 } elseif ($amount > $outstanding + 0.001) {
-                    $validator->errors()->add('amount', 'المبلغ يتجاوز الرصيد المستحق ('.number_format($outstanding, 3).' د.ك)');
+                    $validator->errors()->add('amount', 'المبلغ يتجاوز الرصيد المستحق ('.number_format($outstanding, 3).')');
                 }
             }
 
@@ -101,7 +101,7 @@ class StoreVoucherRequest extends FormRequest
                 if ($owed <= 0) {
                     $validator->errors()->add('amount', 'لا يوجد رصيد مستحق لهذا المورد');
                 } elseif ($amount > $owed + 0.001) {
-                    $validator->errors()->add('amount', 'المبلغ يتجاوز الرصيد المستحق ('.number_format($owed, 3).' د.ك)');
+                    $validator->errors()->add('amount', 'المبلغ يتجاوز الرصيد المستحق ('.number_format($owed, 3).')');
                 }
             }
         });
@@ -114,10 +114,10 @@ class StoreVoucherRequest extends FormRequest
             'party_id.required' => 'يجب تحديد الطرف عند اختيار عميل أو مورد.',
             'amount.required' => 'يرجى إدخال مبلغ السند.',
             'amount.gt' => 'يجب أن يكون مبلغ السند أكبر من صفر.',
-            'amount.min' => 'الحد الأدنى للمبلغ 1 د.ك.',
+            'amount.min' => 'الحد الأدنى للمبلغ 1.',
             'safe_id.required' => 'يرجى اختيار الصندوق أو الحساب البنكي.',
             'date.before_or_equal' => 'تاريخ السند لا يمكن أن يكون في المستقبل.',
-            'currency.in' => 'النظام المحاسبي يدعم الدينار الكويتي فقط حالياً.',
+            'currency.exists' => 'العملة المحددة غير مفعلة أو غير موجودة.',
         ]);
     }
 }

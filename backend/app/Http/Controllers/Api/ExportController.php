@@ -8,6 +8,7 @@ use App\Models\Operation;
 use App\Models\Vendor;
 use App\Models\Voucher;
 use App\Services\AccountingService;
+use App\Services\CurrencyService;
 use App\Services\Exports\ExcelExportService;
 use App\Services\Exports\ExportLabels;
 use App\Services\Exports\ExportQueryService;
@@ -37,17 +38,20 @@ class ExportController extends ApiController
         Gate::authorize('viewAny', Operation::class);
         $format = $this->validatedFormat($request);
 
-        $headers = ['المرجع', 'التاريخ', 'العميل', 'الخدمة', 'المورد', 'سعر العميل', 'التكلفة', 'الربح', 'الحالة'];
+        $headers = ['المرجع', 'التاريخ', 'العميل', 'الخدمة', 'المورد', 'العملة', 'سعر العميل', 'التكلفة', 'الربح', 'الحالة'];
         $rows = $this->lazyRows($this->queries->operationsQuery($request), function (Operation $operation) {
+            $currency = app(CurrencyService::class)->payloadForCode($operation->currency, $operation->office_id);
+
             return [
                 $operation->ref,
                 $operation->op_date?->toDateString() ?? '',
                 $operation->client?->name ?? '',
                 $operation->service?->name ?? '',
                 $operation->vendor?->name ?? '',
-                (float) $operation->client_price,
-                (float) $operation->vendor_cost,
-                (float) $operation->profit,
+                $currency['code'] ?? $operation->currency,
+                ExportLabels::formatAmount((float) $operation->client_price, $operation->currency, $operation->office_id),
+                ExportLabels::formatAmount((float) $operation->vendor_cost, $operation->currency, $operation->office_id),
+                ExportLabels::formatAmount((float) $operation->profit, $operation->currency, $operation->office_id),
                 ExportLabels::operationStatus($operation->status),
             ];
         });
@@ -64,15 +68,15 @@ class ExportController extends ApiController
         $journalRows = JournalEntry::with('account')->where('operation_id', $operation->id)->orderBy('id')->get()
             ->map(fn (JournalEntry $j) => [
                 $j->account?->name ?? '',
-                ExportLabels::formatAmount((float) $j->debit),
-                ExportLabels::formatAmount((float) $j->credit),
+                ExportLabels::formatAmount((float) $j->debit, $j->currency, $j->office_id),
+                ExportLabels::formatAmount((float) $j->credit, $j->currency, $j->office_id),
                 $j->description ?? '',
             ])->all();
 
         $voucherRows = $operation->vouchers->map(fn (Voucher $v) => [
             $v->ref,
             ExportLabels::voucherType($v->type),
-            ExportLabels::formatAmount((float) $v->amount),
+            ExportLabels::formatAmount((float) $v->amount, $v->currency, $v->office_id),
             ExportLabels::method($v->method),
             $v->voucher_date?->toDateString() ?? '',
         ])->all();
@@ -110,6 +114,8 @@ class ExportController extends ApiController
 
         $headers = ['#', 'الاسم', 'الهاتف', 'الرقم المدني', 'الإيميل', 'الجنسية', 'الرصيد'];
         $rows = $this->lazyRows($this->queries->clientsQuery($request), function (Client $client) {
+            $groups = $this->accounting->clientBalanceByCurrency($client->id, $client->office_id);
+
             return [
                 $client->id,
                 $client->name,
@@ -117,7 +123,7 @@ class ExportController extends ApiController
                 $client->civil_id ?? '',
                 $client->email ?? '',
                 $client->nationality ?? '',
-                $this->accounting->clientBalance($client->id),
+                ExportLabels::formatGroupedBalances($groups, 'balance', $client->office_id),
             ];
         });
 
@@ -129,25 +135,32 @@ class ExportController extends ApiController
         Gate::authorize('view', $client);
         $format = $this->validatedFormat($request);
 
-        $running = 0.0;
+        $runningByCurrency = [];
         $rows = [];
+        $summaryByCurrency = $this->accounting->clientStatementSummary(
+            $client->id,
+            $client->office_id,
+            $request->input('from'),
+            $request->input('to'),
+        );
         foreach ($this->queries->clientStatementQuery($client, $request)->lazy(500) as $journal) {
-            $running += (float) $journal->debit - (float) $journal->credit;
+            $code = strtoupper($journal->currency ?: app(CurrencyService::class)->officeCurrency(null, $client->office_id)->code);
+            $runningByCurrency[$code] = ($runningByCurrency[$code] ?? 0) + (float) $journal->debit - (float) $journal->credit;
             $rows[] = [
                 $journal->entry_date?->toDateString() ?? '',
                 $journal->ref,
                 $journal->description ?? '',
-                (float) $journal->debit,
-                (float) $journal->credit,
-                round($running, 3),
+                ExportLabels::formatAmount((float) $journal->debit, $journal->currency, $journal->office_id),
+                ExportLabels::formatAmount((float) $journal->credit, $journal->currency, $journal->office_id),
+                ExportLabels::formatAmount(round($runningByCurrency[$code], 3), $journal->currency, $journal->office_id),
             ];
         }
 
-        $summary = [
-            ['label' => 'إجمالي المشتريات', 'value' => ExportLabels::formatAmount($this->clientPurchases($client, $request))],
-            ['label' => 'المدفوع', 'value' => ExportLabels::formatAmount($this->accounting->clientReceiptsTotal($client->id))],
-            ['label' => 'الرصيد المتبقي', 'value' => ExportLabels::formatAmount($this->accounting->clientBalance($client->id))],
-        ];
+        $summary = ExportLabels::statementSummaryEntries($summaryByCurrency, [
+            'purchases' => 'إجمالي المشتريات',
+            'paid' => 'المدفوع',
+            'balance' => 'الرصيد المتبقي',
+        ], $client->office_id);
 
         $branding = $this->brandingForOffice($client->office_id);
 
@@ -170,13 +183,15 @@ class ExportController extends ApiController
 
         $headers = ['#', 'الاسم', 'التصنيف', 'الهاتف', 'جهة الاتصال', 'الرصيد'];
         $rows = $this->lazyRows($this->queries->vendorsQuery($request), function (Vendor $vendor) {
+            $groups = $this->accounting->vendorBalanceByCurrency($vendor->id, $vendor->office_id);
+
             return [
                 $vendor->id,
                 $vendor->name,
                 ExportLabels::vendorCategory($vendor->category),
                 $vendor->phone ?? '',
                 $vendor->contact ?? '',
-                $this->accounting->vendorBalance($vendor->id),
+                ExportLabels::formatGroupedBalances($groups, 'balance', $vendor->office_id),
             ];
         });
 
@@ -189,23 +204,27 @@ class ExportController extends ApiController
         $format = $this->validatedFormat($request);
 
         $rows = [];
-        $totalOwed = 0.0;
+        $summaryByCurrency = $this->accounting->vendorStatementSummary(
+            $vendor->id,
+            $vendor->office_id,
+            $request->input('from'),
+            $request->input('to'),
+        );
         foreach ($this->queries->vendorStatementQuery($vendor, $request)->lazy(500) as $journal) {
-            $totalOwed += (float) $journal->credit;
             $rows[] = [
                 $journal->entry_date?->toDateString() ?? '',
                 $journal->ref,
                 $journal->description ?? '',
-                (float) $journal->debit,
-                (float) $journal->credit,
+                ExportLabels::formatAmount((float) $journal->debit, $journal->currency, $journal->office_id),
+                ExportLabels::formatAmount((float) $journal->credit, $journal->currency, $journal->office_id),
             ];
         }
 
-        $summary = [
-            ['label' => 'إجمالي المستحقات', 'value' => ExportLabels::formatAmount($totalOwed)],
-            ['label' => 'المدفوع', 'value' => ExportLabels::formatAmount($this->accounting->vendorPaymentsTotal($vendor->id))],
-            ['label' => 'الرصيد الحالي', 'value' => ExportLabels::formatAmount($this->accounting->vendorBalance($vendor->id))],
-        ];
+        $summary = ExportLabels::statementSummaryEntries($summaryByCurrency, [
+            'credits' => 'إجمالي المستحقات',
+            'paid' => 'المدفوع',
+            'balance' => 'الرصيد الحالي',
+        ], $vendor->office_id);
 
         $branding = $this->brandingForOffice($vendor->office_id);
 
@@ -236,7 +255,7 @@ class ExportController extends ApiController
                 ExportLabels::voucherType($voucher->type),
                 $voucher->voucher_date?->toDateString() ?? '',
                 ExportLabels::partyName($voucher),
-                (float) $voucher->amount,
+                ExportLabels::formatAmount((float) $voucher->amount, $voucher->currency, $voucher->office_id),
                 ExportLabels::method($voucher->method),
                 ExportLabels::safeName($voucher->safe_id),
                 $reversed ? 'ملغى' : 'فعّال',
@@ -258,7 +277,7 @@ class ExportController extends ApiController
             ['label' => 'النوع', 'value' => ExportLabels::voucherType($voucher->type)],
             ['label' => 'التاريخ', 'value' => $voucher->voucher_date?->toDateString() ?? ''],
             ['label' => 'الطرف', 'value' => ExportLabels::partyName($voucher)],
-            ['label' => 'المبلغ', 'value' => ExportLabels::formatAmount((float) $voucher->amount)],
+            ['label' => 'المبلغ', 'value' => ExportLabels::formatAmount((float) $voucher->amount, $voucher->currency, $voucher->office_id)],
             ['label' => 'الطريقة', 'value' => ExportLabels::method($voucher->method)],
             ['label' => 'الصندوق', 'value' => $voucher->safe?->name ?? ExportLabels::safeName($voucher->safe_id)],
             ['label' => 'العملية', 'value' => $voucher->operation?->ref ?? '—'],
@@ -307,8 +326,8 @@ class ExportController extends ApiController
                 $journal->entry_date?->toDateString() ?? '',
                 $journal->ref,
                 $journal->account?->name ?? '',
-                (float) $journal->debit,
-                (float) $journal->credit,
+                ExportLabels::formatAmount((float) $journal->debit, $journal->currency, $journal->office_id),
+                ExportLabels::formatAmount((float) $journal->credit, $journal->currency, $journal->office_id),
                 $journal->description ?? '',
             ];
         });

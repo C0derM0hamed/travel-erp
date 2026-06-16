@@ -11,7 +11,7 @@ class SafeResolver
 {
     public function __construct(private OfficeContext $officeContext) {}
 
-    public function resolveForPaymentMethod(string $method, ?int $officeId = null): int
+    public function resolveForPaymentMethod(string $method, ?int $officeId = null, ?string $currency = null): int
     {
         $officeId ??= $this->officeContext->requireId();
         $type = in_array($method, ['bank', 'knet', 'check'], true) ? 'bank' : 'cash';
@@ -19,6 +19,7 @@ class SafeResolver
         $safe = Safe::withoutGlobalScopes()
             ->where('office_id', $officeId)
             ->where('type', $type)
+            ->when($currency, fn ($query) => $query->where('currency', $currency))
             ->when($this->hasIsActiveColumn(), fn ($query) => $query->where('is_active', true))
             ->orderBy('id')
             ->first();

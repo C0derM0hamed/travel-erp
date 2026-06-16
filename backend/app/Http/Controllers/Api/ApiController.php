@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Client;
+use App\Models\Currency;
 use App\Models\JournalEntry;
 use App\Models\Operation;
 use App\Models\Safe;
@@ -11,6 +12,7 @@ use App\Models\User;
 use App\Models\Vendor;
 use App\Models\Voucher;
 use App\Services\AccountingService;
+use App\Services\CurrencyService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -89,6 +91,8 @@ abstract class ApiController extends Controller
                 'logo' => $office->logo,
                 'logo_url' => app(\App\Services\OfficeLogoService::class)->url($office->logo),
                 'is_active' => (bool) $office->is_active,
+                'default_currency_id' => $office->default_currency_id,
+                'default_currency' => $this->currencyPayloadForCode($office->defaultCurrency?->code),
             ] : null,
             'current_office_id' => $context->id(),
         ];
@@ -105,6 +109,8 @@ abstract class ApiController extends Controller
             'logo' => $office->logo,
             'logo_url' => $logos->url($office->logo),
             'is_active' => (bool) $office->is_active,
+            'default_currency_id' => $office->default_currency_id,
+            'default_currency' => $this->currencyPayloadForCode($office->defaultCurrency?->code, $office->id),
         ];
     }
 
@@ -115,13 +121,17 @@ abstract class ApiController extends Controller
 
         return $data + [
             'balance' => $this->accounting->clientBalance($client->id),
+            'balance_by_currency' => $this->accounting->clientBalanceByCurrency($client->id),
             'operations_count' => Operation::where('client_id', $client->id)->where('status', '!=', 'cancelled')->count(),
         ];
     }
 
     protected function vendorPayload(Vendor $vendor): array
     {
-        return $vendor->toArray() + ['balance' => $this->accounting->vendorBalance($vendor->id)];
+        return $vendor->toArray() + [
+            'balance' => $this->accounting->vendorBalance($vendor->id),
+            'balance_by_currency' => $this->accounting->vendorBalanceByCurrency($vendor->id),
+        ];
     }
 
     protected function safePayload(Safe $safe): array
@@ -131,6 +141,8 @@ abstract class ApiController extends Controller
             'name' => $safe->name,
             'type' => $safe->type,
             'currency' => $safe->currency,
+            'currency_symbol' => $this->currencySymbol($safe->currency, $safe->office_id),
+            'currency_meta' => $this->currencyPayloadForCode($safe->currency, $safe->office_id),
             'initial' => (float) $safe->opening_balance,
             'opening_balance' => (float) $safe->opening_balance,
             'is_active' => (bool) ($safe->is_active ?? true),
@@ -146,7 +158,10 @@ abstract class ApiController extends Controller
             'service_id' => $operation->service_id,
             'vendor_id' => $operation->vendor_id,
             'currency' => $operation->currency,
-            'currency_label' => 'دينار كويتي',
+            'currency_id' => $operation->currency_id,
+            'currency_label' => $this->currencyName($operation->currency, $operation->office_id),
+            'currency_symbol' => $this->currencySymbol($operation->currency, $operation->office_id),
+            'currency_meta' => $this->currencyPayloadForCode($operation->currency, $operation->office_id),
             'client_price' => (float) $operation->client_price,
             'vendor_cost' => (float) $operation->vendor_cost,
             'profit' => (float) $operation->profit,
@@ -180,6 +195,9 @@ abstract class ApiController extends Controller
             'party_id' => $voucher->party_id,
             'amount' => (float) $voucher->amount,
             'currency' => $voucher->currency,
+            'currency_id' => $voucher->currency_id,
+            'currency_symbol' => $this->currencySymbol($voucher->currency, $voucher->office_id),
+            'currency_meta' => $this->currencyPayloadForCode($voucher->currency, $voucher->office_id),
             'method' => $voucher->method,
             'method_label' => $this->methodLabel($voucher->method),
             'safe_id' => $voucher->safe_id,
@@ -209,8 +227,27 @@ abstract class ApiController extends Controller
             'party_name' => $journal->party_name ?? '',
             'debit' => (float) $journal->debit,
             'credit' => (float) $journal->credit,
+            'currency' => $journal->currency,
+            'currency_id' => $journal->currency_id,
+            'currency_symbol' => $this->currencySymbol($journal->currency, $journal->office_id),
+            'currency_meta' => $this->currencyPayloadForCode($journal->currency, $journal->office_id),
             'desc' => $journal->description ?? '',
         ];
+    }
+
+    protected function currencyPayloadForCode(?string $code, ?int $officeId = null): ?array
+    {
+        return app(CurrencyService::class)->payloadForCode($code, $officeId);
+    }
+
+    protected function currencySymbol(?string $code, ?int $officeId = null): string
+    {
+        return $this->currencyPayloadForCode($code, $officeId)['symbol'] ?? ($code ?: '');
+    }
+
+    protected function currencyName(?string $code, ?int $officeId = null): string
+    {
+        return $this->currencyPayloadForCode($code, $officeId)['name'] ?? ($code ?: '');
     }
 
     protected function methodLabel(?string $method): string

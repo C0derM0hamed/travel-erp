@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Client;
+use App\Models\Currency;
 use App\Models\Office;
 use App\Models\Operation;
 use App\Models\Safe;
@@ -12,6 +13,7 @@ use App\Models\User;
 use App\Models\Vendor;
 use App\Models\Voucher;
 use App\Policies\ClientPolicy;
+use App\Policies\CurrencyPolicy;
 use App\Policies\OfficePolicy;
 use App\Policies\OperationPolicy;
 use App\Policies\SafePolicy;
@@ -28,6 +30,7 @@ class AuthServiceProvider extends ServiceProvider
 {
     protected $policies = [
         Client::class => ClientPolicy::class,
+        Currency::class => CurrencyPolicy::class,
         Office::class => OfficePolicy::class,
         Operation::class => OperationPolicy::class,
         Safe::class => SafePolicy::class,

@@ -14,6 +14,7 @@ class SafeTransferService
         private OfficeContext $officeContext,
         private ReferenceService $references,
         private AccountingService $accounting,
+        private CurrencyService $currencies,
     ) {}
 
     public function create(array $data, int $userId): SafeTransfer
@@ -26,13 +27,22 @@ class SafeTransferService
         $this->validateTransfer($fromSafe, $toSafe, $amount, $officeId);
 
         return DB::transaction(function () use ($data, $userId, $officeId, $fromSafe, $toSafe, $amount) {
+            $currency = isset($data['currency'])
+                ? $this->currencies->activeByCode($data['currency'])
+                : ($this->currencies->byCode($fromSafe->currency) ?? $this->currencies->officeCurrency(officeId: $officeId));
+
+            if ($currency->code !== $fromSafe->currency || $currency->code !== $toSafe->currency) {
+                throw ValidationException::withMessages(['currency' => 'عملة التحويل يجب أن تطابق عملة الصندوقين.']);
+            }
+
             $transfer = SafeTransfer::create([
                 'office_id' => $officeId,
                 'ref' => $this->references->transferRef($officeId),
                 'from_safe_id' => $fromSafe->id,
                 'to_safe_id' => $toSafe->id,
                 'amount' => $amount,
-                'currency' => $data['currency'] ?? 'KWD',
+                'currency' => $currency->code,
+                'currency_id' => $currency->id,
                 'transfer_date' => $data['transfer_date'] ?? now()->toDateString(),
                 'notes' => $data['notes'] ?? null,
                 'created_by' => $userId,

@@ -9,6 +9,7 @@ use App\Models\Safe;
 use App\Models\Service;
 use App\Models\User;
 use App\Models\Vendor;
+use App\Services\CurrencyService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -65,6 +66,7 @@ class ReportController extends ApiController
 
         $totalsQuery = clone $query;
         $totalsData = $totalsQuery->get();
+        $currencies = app(CurrencyService::class);
 
         $paginated = $this->paginate($request, $query);
 
@@ -74,6 +76,15 @@ class ReportController extends ApiController
                 'cost' => (float) $totalsData->sum('vendor_cost'),
                 'profit' => (float) $totalsData->sum('profit'),
             ],
+            'totals_by_currency' => collect($currencies->groupedSums($totalsData, ['client_price', 'vendor_cost', 'profit']))
+                ->map(fn (array $row) => [
+                    'code' => $row['code'],
+                    'symbol' => $row['symbol'],
+                    'name' => $row['name'],
+                    'revenue' => (float) ($row['client_price'] ?? 0),
+                    'cost' => (float) ($row['vendor_cost'] ?? 0),
+                    'profit' => (float) ($row['profit'] ?? 0),
+                ])->values(),
             'rows' => $paginated->getCollection()->map(fn (Operation $operation) => $this->operationPayload($operation))->values(),
             'meta' => $this->paginationMeta($paginated),
         ];
@@ -81,10 +92,14 @@ class ReportController extends ApiController
 
     private function profit(Request $request): array
     {
-        return ['rows' => Service::orderBy('id')->get()->map(function (Service $service) use ($request) {
+        $currencies = app(CurrencyService::class);
+        $allOps = collect();
+
+        $rows = Service::orderBy('id')->get()->map(function (Service $service) use ($request, &$allOps) {
             $opsQuery = Operation::visible()->where('service_id', $service->id)->where('status', '!=', 'cancelled');
             $this->applyOperationDateRange($opsQuery, $request);
             $ops = $opsQuery->get();
+            $allOps = $allOps->merge($ops);
 
             return [
                 'name' => $service->name,
@@ -94,7 +109,20 @@ class ReportController extends ApiController
                 'cost' => (float) $ops->sum('vendor_cost'),
                 'profit' => (float) $ops->sum('profit'),
             ];
-        })->sortByDesc('profit')->values()];
+        })->sortByDesc('profit')->values();
+
+        return [
+            'rows' => $rows,
+            'totals_by_currency' => collect($currencies->groupedSums($allOps, ['client_price', 'vendor_cost', 'profit']))
+                ->map(fn (array $row) => [
+                    'code' => $row['code'],
+                    'symbol' => $row['symbol'],
+                    'name' => $row['name'],
+                    'revenue' => (float) ($row['client_price'] ?? 0),
+                    'cost' => (float) ($row['vendor_cost'] ?? 0),
+                    'profit' => (float) ($row['profit'] ?? 0),
+                ])->values(),
+        ];
     }
 
     private function aging(Request $request): array
@@ -175,7 +203,13 @@ class ReportController extends ApiController
             ->values();
 
         return [
-            'safes' => $safes->map(fn (Safe $safe) => ['id' => $safe->id, 'name' => $safe->name, 'type' => $safe->type])->values(),
+            'safes' => $safes->map(fn (Safe $safe) => [
+                'id' => $safe->id,
+                'name' => $safe->name,
+                'type' => $safe->type,
+                'currency' => $safe->currency,
+                'currency_symbol' => app(CurrencyService::class)->payloadForCode($safe->currency, $safe->office_id)['symbol'] ?? $safe->currency,
+            ])->values(),
             'rows' => $dates->map(function ($date) use (&$running, $safes) {
                 $safeEntries = JournalEntry::with('account')->whereDate('entry_date', $date)->whereHas('account', fn ($query) => $query->whereNotNull('safe_id'))->get();
                 $in = (float) $safeEntries->sum('debit');
@@ -205,7 +239,12 @@ class ReportController extends ApiController
     private function clientsDebt(Request $request): array
     {
         $rows = Client::visible()->get()->map(function (Client $client) use ($request) {
-            $balance = $this->accounting->clientBalance($client->id);
+            $summaryByCurrency = $this->accounting->clientStatementSummary(
+                $client->id,
+                $client->office_id,
+                $request->input('from'),
+                $request->input('to'),
+            );
             $opsQuery = Operation::visible()->where('client_id', $client->id)->where('status', '!=', 'cancelled');
             $this->applyOperationDateRange($opsQuery, $request);
 
@@ -215,26 +254,36 @@ class ReportController extends ApiController
                 }
             }
 
+            if (! collect($summaryByCurrency)->contains(fn (array $group) => ($group['balance'] ?? 0) > 0.001)) {
+                return null;
+            }
+
             return [
                 'id' => $client->id,
                 'name' => $client->name,
                 'phone' => $client->phone,
                 'nationality' => $client->nationality,
-                'totalPurchases' => (float) (clone $opsQuery)->sum('client_price'),
-                'totalPaid' => $this->accounting->clientReceiptsTotal($client->id),
-                'balance' => $balance,
+                'summary_by_currency' => $summaryByCurrency,
+                'totalPurchases' => (float) collect($summaryByCurrency)->sum('purchases'),
+                'totalPaid' => (float) collect($summaryByCurrency)->sum('paid'),
+                'balance' => (float) collect($summaryByCurrency)->sum('balance'),
                 'opsCount' => (clone $opsQuery)->count(),
                 'lastOpDate' => (clone $opsQuery)->orderByDesc('op_date')->value('op_date') ?: '—',
             ];
-        })->filter()->where('balance', '>', 0)->sortByDesc('balance')->values();
+        })->filter()->sortByDesc('balance')->values();
 
-        return ['rows' => $rows, 'totalDebt' => (float) $rows->sum('balance')];
+        return ['rows' => $rows, 'totalDebt' => (float) $rows->sum('balance'), 'totals_by_currency' => $this->balanceTotalsByCurrency($rows)];
     }
 
     private function vendorsBalance(Request $request): array
     {
         $rows = Vendor::all()->map(function (Vendor $vendor) use ($request) {
-            $balance = $this->accounting->vendorBalance($vendor->id);
+            $summaryByCurrency = $this->accounting->vendorStatementSummary(
+                $vendor->id,
+                $vendor->office_id,
+                $request->input('from'),
+                $request->input('to'),
+            );
             $opsQuery = Operation::where('vendor_id', $vendor->id)->where('status', '!=', 'cancelled');
             $this->applyOperationDateRange($opsQuery, $request);
 
@@ -244,20 +293,54 @@ class ReportController extends ApiController
                 }
             }
 
+            if (! collect($summaryByCurrency)->contains(fn (array $group) => ($group['balance'] ?? 0) > 0.001)) {
+                return null;
+            }
+
             return [
                 'id' => $vendor->id,
                 'name' => $vendor->name,
                 'category' => $vendor->category,
                 'phone' => $vendor->phone,
                 'contact' => $vendor->contact,
-                'totalServices' => (float) (clone $opsQuery)->sum('vendor_cost'),
-                'totalPaid' => $this->accounting->vendorPaymentsTotal($vendor->id),
-                'balance' => $balance,
+                'summary_by_currency' => $summaryByCurrency,
+                'totalServices' => (float) collect($summaryByCurrency)->sum('credits'),
+                'totalPaid' => (float) collect($summaryByCurrency)->sum('paid'),
+                'balance' => (float) collect($summaryByCurrency)->sum('balance'),
                 'opsCount' => (clone $opsQuery)->count(),
                 'lastOpDate' => (clone $opsQuery)->orderByDesc('op_date')->value('op_date') ?: '—',
             ];
-        })->filter()->where('balance', '>', 0)->sortByDesc('balance')->values();
+        })->filter()->sortByDesc('balance')->values();
 
-        return ['rows' => $rows, 'totalOwed' => (float) $rows->sum('balance')];
+        return ['rows' => $rows, 'totalOwed' => (float) $rows->sum('balance'), 'totals_by_currency' => $this->balanceTotalsByCurrency($rows)];
+    }
+
+    /** @param \Illuminate\Support\Collection<int, array<string, mixed>> $rows */
+    private function balanceTotalsByCurrency($rows): array
+    {
+        $currencies = app(CurrencyService::class);
+        $totals = [];
+
+        foreach ($rows as $row) {
+            foreach ($row['summary_by_currency'] ?? $row['balance_by_currency'] ?? [] as $group) {
+                $code = strtoupper($group['code'] ?? '');
+                if (! $code) {
+                    continue;
+                }
+                $totals[$code] = ($totals[$code] ?? 0) + (float) ($group['balance'] ?? 0);
+            }
+        }
+
+        return collect($totals)->map(function (float $amount, string $code) use ($currencies) {
+            $currency = $currencies->byCode($code) ?? $currencies->defaultCurrency();
+            $payload = $currencies->payload($currency);
+
+            return [
+                'code' => $payload['code'],
+                'symbol' => $payload['symbol'],
+                'name' => $payload['name'],
+                'amount' => round($amount, 3),
+            ];
+        })->values()->all();
     }
 }

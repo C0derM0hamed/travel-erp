@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ChartOfAccount;
 use App\Models\Office;
 use App\Models\Safe;
+use App\Services\CurrencyService;
 use Illuminate\Support\Facades\DB;
 
 class OfficeProvisioningService
@@ -17,13 +18,17 @@ class OfficeProvisioningService
                 'office_name' => $data['office_name'],
                 'logo' => $data['logo'] ?? null,
                 'is_active' => $data['is_active'] ?? true,
+                'default_currency_id' => $data['default_currency_id'] ?? app(CurrencyService::class)->defaultCurrency()->id,
             ]);
+
+            $currency = app(CurrencyService::class)->officeCurrency($office);
 
             $cashSafe = Safe::withoutGlobalScopes()->create([
                 'office_id' => $office->id,
                 'name' => 'الصندوق الرئيسي',
                 'type' => 'cash',
-                'currency' => 'KWD',
+                'currency' => $currency->code,
+                'currency_id' => $currency->id,
                 'opening_balance' => 0,
                 'is_active' => true,
             ]);
@@ -32,7 +37,8 @@ class OfficeProvisioningService
                 'office_id' => $office->id,
                 'name' => 'البنك',
                 'type' => 'bank',
-                'currency' => 'KWD',
+                'currency' => $currency->code,
+                'currency_id' => $currency->id,
                 'opening_balance' => 0,
                 'is_active' => true,
             ]);

@@ -10,7 +10,7 @@ class Safe extends Model
 {
     use BelongsToOffice, HasFactory;
 
-    protected $fillable = ['office_id', 'name', 'type', 'currency', 'opening_balance', 'is_active'];
+    protected $fillable = ['office_id', 'name', 'type', 'currency', 'currency_id', 'opening_balance', 'is_active'];
 
     protected function casts(): array
     {
@@ -25,5 +25,10 @@ class Safe extends Model
     public function vouchers()
     {
         return $this->hasMany(Voucher::class);
+    }
+
+    public function currencyModel()
+    {
+        return $this->belongsTo(Currency::class, 'currency_id');
     }
 }

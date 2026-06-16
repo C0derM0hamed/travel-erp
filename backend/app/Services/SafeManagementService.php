@@ -10,18 +10,23 @@ use Illuminate\Validation\ValidationException;
 
 class SafeManagementService
 {
-    public function __construct(private OfficeContext $officeContext) {}
+    public function __construct(private OfficeContext $officeContext, private CurrencyService $currencies) {}
 
     public function create(array $data): Safe
     {
         $officeId = $this->officeContext->requireId();
 
         return DB::transaction(function () use ($data, $officeId) {
+            $currency = isset($data['currency'])
+                ? $this->currencies->activeByCode($data['currency'])
+                : $this->currencies->officeCurrency(officeId: $officeId);
+
             $safe = Safe::create([
                 'office_id' => $officeId,
                 'name' => $data['name'],
                 'type' => $data['type'],
-                'currency' => $data['currency'] ?? 'KWD',
+                'currency' => $currency->code,
+                'currency_id' => $currency->id,
                 'opening_balance' => $data['opening_balance'] ?? 0,
                 'is_active' => $data['is_active'] ?? true,
             ]);
@@ -40,7 +45,14 @@ class SafeManagementService
 
     public function update(Safe $safe, array $data): Safe
     {
-        $safe->update(collect($data)->only(['name', 'type', 'currency', 'opening_balance'])->filter(fn ($v) => $v !== null)->all());
+        $updates = collect($data)->only(['name', 'type', 'opening_balance'])->filter(fn ($v) => $v !== null)->all();
+        if (array_key_exists('currency', $data) && $data['currency'] !== null) {
+            $currency = $this->currencies->activeByCode($data['currency']);
+            $updates['currency'] = $currency->code;
+            $updates['currency_id'] = $currency->id;
+        }
+
+        $safe->update($updates);
 
         if ($safe->wasChanged('name') && $safe->account) {
             $safe->account->update(['name' => $safe->name]);

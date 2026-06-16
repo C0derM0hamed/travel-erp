@@ -10,7 +10,7 @@ class JournalEntry extends Model
 {
     use BelongsToOffice, HasFactory;
 
-    protected $fillable = ['office_id', 'entry_date', 'ref', 'source_type', 'source_id', 'operation_id', 'voucher_id', 'account_id', 'party_type', 'party_id', 'party_name', 'debit', 'credit', 'description'];
+    protected $fillable = ['office_id', 'entry_date', 'ref', 'source_type', 'source_id', 'operation_id', 'voucher_id', 'account_id', 'party_type', 'party_id', 'party_name', 'debit', 'credit', 'currency', 'currency_id', 'description'];
 
     protected function casts(): array
     {
@@ -30,5 +30,10 @@ class JournalEntry extends Model
     public function voucher()
     {
         return $this->belongsTo(Voucher::class);
+    }
+
+    public function currencyModel()
+    {
+        return $this->belongsTo(Currency::class, 'currency_id');
     }
 }

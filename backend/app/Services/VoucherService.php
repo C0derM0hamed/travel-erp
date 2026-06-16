@@ -8,18 +8,32 @@ use Illuminate\Validation\ValidationException;
 
 class VoucherService
 {
-    public function __construct(private AccountingService $accounting, private ReferenceService $references, private OperationService $operations, private ActivityLogger $activityLogger) {}
+    public function __construct(private AccountingService $accounting, private ReferenceService $references, private OperationService $operations, private ActivityLogger $activityLogger, private CurrencyService $currencies) {}
 
     public function create(array $data, int $userId): Voucher
     {
         return DB::transaction(function () use ($data, $userId) {
+            $operation = isset($data['operation_id']) ? \App\Models\Operation::find($data['operation_id']) : null;
+            $safe = \App\Models\Safe::find($data['safe_id']);
+            $currency = isset($data['currency'])
+                ? $this->currencies->activeByCode($data['currency'])
+                : ($operation ? $this->currencies->byCode($operation->currency) : $this->currencies->officeCurrency(officeId: app(\App\Support\OfficeContext::class)->requireId()));
+
+            if ($operation && $operation->currency !== $currency->code) {
+                throw ValidationException::withMessages(['currency' => ['عملة السند يجب أن تطابق عملة العملية المرتبطة.']]);
+            }
+            if ($safe && $safe->currency !== $currency->code) {
+                throw ValidationException::withMessages(['currency' => ['عملة السند يجب أن تطابق عملة الصندوق/البنك.']]);
+            }
+
             $voucher = Voucher::create([
                 'ref' => $data['ref'] ?? $this->references->voucherRef($data['type']),
                 'type' => $data['type'],
                 'party_type' => $data['party_type'] ?? 'general',
                 'party_id' => $data['party_id'] ?? null,
                 'amount' => $data['amount'],
-                'currency' => $data['currency'] ?? 'KWD',
+                'currency' => $currency->code,
+                'currency_id' => $currency->id,
                 'method' => $data['method'] ?? 'cash',
                 'safe_id' => $data['safe_id'],
                 'operation_id' => $data['operation_id'] ?? null,

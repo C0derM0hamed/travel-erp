@@ -22,7 +22,7 @@ class UpdateSafeRequest extends FormRequest
         return [
             'name' => ['sometimes', 'required', 'string', 'max:120'],
             'type' => ['sometimes', 'required', Rule::in(['cash', 'bank'])],
-            'currency' => ['nullable', Rule::in(['KWD'])],
+            'currency' => ['nullable', Rule::exists('currencies', 'code')->where('is_active', true)],
             'opening_balance' => ['nullable', 'numeric', 'decimal:0,3', 'gte:0', 'max:999999.999'],
         ];
     }

@@ -6,6 +6,7 @@ use App\Models\Office;
 use App\Models\Safe;
 use App\Models\Service;
 use App\Models\User;
+use App\Services\CurrencyService;
 use App\Support\OfficeContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -39,11 +40,16 @@ class BootstrapController extends ApiController
                 : collect();
         });
 
+        $currencies = app(CurrencyService::class);
+
         return response()->json([
             'user' => $this->userPayload($user->load('office')),
             'users' => $users,
             'offices' => $offices,
             'current_office' => $context->office() ? $this->officePayload($context->office()) : null,
+            'currencies' => \App\Models\Currency::orderBy('code')->get()->map(fn ($currency) => $currencies->payload($currency)),
+            'active_currencies' => $currencies->activeCurrencies()->map(fn ($currency) => $currencies->payload($currency))->values(),
+            'default_currency' => $currencies->payload($currencies->defaultCurrency()),
             'services' => Service::orderBy('id')->get(),
             'safes' => Safe::with('account')->orderBy('id')->get()->map(fn (Safe $safe) => $this->safePayload($safe) + [
                 'balance' => $this->accounting->safeBalance($safe->id),

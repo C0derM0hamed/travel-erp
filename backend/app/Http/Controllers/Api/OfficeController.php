@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\Office;
 use App\Models\User;
 use App\Services\ActivityLogger;
+use App\Services\CurrencyService;
 use App\Services\OfficeLogoService;
 use App\Services\OfficeProvisioningService;
 use App\Support\OfficeContext;
@@ -32,6 +33,7 @@ class OfficeController extends ApiController
             'office_code' => ['required', 'string', 'max:50', 'unique:offices,office_code'],
             'office_name' => ['required', 'string', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],
+            'default_currency_id' => ['nullable', Rule::exists('currencies', 'id')->where('is_active', true)],
             'logo' => OfficeLogoService::validationRules(),
         ]);
 
@@ -54,6 +56,7 @@ class OfficeController extends ApiController
             'office_code' => ['sometimes', 'required', 'string', 'max:50', Rule::unique('offices', 'office_code')->ignore($office->id)],
             'office_name' => ['sometimes', 'required', 'string', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],
+            'default_currency_id' => ['sometimes', 'required', Rule::exists('currencies', 'id')->where('is_active', true)],
         ]);
 
         $office->update($data);
@@ -128,6 +131,8 @@ class OfficeController extends ApiController
             'logo' => $office->logo,
             'logo_url' => $logos->url($office->logo),
             'is_active' => (bool) $office->is_active,
+            'default_currency_id' => $office->default_currency_id,
+            'default_currency' => app(CurrencyService::class)->payloadForCode($office->defaultCurrency?->code, $office->id),
             'users_count' => User::where('office_id', $office->id)->count(),
         ];
     }

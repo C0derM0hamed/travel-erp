@@ -3,14 +3,27 @@
 @section('content')
     @if(!empty($summary))
         <table class="summary-table">
-            <tr>
+            @if(count($summary) <= 3)
+                <tr>
+                    @foreach($summary as $item)
+                        <td>
+                            <div class="summary-label">{{ $item['label'] }}</div>
+                            <div class="summary-value">{!! nl2br(e($item['value'])) !!}</div>
+                        </td>
+                    @endforeach
+                </tr>
+            @else
                 @foreach($summary as $item)
-                    <td>
-                        <div class="summary-label">{{ $item['label'] }}</div>
-                        <div class="summary-value">{{ $item['value'] }}</div>
-                    </td>
+                    <tr>
+                        <td style="width:45%">
+                            <div class="summary-label">{{ $item['label'] }}</div>
+                        </td>
+                        <td>
+                            <div class="summary-value">{!! nl2br(e($item['value'])) !!}</div>
+                        </td>
+                    </tr>
                 @endforeach
-            </tr>
+            @endif
         </table>
     @endif
 

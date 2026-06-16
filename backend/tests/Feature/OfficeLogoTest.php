@@ -141,13 +141,13 @@ class OfficeLogoTest extends TestCase
             ->assertJsonPath('current_office.logo_url', $logos->url($office->fresh()->logo));
     }
 
-    public function test_non_super_admin_cannot_upload_office_logo(): void
+    public function test_admin_can_upload_logo_for_own_office(): void
     {
         $admin = User::where('role', 'admin')->first();
-        $office = Office::where('office_code', 'MAIN')->first();
+        $office = Office::find($admin->office_id);
 
         $this->actingAsWithOffice($admin)
             ->post("/api/offices/{$office->id}/logo", ['logo' => UploadedFile::fake()->image('logo.png')])
-            ->assertForbidden();
+            ->assertOk();
     }
 }

@@ -11,7 +11,7 @@ class Operation extends Model
 {
     use BelongsToOffice, HasFactory, HasHiddenState;
 
-    protected $fillable = ['office_id', 'ref', 'client_id', 'service_id', 'vendor_id', 'currency', 'client_price', 'vendor_cost', 'profit', 'initial_payment', 'payment_method', 'notes', 'status', 'created_by', 'op_date', 'cancelled_at', 'is_hidden'];
+    protected $fillable = ['office_id', 'ref', 'client_id', 'service_id', 'vendor_id', 'currency', 'currency_id', 'client_price', 'vendor_cost', 'profit', 'initial_payment', 'payment_method', 'notes', 'status', 'created_by', 'op_date', 'cancelled_at', 'is_hidden'];
 
     protected function casts(): array
     {
@@ -54,5 +54,10 @@ class Operation extends Model
     public function journalEntries()
     {
         return $this->hasMany(JournalEntry::class);
+    }
+
+    public function currencyModel()
+    {
+        return $this->belongsTo(Currency::class, 'currency_id');
     }
 }

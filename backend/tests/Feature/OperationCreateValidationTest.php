@@ -83,7 +83,7 @@ class OperationCreateValidationTest extends TestCase
                 'vendor_cost' => 80,
             ])
             ->assertUnprocessable()
-            ->assertJsonFragment(['client_price' => ['الحد الأدنى لسعر العميل 1 د.ك.']]);
+            ->assertJsonFragment(['client_price' => ['الحد الأدنى لسعر العميل 1.']]);
 
         $this->actingAsWithOffice($sales)
             ->postJson('/api/operations', [

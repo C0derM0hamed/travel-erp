@@ -10,7 +10,7 @@ class Voucher extends Model
 {
     use BelongsToOffice, HasFactory;
 
-    protected $fillable = ['office_id', 'ref', 'type', 'party_type', 'party_id', 'amount', 'currency', 'method', 'safe_id', 'operation_id', 'reference_number', 'description', 'voucher_date', 'created_by', 'voided_at'];
+    protected $fillable = ['office_id', 'ref', 'type', 'party_type', 'party_id', 'amount', 'currency', 'currency_id', 'method', 'safe_id', 'operation_id', 'reference_number', 'description', 'voucher_date', 'created_by', 'voided_at'];
 
     protected function casts(): array
     {
@@ -40,5 +40,10 @@ class Voucher extends Model
     public function journalEntries()
     {
         return $this->hasMany(JournalEntry::class);
+    }
+
+    public function currencyModel()
+    {
+        return $this->belongsTo(Currency::class, 'currency_id');
     }
 }

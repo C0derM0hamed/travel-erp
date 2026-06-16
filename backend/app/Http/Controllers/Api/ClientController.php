@@ -111,25 +111,25 @@ class ClientController extends ApiController
         }
 
         $rows = $rowsQuery->get();
-        $running = 0;
-
-        $opsQuery = Operation::where('client_id', $client->id)->where('status', '!=', 'cancelled');
-        if ($request->filled('from')) {
-            $opsQuery->whereDate('op_date', '>=', $request->from);
-        }
-        if ($request->filled('to')) {
-            $opsQuery->whereDate('op_date', '<=', $request->to);
-        }
+        $runningByCurrency = [];
+        $summaryByCurrency = $this->accounting->clientStatementSummary(
+            $client->id,
+            $client->office_id,
+            $request->input('from'),
+            $request->input('to'),
+        );
 
         return response()->json([
             'client' => $this->clientPayload($client),
-            'total_purchases' => (float) (clone $opsQuery)->sum('client_price'),
-            'paid' => $this->accounting->clientReceiptsTotal($client->id),
-            'balance' => $this->accounting->clientBalance($client->id),
-            'rows' => $rows->map(function (JournalEntry $journal) use (&$running) {
-                $running += (float) $journal->debit - (float) $journal->credit;
+            'total_purchases' => (float) collect($summaryByCurrency)->sum('purchases'),
+            'paid' => (float) collect($summaryByCurrency)->sum('paid'),
+            'balance' => (float) collect($summaryByCurrency)->sum('balance'),
+            'summary_by_currency' => $summaryByCurrency,
+            'rows' => $rows->map(function (JournalEntry $journal) use (&$runningByCurrency, $client) {
+                $code = strtoupper($journal->currency ?: ($this->currencyPayloadForCode(null, $client->office_id)['code'] ?? 'KWD'));
+                $runningByCurrency[$code] = ($runningByCurrency[$code] ?? 0) + (float) $journal->debit - (float) $journal->credit;
 
-                return $this->journalPayload($journal) + ['balance' => round($running, 3)];
+                return $this->journalPayload($journal) + ['balance' => round($runningByCurrency[$code], 3)];
             }),
         ]);
     }

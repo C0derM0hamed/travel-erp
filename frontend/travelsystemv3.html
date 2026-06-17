@@ -10,6 +10,15 @@
 <link rel="shortcut icon" type="image/png" href="logo.png?v=2">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+<style>
+.ts-wrapper.form-control{padding:0;border:none;height:auto;outline:none;background:transparent;box-shadow:none}
+.ts-control{width:100%;padding:10px 16px;border:1px solid var(--border);border-radius:8px;font-family:'Public Sans','Tajawal',sans-serif;font-size:15px;color:var(--text);background:#fff;transition:all .2s ease;min-height:42px;display:flex;align-items:center}
+.ts-wrapper.focus .ts-control{border-color:var(--primary);box-shadow:0 0 0 4px rgba(105,108,255,.12)}
+.ts-dropdown{border-radius:8px;border:1px solid var(--border);box-shadow:var(--shadow-sm);font-family:'Public Sans','Tajawal',sans-serif;text-align:right}
+.ts-dropdown .option{padding:10px 16px;font-size:14px}
+</style>
 <style>
 :root{--primary:#696CFF;--primary-dark:#5F61E6;--primary-light:#E7E7FF;--primary-muted:#F0F0FF;--success:#71DD37;--success-dark:#59AB2C;--success-light:#E8F8DE;--danger:#FF3E1D;--danger-light:#FFE0DB;--warning:#FFAB00;--warning-light:#FFF3CD;--info:#03C3EC;--info-light:#D7F4FC;--bg:#F4F6F9;--white:#fff;--card:#fff;--text:#383C47;--text-heading:#212332;--text-sm:#7F8498;--text-muted:#AAB0C5;--border:#D2D6E1;--border-light:#EAEDF2;--sidebar-w:270px;--radius:12px;--shadow-xs:0 2px 4px rgba(67,74,92,.04);--shadow-sm:0 4px 12px rgba(67,74,92,.06);--shadow:0 6px 16px rgba(67,74,92,.08);--shadow-md:0 12px 24px rgba(67,74,92,.12);--shadow-lg:0 16px 40px rgba(67,74,92,.16);--shadow-xl:0 24px 48px rgba(67,74,92,.20);--shadow-primary:0 6px 16px rgba(105,108,255,.35)}
 *{box-sizing:border-box;margin:0;padding:0}

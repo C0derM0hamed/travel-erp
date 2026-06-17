@@ -1744,19 +1744,42 @@ openNewVoucher = async function(type){
   showModal('newVoucherModal');
 };
 
+let vcPartyTomSelect = null;
 updateVoucherParties = async function(){
   const pt = document.getElementById('vc_party_type')?.value;
   const sel = document.getElementById('vc_party_id');
   if (!sel) return;
+  
+  if (vcPartyTomSelect) {
+    vcPartyTomSelect.destroy();
+    vcPartyTomSelect = null;
+  }
+
   try {
     if (pt === 'client') {
-      const res = await apiFetch('/clients?per_page=500');
-      sel.innerHTML = '<option value="">-- اختر عميل --</option>' + (res.data||[]).map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+      const res = await apiFetch('/clients?per_page=5000');
+      sel.innerHTML = '<option value="">-- اختر عميل --</option>' + (res.data||[]).map(c=>`<option value="${c.id}">${c.name}${c.phone ? ' - ' + escapeHtml(c.phone) : ''}</option>`).join('');
     } else if (pt === 'vendor') {
-      const res = await apiFetch('/vendors?per_page=500');
-      sel.innerHTML = '<option value="">-- اختر مورد --</option>' + (res.data||[]).map(v=>`<option value="${v.id}">${v.name}</option>`).join('');
-    } else sel.innerHTML = '<option value="">-- عام --</option>';
+      const res = await apiFetch('/vendors?per_page=5000');
+      sel.innerHTML = '<option value="">-- اختر مورد --</option>' + (res.data||[]).map(v=>`<option value="${v.id}">${v.name}${v.phone ? ' - ' + escapeHtml(v.phone) : ''}</option>`).join('');
+    } else {
+      sel.innerHTML = '<option value="">-- عام --</option>';
+    }
   } catch (e) { sel.innerHTML = '<option value="">--</option>'; }
+
+  if (typeof TomSelect !== 'undefined' && pt !== 'general') {
+    vcPartyTomSelect = new TomSelect(sel, {
+      create: false,
+      sortField: { field: 'text', direction: 'asc' },
+      searchField: ['text'],
+      maxOptions: 1000,
+      render: {
+        no_results: function(data, escape) {
+          return '<div class="no-results" style="padding:10px 16px;color:var(--text-sm)">لا توجد نتائج</div>';
+        }
+      }
+    });
+  }
 };
 
 closeDrawer = function(clearContent){ AppShell.closeDrawer(clearContent !== false); };
